@@ -684,10 +684,10 @@ async function runSmokeCheck(window: BrowserWindow): Promise<void> {
             await waitFor(
               () =>
                 document.querySelectorAll('.component-node').length === 1 &&
-                document.body.innerText.includes('Unsaved changes')
+                Boolean(document.querySelector('.dirty-indicator.is-dirty'))
             );
             const placed = document.querySelectorAll('.component-node').length;
-            const dirty = document.body.innerText.includes('Unsaved changes');
+            const dirty = Boolean(document.querySelector('.dirty-indicator.is-dirty'));
             document.querySelector('button[aria-label="Undo"]')?.click();
             await waitFor(() => document.querySelectorAll('.component-node').length === 0);
             const undone = document.querySelectorAll('.component-node').length;
