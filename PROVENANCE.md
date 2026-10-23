@@ -2,7 +2,7 @@
 
 ## Drawic original source
 
-- Origin: new implementation initialized in `/srv/workspaces/newproject` on
+- Origin: new implementation initialized in an empty local Git worktree on
   2026-10-23.
 - Repository: `https://github.com/CanvasQAQ/drawic`
 - License: MIT for original Drawic source.

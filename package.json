@@ -29,6 +29,7 @@
     "dist:dir": "npm run build && electron-builder --dir",
     "verify:offline": "node scripts/verify-offline.mjs",
     "verify:clean-room": "node scripts/verify-clean-room.mjs",
+    "verify:docs": "node scripts/verify-docs.mjs",
     "verify:release": "node scripts/verify-release-assets.mjs",
     "checksums": "node scripts/generate-checksums.mjs",
     "smoke:packaged": "node scripts/smoke-packaged.mjs"

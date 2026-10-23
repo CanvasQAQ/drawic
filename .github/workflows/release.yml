@@ -27,6 +27,7 @@ jobs:
       - run: npm test
       - run: npm run verify:offline
       - run: npm run verify:clean-room
+      - run: npm run verify:docs
       - run: npm run build
 
   package:

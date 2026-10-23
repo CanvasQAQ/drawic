@@ -8,6 +8,9 @@ This repository is an original implementation. See [CLEAN_ROOM.md](CLEAN_ROOM.md
 for the development boundary and [PROVENANCE.md](PROVENANCE.md) for asset and
 dependency lineage.
 
+Local implementation agents must begin with [AGENTS.md](AGENTS.md) and
+[docs/AGENT_WORKFLOW.md](docs/AGENT_WORKFLOW.md).
+
 ## Preview status
 
 Version 0.2.0 is an **Unsigned Preview**. The editor uses independent drawing
