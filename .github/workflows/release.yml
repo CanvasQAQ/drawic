@@ -130,7 +130,7 @@ jobs:
       - name: Assemble release files
         run: |
           mkdir -p release
-          find downloads -type f \( -name '*.exe' -o -name '*.dmg' -o -name '*.AppImage' -o -name '*.deb' -o -name '*.tar.gz' \) -exec cp {} release/ \;
+          find downloads -type f \( -name '*.exe' -o -name '*.dmg' -o -name '*.zip' -o -name '*.AppImage' -o -name '*.deb' -o -name '*.tar.gz' \) -exec cp {} release/ \;
           cp downloads/source/Drawic-*-source.zip release/
           cat > release/UNSIGNED-PREVIEW.txt <<'EOF'
           Drawic v0.1.0 is an UNSIGNED PREVIEW.
