@@ -1117,6 +1117,122 @@ button:not(:disabled) {
   color: #e0e8e7;
 }
 
+.page-bar {
+  flex: 0 0 40px;
+  min-width: 0;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border-bottom: 1px solid #2d3d46;
+  background: #162129;
+}
+
+.page-bar-heading {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.page-bar-heading > span:last-child {
+  color: #657b85;
+  font-size: 9px;
+}
+
+.page-tabs {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.page-tab {
+  flex: 0 0 auto;
+  min-width: 92px;
+  max-width: 190px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: #8298a1;
+  white-space: nowrap;
+}
+
+.page-tab:hover {
+  background: #1b2932;
+  color: #d3dede;
+}
+
+.page-tab.is-active {
+  border-bottom-color: var(--amber);
+  background: #202c33;
+  color: #eef2ef;
+}
+
+.page-index {
+  min-width: 16px;
+  padding: 1px 4px;
+  border: 1px solid #3b505b;
+  border-radius: 3px;
+  color: #78909a;
+  font-size: 8px;
+  text-align: center;
+}
+
+.page-tab.is-active .page-index {
+  border-color: #796341;
+  color: var(--amber-bright);
+}
+
+.page-add {
+  flex: 0 0 31px;
+  margin: 5px 2px;
+  border: 1px dashed #3f525d;
+  border-radius: 4px;
+  background: #17242d;
+  color: #9bb0b7;
+  font-size: 18px;
+}
+
+.page-add:hover {
+  border-color: var(--teal-muted);
+  color: var(--teal);
+}
+
+.page-actions {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 2px;
+}
+
+.page-actions button {
+  min-height: 28px;
+  padding: 4px 7px;
+  border: 1px solid #344751;
+  border-radius: 4px;
+  background: #1b2932;
+  color: #aebec3;
+  font-size: 9px;
+}
+
+.page-actions button:hover:not(:disabled) {
+  border-color: #526771;
+  color: #eef1ee;
+}
+
+.page-actions .page-delete:hover:not(:disabled) {
+  border-color: #71413e;
+  color: #e9a49d;
+}
+
 .roadmap-list {
   margin: 0;
   padding: 0;
@@ -1468,6 +1584,9 @@ button:not(:disabled) {
   .cell-actions button {
     padding-inline: 5px;
   }
+  .page-actions button {
+    padding-inline: 5px;
+  }
   .export-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1484,6 +1603,10 @@ button:not(:disabled) {
     min-width: 40px;
   }
   .tool-button span {
+    display: none;
+  }
+  .page-bar-heading,
+  .page-actions button:nth-child(-n + 2) {
     display: none;
   }
   .status-bar > div:first-child span:nth-child(n + 3) {
