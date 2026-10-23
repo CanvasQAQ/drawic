@@ -20,8 +20,11 @@ Implemented:
   rotation, and mirroring;
 - pointer-centered zoom, panning, placement previews, exact port selection, and
   port-to-port wiring;
-- orthogonal wire segment handles, network highlighting, junctions, labels, and
-  basic rectangle/ellipse shapes;
+- obstacle-aware orthogonal wire routing, segment handles, live connected-wire
+  previews during component drags, network highlighting, junctions, and labels;
+- independently movable/hideable device labels plus directly editable text,
+  rectangle, and ellipse objects with resize handles;
+- pointer-centered wheel zoom and `F` fit-to-content;
 - project save/open, recovery, dirty-state close protection, SPICE import/export,
   ERC, and SVG/PNG/PDF export;
 - draw.io `mxlibrary` conversion helpers for device libraries.
@@ -29,7 +32,8 @@ Implemented:
 Not yet implemented in the UI:
 
 - importing/exporting full draw.io multi-page documents;
-- full free-form shape/text dragging parity with draw.io;
+- multi-object shape group editing and advanced connector routing parity with
+  format-specific drawing tools;
 - user-editable device libraries;
 - Spectre/SCS, simulation, local MCP, and cloud services.
 

@@ -1,9 +1,11 @@
 import { useEffect, useState, type ReactNode } from "react";
+import { nodeLabelVisible } from "../../core/geometry";
 import type {
   Annotation,
   ComponentNode,
   DrawingPage,
   DrawingShape,
+  NodeLabelKind,
   SelectionRef,
 } from "../../core/model";
 import { Icon } from "./Icons";
@@ -59,9 +61,18 @@ interface PropertiesPanelProps {
     nodeId: string,
     patch: Partial<Pick<ComponentNode, "reference" | "value">>,
   ) => void;
+  onUpdateNodeLabel: (
+    nodeId: string,
+    label: NodeLabelKind,
+    patch: { hidden?: boolean },
+  ) => void;
   onUpdateAnnotation: (
     annotationId: string,
     patch: Partial<Pick<Annotation, "text" | "kind" | "size">>,
+  ) => void;
+  onUpdateShape: (
+    shapeId: string,
+    patch: Partial<Pick<DrawingShape, "x" | "y" | "width" | "height" | "text">>,
   ) => void;
   onRotate: () => void;
   onMirror: () => void;
@@ -89,7 +100,9 @@ export function PropertiesPanel({
   page,
   selection,
   onUpdateNode,
+  onUpdateNodeLabel,
   onUpdateAnnotation,
+  onUpdateShape,
   onRotate,
   onMirror,
   onDelete,
@@ -103,6 +116,10 @@ export function PropertiesPanel({
   const selectedWire =
     selection.length === 1 && selection[0]?.kind === "wire"
       ? page.wires.find((wire) => wire.id === selection[0]?.id)
+      : undefined;
+  const selectedNodeLabel =
+    selection.length === 1 && selection[0]?.kind === "node-label"
+      ? page.nodes.find((node) => node.id === selection[0]?.id)
       : undefined;
   const selectedAnnotation =
     selection.length === 1 && selection[0]?.kind === "annotation"
@@ -174,7 +191,53 @@ export function PropertiesPanel({
             <button type="button" onClick={onMirror}>
               <Icon name="mirror" /> Mirror
             </button>
+            <button
+              type="button"
+              onClick={() =>
+                onUpdateNodeLabel(selectedNode.id, "reference", {
+                  hidden: nodeLabelVisible(selectedNode, "reference"),
+                })
+              }
+            >
+              Reference: {nodeLabelVisible(selectedNode, "reference") ? "shown" : "hidden"}
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                onUpdateNodeLabel(selectedNode.id, "value", {
+                  hidden: nodeLabelVisible(selectedNode, "value"),
+                })
+              }
+            >
+              Value: {nodeLabelVisible(selectedNode, "value") ? "shown" : "hidden"}
+            </button>
           </div>
+        </PropertiesSection>
+      ) : null}
+
+      {selectedNodeLabel ? (
+        <PropertiesSection title="Component label">
+          <div className="selection-kind">
+            <span className="kind-swatch kind-text" />
+            {selection[0]?.label === "value" ? "Value label" : "Reference label"}
+          </div>
+          <p className="property-hint">
+            Drag the label directly on the canvas, double-click it to rename it, or delete it to
+            hide it without removing the component.
+          </p>
+          <button
+            type="button"
+            className="text-button"
+            onClick={() =>
+              onUpdateNodeLabel(
+                selectedNodeLabel.id,
+                selection[0]?.label ?? "reference",
+                { hidden: true },
+              )
+            }
+          >
+            Hide this label
+          </button>
         </PropertiesSection>
       ) : null}
 
@@ -272,6 +335,11 @@ export function PropertiesPanel({
               <dd>{selectedShape.rotation}°</dd>
             </div>
           </dl>
+          <CommitField
+            label="Label"
+            value={selectedShape.text ?? ""}
+            onCommit={(text) => onUpdateShape(selectedShape.id, { text })}
+          />
           <div className="button-row">
             <button type="button" onClick={onRotate}>
               <Icon name="rotate" /> Rotate

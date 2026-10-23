@@ -3,7 +3,9 @@ import { buildConnectivity, pinGraphKey } from "../src/core/connectivity";
 import {
   addComponent,
   addWire,
+  mirrorSelection,
   moveNodes,
+  rotateSelection,
 } from "../src/core/editor";
 import { createDocument, createEmptyPage, pageById } from "../src/core/model";
 import { addPage } from "../src/core/project";
@@ -76,5 +78,31 @@ describe("page-scoped editing", () => {
       const current = page.wires[0]!.points[index]!;
       expect(previous.x === current.x || previous.y === current.y).toBe(true);
     }
+  });
+
+  it("keeps anchored wire endpoints on their pins through rotation and mirroring", () => {
+    let document = twoAnchorDocument();
+    document = rotateSelection(
+      document,
+      "page_a",
+      [{ kind: "node", id: "r1" }],
+      "2026-10-23T00:00:05.000Z",
+    );
+    let wire = pageById(document, "page_a").wires[0]!;
+    expect(wire.points[0]).toEqual({ x: 80, y: 100 });
+    for (let index = 1; index < wire.points.length; index += 1) {
+      const previous = wire.points[index - 1]!;
+      const current = wire.points[index]!;
+      expect(previous.x === current.x || previous.y === current.y).toBe(true);
+    }
+
+    document = mirrorSelection(
+      document,
+      "page_a",
+      [{ kind: "node", id: "r1" }],
+      "2026-10-23T00:00:06.000Z",
+    );
+    wire = pageById(document, "page_a").wires[0]!;
+    expect(wire.points[0]).toEqual({ x: 80, y: 100 });
   });
 });

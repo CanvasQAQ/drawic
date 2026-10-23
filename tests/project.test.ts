@@ -25,6 +25,42 @@ describe("Drawic drawing format", () => {
     expect(serializeProject(parsed)).toBe(serializeProject(document));
   });
 
+  it("preserves canvas-edited labels and shape text", () => {
+    const document = createDocument({
+      title: "Editable canvas objects",
+      id: "project_editable",
+      pageId: "page_editable",
+    });
+    document.pages[0]!.nodes.push({
+      id: "node_r1",
+      symbolId: "resistor",
+      reference: "R7",
+      value: "4k7",
+      x: 100,
+      y: 100,
+      rotation: 0,
+      mirrored: false,
+      labelLayout: {
+        reference: { offset: { x: 14, y: -8 }, hidden: false },
+        value: { offset: { x: 0, y: 0 }, hidden: true },
+      },
+    });
+    document.pages[0]!.shapes.push({
+      id: "shape_box",
+      kind: "rectangle",
+      x: 30,
+      y: 40,
+      width: 120,
+      height: 60,
+      rotation: 0,
+      stroke: "#263d48",
+      fill: "transparent",
+      text: "Bias network",
+    });
+    const parsed = parseProjectText(serializeProject(document));
+    expect(parsed).toEqual(document);
+  });
+
   it("rejects future schema versions instead of guessing", () => {
     const source = JSON.stringify({
       ...createDocument(),

@@ -13,9 +13,12 @@ import {
   mirrorSelection,
   moveNodes,
   removeSelection,
+  replacePageContent,
   rotateSelection,
   updateAnnotation,
   updateNode,
+  updateNodeLabel,
+  updateShape,
   updateWirePoints,
 } from "../core/editor";
 import { runElectricalRules } from "../core/erc";
@@ -50,6 +53,7 @@ import {
   movePage,
   renamePage,
 } from "../core/project";
+import { rerouteConnectedWires } from "../core/routing";
 import { exportSpice, importSpice } from "../core/spice";
 import type { AppCommand, OpenProjectPayload } from "../shared/bridge";
 import builtInDeviceLibraryJson from "./assets/device-libraries/drawic-built-in.drawiclib.json";
@@ -343,12 +347,28 @@ export function App() {
   }, [activePageId, commitMutation, selection]);
 
   const rotateSelected = useCallback(() => {
-    commitMutation((current) => rotateSelection(current, activePageId, selection));
+    const nodeIds = new Set(
+      selection.filter((item) => item.kind === "node").map((item) => item.id),
+    );
+    commitMutation((current) => {
+      const rotated = rotateSelection(current, activePageId, selection);
+      return replacePageContent(rotated, activePageId, (currentPage) =>
+        rerouteConnectedWires(currentPage, library, nodeIds),
+      );
+    });
     setDiagnostics(null);
   }, [activePageId, commitMutation, selection]);
 
   const mirrorSelected = useCallback(() => {
-    commitMutation((current) => mirrorSelection(current, activePageId, selection));
+    const nodeIds = new Set(
+      selection.filter((item) => item.kind === "node").map((item) => item.id),
+    );
+    commitMutation((current) => {
+      const mirrored = mirrorSelection(current, activePageId, selection);
+      return replacePageContent(mirrored, activePageId, (currentPage) =>
+        rerouteConnectedWires(currentPage, library, nodeIds),
+      );
+    });
     setDiagnostics(null);
   }, [activePageId, commitMutation, selection]);
 
@@ -463,7 +483,12 @@ export function App() {
     (delta: Point) => {
       const ids = selection.filter((item) => item.kind === "node").map((item) => item.id);
       if (ids.length > 0) {
-        commitMutation((current) => moveNodes(current, activePageId, ids, delta));
+        commitMutation((current) => {
+          const moved = moveNodes(current, activePageId, ids, delta);
+          return replacePageContent(moved, activePageId, (currentPage) =>
+            rerouteConnectedWires(currentPage, library, new Set(ids)),
+          );
+        });
         setDiagnostics(null);
       }
     },
@@ -593,6 +618,9 @@ export function App() {
     setSelection((current) =>
       current.filter((item) => {
         if (item.kind === "node") {
+          return active.nodes.some((node) => node.id === item.id);
+        }
+        if (item.kind === "node-label") {
           return active.nodes.some((node) => node.id === item.id);
         }
         if (item.kind === "wire") {
@@ -870,9 +898,33 @@ export function App() {
             onPlace={placeAt}
             onAddWire={addWire}
             onUpdateWire={updateWire}
+            onUpdateNode={(nodeId, patch) =>
+              commitMutation((current) => updateNode(current, page.id, nodeId, patch))
+            }
+            onMoveNodeLabel={(nodeId, label, delta) =>
+              commitMutation((current) => {
+                const node = pageById(current, page.id).nodes.find(
+                  (candidate) => candidate.id === nodeId,
+                );
+                return updateNodeLabel(current, page.id, nodeId, label, {
+                  offset: {
+                    x: (node?.labelLayout?.[label]?.offset.x ?? 0) + delta.x,
+                    y: (node?.labelLayout?.[label]?.offset.y ?? 0) + delta.y,
+                  },
+                });
+              })
+            }
             onAddJunction={addJunctionPoint}
             onAddAnnotation={addLabel}
+            onUpdateAnnotation={(annotationId, patch) =>
+              commitMutation((current) =>
+                updateAnnotation(current, page.id, annotationId, patch),
+              )
+            }
             onAddShape={addDrawingShape}
+            onUpdateShape={(shapeId, patch) =>
+              commitMutation((current) => updateShape(current, page.id, shapeId, patch))
+            }
             onMoveSelected={moveSelected}
           />
         </main>
@@ -884,10 +936,18 @@ export function App() {
             onUpdateNode={(nodeId, patch) =>
               commitMutation((current) => updateNode(current, page.id, nodeId, patch))
             }
+            onUpdateNodeLabel={(nodeId, label, patch) =>
+              commitMutation((current) =>
+                updateNodeLabel(current, page.id, nodeId, label, patch),
+              )
+            }
             onUpdateAnnotation={(annotationId, patch) =>
               commitMutation((current) =>
                 updateAnnotation(current, page.id, annotationId, patch),
               )
+            }
+            onUpdateShape={(shapeId, patch) =>
+              commitMutation((current) => updateShape(current, page.id, shapeId, patch))
             }
             onRotate={rotateSelected}
             onMirror={mirrorSelected}

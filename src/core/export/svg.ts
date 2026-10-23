@@ -1,4 +1,9 @@
-import { nodeBounds, symbolLabelPosition, symbolTransform } from "../geometry";
+import {
+  nodeBounds,
+  nodeLabelVisible,
+  symbolLabelPosition,
+  symbolTransform,
+} from "../geometry";
 import type { DrawingPage, SymbolDefinition } from "../model";
 
 export interface SvgExportOptions {
@@ -82,15 +87,19 @@ export function buildSchematicSvg(
       if (!symbol) {
         return "";
       }
-      const reference = xmlEscape(node.reference || "?");
-      const value = xmlEscape(node.value);
+      const reference = nodeLabelVisible(node, "reference")
+        ? xmlEscape(node.reference || "?")
+        : "";
+      const value = nodeLabelVisible(node, "value") ? xmlEscape(node.value) : "";
       const referenceLabel = symbolLabelPosition(node, symbol, "reference");
       const valueLabel = symbolLabelPosition(node, symbol, "value");
       return [
         `    <g class="component" data-symbol="${xmlEscape(symbol.id)}" transform="${symbolTransform(node, symbol)}">`,
         `      ${symbol.svgBody.trim()}`,
         `    </g>`,
-        `    <text x="${numberOf(referenceLabel.point.x)}" y="${numberOf(referenceLabel.point.y)}" text-anchor="${referenceLabel.anchor}" fill="#15323d" font-family="Arial, sans-serif" font-size="13" font-weight="700">${reference}</text>`,
+        reference
+          ? `    <text x="${numberOf(referenceLabel.point.x)}" y="${numberOf(referenceLabel.point.y)}" text-anchor="${referenceLabel.anchor}" fill="#15323d" font-family="Arial, sans-serif" font-size="13" font-weight="700">${reference}</text>`
+          : "",
         value
           ? `    <text x="${numberOf(valueLabel.point.x)}" y="${numberOf(valueLabel.point.y)}" text-anchor="${valueLabel.anchor}" fill="#425866" font-family="Arial, sans-serif" font-size="12">${value}</text>`
           : "",
@@ -124,10 +133,14 @@ export function buildSchematicSvg(
           ? ""
           : ` transform="rotate(${shape.rotation} ${numberOf(centerX)} ${numberOf(centerY)})"`;
       const paint = `fill="${xmlEscape(shape.fill)}" stroke="${xmlEscape(shape.stroke)}" stroke-width="2"`;
-      if (shape.kind === "ellipse") {
-        return `    <ellipse cx="${numberOf(centerX)}" cy="${numberOf(centerY)}" rx="${numberOf(shape.width / 2)}" ry="${numberOf(shape.height / 2)}" ${paint}${transform}/>`;
-      }
-      return `    <rect x="${numberOf(shape.x)}" y="${numberOf(shape.y)}" width="${numberOf(shape.width)}" height="${numberOf(shape.height)}" ${paint}${transform}/>`;
+      const shapeElement =
+        shape.kind === "ellipse"
+          ? `<ellipse cx="${numberOf(centerX)}" cy="${numberOf(centerY)}" rx="${numberOf(shape.width / 2)}" ry="${numberOf(shape.height / 2)}" ${paint}/>`
+          : `<rect x="${numberOf(shape.x)}" y="${numberOf(shape.y)}" width="${numberOf(shape.width)}" height="${numberOf(shape.height)}" ${paint}/>`;
+      const text = shape.text
+        ? `<text x="${numberOf(centerX)}" y="${numberOf(centerY)}" text-anchor="middle" dominant-baseline="central" fill="#263d48" font-family="Arial, sans-serif" font-size="13">${xmlEscape(shape.text)}</text>`
+        : "";
+      return `    <g${transform}>${shapeElement}${text}</g>`;
     })
     .join("\n");
 

@@ -543,6 +543,9 @@ button:not(:disabled) {
   height: 43px;
   justify-self: center;
   overflow: visible;
+  color: #dbe5e3;
+  fill: currentColor;
+  stroke: currentColor;
 }
 
 .symbol-preview g,
@@ -554,9 +557,9 @@ button:not(:disabled) {
   vector-effect: non-scaling-stroke;
 }
 
-.symbol-preview g {
-  stroke: #dbe5e3 !important;
-  fill: #dbe5e3;
+.symbol-preview text {
+  fill: currentColor;
+  stroke: none;
 }
 
 .symbol-label {
@@ -721,12 +724,22 @@ button:not(:disabled) {
   fill: #19333e;
   font-size: 12px;
   font-weight: 750;
+  cursor: move;
 }
 
 .component-value {
   fill: #586970;
   font-size: 10px;
   font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+  cursor: move;
+}
+
+.component-reference.is-selected,
+.component-value.is-selected {
+  paint-order: stroke;
+  stroke: #f5f3ec;
+  stroke-width: 4px;
+  filter: drop-shadow(0 0 1px #b57931);
 }
 
 .component-node.is-selected .component-hit {
@@ -752,9 +765,7 @@ button:not(:disabled) {
   pointer-events: all;
 }
 
-.port-pin:hover,
 .schematic-canvas.tool-wire .port-pin,
-.schematic-canvas.is-placing .port-pin,
 .port-pin.is-snapping {
   fill: rgb(99 201 186 / 18%);
   stroke: #218e83;
@@ -828,21 +839,69 @@ button:not(:disabled) {
   cursor: move;
 }
 
-.drawing-shape > rect,
-.drawing-shape > ellipse {
+.drawing-shape .shape-body {
   vector-effect: non-scaling-stroke;
 }
 
-.drawing-shape.is-selected > rect,
-.drawing-shape.is-selected > ellipse {
+.drawing-shape.is-selected .shape-body {
   stroke: #c18438;
   stroke-width: 2;
   stroke-dasharray: 7 4;
 }
 
+.shape-text {
+  fill: #263d48;
+  font-size: 13px;
+  font-weight: 600;
+  pointer-events: none;
+  user-select: none;
+}
+
+.shape-resize-handle {
+  fill: #f8f7f2;
+  stroke: #b97d35;
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+  cursor: nwse-resize;
+  pointer-events: all;
+}
+
+.shape-resize-ne,
+.shape-resize-sw {
+  cursor: nesw-resize;
+}
+
+.canvas-inline-editor-object {
+  overflow: visible;
+}
+
+.canvas-inline-editor {
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  background: #fffdf7;
+  border: 1px solid #b97d35;
+  box-shadow: 0 2px 8px rgb(41 34 23 / 20%);
+}
+
+.canvas-inline-editor input,
+.canvas-inline-editor textarea {
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 3px 5px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #182f39;
+  font: 12px "Segoe UI", sans-serif;
+  resize: none;
+}
+
 .annotation {
   fill: #394a52;
   font-family: "Segoe UI", sans-serif;
+  cursor: move;
 }
 
 .annotation-net {

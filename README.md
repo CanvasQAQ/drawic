@@ -30,19 +30,21 @@ certificate is configured.
   label anchors, search terms, and SPICE metadata.
 - Selection, Shift multi-selection, marquee selection, grid movement, deletion,
   rotation, and mirroring.
-- Ctrl+wheel zoom centered on the pointer, Ctrl+0 reset, Space-drag panning, and
-  visible placement previews.
+- Wheel zoom centered on the pointer, `F` fit-to-content, Ctrl+0 reset,
+  Space-drag panning, and visible placement previews.
 - Point-to-point wiring by clicking one device port and then another, with exact
   port snapping and anchor-backed connectivity.
-- Orthogonal wire segment handles that adjust routing without changing the
-  electrical endpoint.
+- Obstacle-aware orthogonal routing with handles on every segment, live wire
+  previews while devices move, and fixed electrical endpoints.
 - Distinct crossing, endpoint, and explicit junction semantics, with connected
   network highlighting. Junctions do not mask the wire.
-- Component reference/value fields, free text, named net labels, and properties.
+- Independently movable and hideable component labels, plus in-place editing and
+  dragging for free text, named net labels, rectangles, and ellipses.
 - Independent drawing pages with creation, rename, duplicate, delete, reorder,
   and tab switching. Page switching is view state and does not mark a document
   dirty.
-- Basic rectangle and ellipse drawing tools.
+- Rectangle and ellipse drawing tools with canvas move, resize, and label
+  editing.
 - New/open/save/save-as, recent projects, dirty-state tracking, and debounced
   unsaved-work recovery.
 - Save/discard/cancel protection when replacing a dirty document or closing an
@@ -110,9 +112,13 @@ service, sync, account, telemetry, or update-check request.
   copies. Press Escape to leave placement mode.
 - The Wire tool supports click-start, move preview, and click-finish. Clicking a
   device port before and after creates a wire bound to both ports.
-- Ctrl+wheel zooms around the pointer. Ctrl+0 resets the view. Hold Space and
-  drag to pan.
-- Select a wire to reveal routing handles at movable orthogonal segments.
+- The wheel zooms around the pointer. `F` fits the drawing, Ctrl+0 resets the
+  view, and holding Space while dragging pans.
+- Select a wire to reveal a routing handle on every orthogonal segment. Handles
+  remain available on pin-bound segments and add doglegs without detaching the
+  electrical endpoint.
+- Double-click text, a net label, a shape label, or a component reference/value
+  to edit it in place. Labels and shapes can be dragged directly.
 - A wire endpoint touching another wire connects them. Interior crossings do not
   connect until the Junction tool adds an explicit junction.
 - Net labels with identical text merge their networks.

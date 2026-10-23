@@ -1,4 +1,11 @@
-import type { ComponentNode, Point, SymbolDefinition, SymbolPin, SymbolSide } from "./model";
+import type {
+  ComponentNode,
+  NodeLabelKind,
+  Point,
+  SymbolDefinition,
+  SymbolPin,
+  SymbolSide,
+} from "./model";
 
 export const GRID_SIZE = 10;
 export const SNAP_DISTANCE = 12;
@@ -72,19 +79,28 @@ export function localPinPosition(symbol: SymbolDefinition, pinIndex: number): Po
 }
 
 export function symbolLabelPosition(
-  node: Pick<ComponentNode, "x" | "y" | "rotation" | "mirrored">,
+  node: Pick<ComponentNode, "x" | "y" | "rotation" | "mirrored" | "labelLayout">,
   symbol: SymbolDefinition,
-  kind: "reference" | "value",
+  kind: NodeLabelKind,
 ): { point: Point; anchor: "start" | "middle" | "end" } {
   const fallback =
     kind === "reference"
       ? { x: 8, y: -2, anchor: "start" as const }
       : { x: 8, y: 13, anchor: "start" as const };
   const configured = symbol.labelAnchors?.[kind] ?? fallback;
+  const offset = node.labelLayout?.[kind]?.offset ?? { x: 0, y: 0 };
+  const point = transformLocalPoint(node, { x: configured.x, y: configured.y });
   return {
-    point: transformLocalPoint(node, { x: configured.x, y: configured.y }),
+    point: { x: point.x + offset.x, y: point.y + offset.y },
     anchor: configured.anchor,
   };
+}
+
+export function nodeLabelVisible(
+  node: ComponentNode,
+  kind: NodeLabelKind,
+): boolean {
+  return !node.labelLayout?.[kind]?.hidden;
 }
 
 export function transformLocalPoint(

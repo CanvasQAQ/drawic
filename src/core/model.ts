@@ -50,6 +50,14 @@ export interface ComponentNode {
   y: number;
   rotation: Rotation;
   mirrored: boolean;
+  labelLayout?: Partial<Record<NodeLabelKind, NodeLabelLayout>>;
+}
+
+export type NodeLabelKind = "reference" | "value";
+
+export interface NodeLabelLayout {
+  offset: Point;
+  hidden: boolean;
 }
 
 export interface ConnectionAnchor {
@@ -85,6 +93,7 @@ export interface DrawingShape {
   rotation: Rotation;
   stroke: string;
   fill: string;
+  text?: string;
 }
 
 export interface DrawingPage {
@@ -107,11 +116,12 @@ export interface DrawicDocument {
   pages: DrawingPage[];
 }
 
-export type SelectionKind = "node" | "wire" | "annotation" | "shape";
+export type SelectionKind = "node" | "node-label" | "wire" | "annotation" | "shape";
 
 export interface SelectionRef {
   kind: SelectionKind;
   id: string;
+  label?: NodeLabelKind;
 }
 
 export type DiagnosticSeverity = "error" | "warning";
@@ -211,7 +221,7 @@ export function replacePage(
 }
 
 export function selectionEquals(a: SelectionRef, b: SelectionRef): boolean {
-  return a.kind === b.kind && a.id === b.id;
+  return a.kind === b.kind && a.id === b.id && a.label === b.label;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -271,6 +281,7 @@ function parseNode(value: unknown, index: number): ComponentNode {
   if (typeof value.mirrored !== "boolean") {
     throw new ProjectFormatError("invalid-field", `${field}.mirrored must be boolean.`);
   }
+  const labelLayout = parseNodeLabelLayout(value.labelLayout, `${field}.labelLayout`);
   return {
     id: expectString(value.id, `${field}.id`),
     symbolId: expectString(value.symbolId, `${field}.symbolId`),
@@ -280,7 +291,44 @@ function parseNode(value: unknown, index: number): ComponentNode {
     y: expectFinite(value.y, `${field}.y`),
     rotation: expectRotation(value.rotation, `${field}.rotation`),
     mirrored: value.mirrored,
+    ...(labelLayout ? { labelLayout } : {}),
   };
+}
+
+function parseNodeLabelLayout(
+  value: unknown,
+  field: string,
+): ComponentNode["labelLayout"] | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (!isRecord(value)) {
+    throw new ProjectFormatError("invalid-field", `${field} must be an object.`);
+  }
+  const result: NonNullable<ComponentNode["labelLayout"]> = {};
+  for (const kind of ["reference", "value"] as const) {
+    const candidate = value[kind];
+    if (candidate === undefined) {
+      continue;
+    }
+    if (!isRecord(candidate) || !isRecord(candidate.offset)) {
+      throw new ProjectFormatError(
+        "invalid-field",
+        `${field}.${kind} must contain an offset and visibility.`,
+      );
+    }
+    if (typeof candidate.hidden !== "boolean") {
+      throw new ProjectFormatError(
+        "invalid-field",
+        `${field}.${kind}.hidden must be boolean.`,
+      );
+    }
+    result[kind] = {
+      offset: parsePoint(candidate.offset, `${field}.${kind}.offset`),
+      hidden: candidate.hidden,
+    };
+  }
+  return Object.keys(result).length > 0 ? result : undefined;
 }
 
 function parseWire(value: unknown, index: number): Wire {
@@ -333,6 +381,9 @@ function parseShape(value: unknown, index: number): DrawingShape {
     rotation: expectRotation(value.rotation, `${field}.rotation`),
     stroke: expectString(value.stroke, `${field}.stroke`),
     fill: expectString(value.fill, `${field}.fill`),
+    ...(value.text === undefined
+      ? {}
+      : { text: expectString(value.text, `${field}.text`) }),
   };
 }
 
