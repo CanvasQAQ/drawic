@@ -1,6 +1,6 @@
 {
   "name": "drawic",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "A local-first analog and mixed-signal schematic editor.",
   "main": "dist/main/main.js",
   "author": {

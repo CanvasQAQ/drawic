@@ -13,7 +13,7 @@ Local implementation agents must begin with [AGENTS.md](AGENTS.md) and
 
 ## Preview status
 
-Version 0.2.0 is an **Unsigned Preview**. The editor uses independent drawing
+Version 0.2.1 is an **Unsigned Preview**. The editor uses independent drawing
 pages and a single-file device library, and can produce project, SPICE, SVG, PNG,
 and PDF files. User-editable libraries, Spectre/SCS, and local MCP are explicitly
 not implemented.
