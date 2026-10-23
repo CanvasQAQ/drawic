@@ -2,8 +2,8 @@ import { useEffect, useState, type ReactNode } from "react";
 import type {
   Annotation,
   ComponentNode,
-  DrawicDocument,
-  SchematicCell,
+  DrawingPage,
+  DrawingShape,
   SelectionRef,
 } from "../../core/model";
 import { Icon } from "./Icons";
@@ -53,8 +53,7 @@ function CommitField({
 }
 
 interface PropertiesPanelProps {
-  document: DrawicDocument;
-  cell: SchematicCell;
+  page: DrawingPage;
   selection: readonly SelectionRef[];
   onUpdateNode: (
     nodeId: string,
@@ -68,8 +67,7 @@ interface PropertiesPanelProps {
   onMirror: () => void;
   onDelete: () => void;
   onCollapse: () => void;
-  onRenameCell: () => void;
-  onSetTop: () => void;
+  onRenamePage: () => void;
 }
 
 function PropertiesSection({
@@ -88,8 +86,7 @@ function PropertiesSection({
 }
 
 export function PropertiesPanel({
-  document,
-  cell,
+  page,
   selection,
   onUpdateNode,
   onUpdateAnnotation,
@@ -97,22 +94,24 @@ export function PropertiesPanel({
   onMirror,
   onDelete,
   onCollapse,
-  onRenameCell,
-  onSetTop,
+  onRenamePage,
 }: PropertiesPanelProps) {
   const selectedNode =
     selection.length === 1 && selection[0]?.kind === "node"
-      ? cell.nodes.find((node) => node.id === selection[0]?.id)
+      ? page.nodes.find((node) => node.id === selection[0]?.id)
       : undefined;
   const selectedWire =
     selection.length === 1 && selection[0]?.kind === "wire"
-      ? cell.wires.find((wire) => wire.id === selection[0]?.id)
+      ? page.wires.find((wire) => wire.id === selection[0]?.id)
       : undefined;
   const selectedAnnotation =
     selection.length === 1 && selection[0]?.kind === "annotation"
-      ? cell.annotations.find((annotation) => annotation.id === selection[0]?.id)
+      ? page.annotations.find((annotation) => annotation.id === selection[0]?.id)
       : undefined;
-  const top = document.cells.find((candidate) => candidate.isTop);
+  const selectedShape: DrawingShape | undefined =
+    selection.length === 1 && selection[0]?.kind === "shape"
+      ? page.shapes.find((shape) => shape.id === selection[0]?.id)
+      : undefined;
 
   return (
     <aside className="properties-panel" aria-label="Properties">
@@ -249,6 +248,38 @@ export function PropertiesPanel({
         </PropertiesSection>
       ) : null}
 
+      {selectedShape ? (
+        <PropertiesSection title="Drawing shape">
+          <div className="selection-kind">
+            <span className="kind-swatch kind-shape" />
+            {selectedShape.kind === "ellipse" ? "Ellipse" : "Rectangle"}
+          </div>
+          <dl className="property-grid">
+            <div>
+              <dt>Position</dt>
+              <dd>
+                {selectedShape.x}, {selectedShape.y}
+              </dd>
+            </div>
+            <div>
+              <dt>Size</dt>
+              <dd>
+                {selectedShape.width} × {selectedShape.height}
+              </dd>
+            </div>
+            <div>
+              <dt>Rotation</dt>
+              <dd>{selectedShape.rotation}°</dd>
+            </div>
+          </dl>
+          <div className="button-row">
+            <button type="button" onClick={onRotate}>
+              <Icon name="rotate" /> Rotate
+            </button>
+          </div>
+        </PropertiesSection>
+      ) : null}
+
       {selection.length > 1 ? (
         <PropertiesSection title="Multiple selection">
           <div className="selection-kind">
@@ -274,42 +305,38 @@ export function PropertiesPanel({
 
       {selection.length === 0 ? (
         <>
-          <PropertiesSection title="Active cell">
-            <div className="cell-summary">
-              <strong>{cell.name}</strong>
-              {cell.isTop ? <span className="top-marker">TOP</span> : null}
+          <PropertiesSection title="Active page">
+            <div className="page-summary">
+              <strong>{page.name}</strong>
             </div>
             <dl className="property-grid">
               <div>
                 <dt>Components</dt>
-                <dd>{cell.nodes.length}</dd>
+                <dd>{page.nodes.length}</dd>
               </div>
               <div>
                 <dt>Wires</dt>
-                <dd>{cell.wires.length}</dd>
+                <dd>{page.wires.length}</dd>
               </div>
               <div>
                 <dt>Labels</dt>
-                <dd>{cell.annotations.length}</dd>
+                <dd>{page.annotations.length}</dd>
               </div>
               <div>
-                <dt>Hierarchy</dt>
-                <dd>{cell.isTop ? "Root cell" : `Under ${top?.name ?? "Top"}`}</dd>
+                <dt>Shapes</dt>
+                <dd>{page.shapes.length}</dd>
               </div>
             </dl>
             <div className="button-row">
-              <button type="button" onClick={onRenameCell}>
-                Rename cell
-              </button>
-              <button type="button" onClick={onSetTop} disabled={cell.isTop}>
-                Set as Top
+              <button type="button" onClick={onRenamePage}>
+                Rename page
               </button>
             </div>
           </PropertiesSection>
           <PropertiesSection title="Selection">
             <p className="property-hint">
-              Select a component, wire, or label to edit its details. Drag empty paper to
-              marquee-select; hold Shift to add or remove items.
+              Select a component, wire, label, or drawing shape to edit its details. Drag
+              empty paper to marquee-select; hold Shift to add or remove items.
             </p>
           </PropertiesSection>
         </>
@@ -318,11 +345,7 @@ export function PropertiesPanel({
       <PropertiesSection title="Roadmap">
         <ul className="roadmap-list">
           <li>
-            <span>Hierarchical blocks &amp; ports</span>
-            <em>Not implemented</em>
-          </li>
-          <li>
-            <span>User component libraries</span>
+            <span>User-editable device libraries</span>
             <em>Not implemented</em>
           </li>
           <li>

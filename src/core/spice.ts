@@ -1,11 +1,11 @@
 import { buildConnectivity } from "./connectivity";
 import { nodePinPosition } from "./geometry";
 import {
-  createEmptyCell,
+  createEmptyPage,
   createIdentifier,
   type Annotation,
   type ComponentNode,
-  type SchematicCell,
+  type DrawingPage,
   type SymbolDefinition,
 } from "./model";
 
@@ -38,10 +38,10 @@ function cleanToken(value: string, fallback: string): string {
 }
 
 function uniqueNetNames(
-  cell: SchematicCell,
+  page: DrawingPage,
   library: readonly SymbolDefinition[],
 ): Map<string, string> {
-  const connectivity = buildConnectivity(cell, library);
+  const connectivity = buildConnectivity(page, library);
   const names = new Map<string, string>();
   let counter = 1;
   const groundNetworks = new Set<string>();
@@ -91,20 +91,20 @@ function pinNet(
 }
 
 export function exportSpice(
-  cell: SchematicCell,
+  page: DrawingPage,
   library: readonly SymbolDefinition[],
 ): SpiceExportResult {
-  const connectivity = buildConnectivity(cell, library);
-  const nets = uniqueNetNames(cell, library);
+  const connectivity = buildConnectivity(page, library);
+  const nets = uniqueNetNames(page, library);
   const symbols = new Map(library.map((symbol) => [symbol.id, symbol]));
   const unsupportedDevices: string[] = [];
   const lines = [
     "* Drawic SPICE netlist",
-    `* Cell: ${cell.name.replace(/[\r\n]/g, " ")}`,
+    `* Page: ${page.name.replace(/[\r\n]/g, " ")}`,
     "* Generated locally; values are normalized only by trimming whitespace.",
   ];
 
-  for (const node of cell.nodes) {
+  for (const node of page.nodes) {
     const symbol = symbols.get(node.symbolId);
     if (!symbol) {
       unsupportedDevices.push(`${node.reference || node.id}: missing symbol ${node.symbolId}`);
@@ -174,7 +174,7 @@ export function exportSpice(
   }
 
   if (unsupportedDevices.length > 0) {
-    lines.push("* Not exported by Drawic 0.1:");
+    lines.push("* Not exported by Drawic 0.2:");
     for (const device of unsupportedDevices) {
       lines.push(`* ${device.replace(/[\r\n]/g, " ")}`);
     }
@@ -184,7 +184,7 @@ export function exportSpice(
 }
 
 export interface SpiceImportResult {
-  cell: SchematicCell;
+  page: DrawingPage;
   title?: string;
   warnings: string[];
 }
@@ -249,13 +249,13 @@ function classifyElement(tokens: string[], warnings: string[]): ImportedElement 
 export function importSpice(
   source: string,
   options?: {
-    cellName?: string;
+    pageName?: string;
     idFactory?: (prefix: string) => string;
     library?: readonly SymbolDefinition[];
   },
 ): SpiceImportResult {
   const idFactory = options?.idFactory ?? createIdentifier;
-  const cell = createEmptyCell(options?.cellName ?? "Imported SPICE", true, idFactory("cell"));
+  const page = createEmptyPage(options?.pageName ?? "Imported SPICE", idFactory("page"));
   const warnings: string[] = [];
   let title: string | undefined;
   const logicalLines: string[] = [];
@@ -306,7 +306,7 @@ export function importSpice(
       rotation: 0,
       mirrored: false,
     };
-    cell.nodes.push(node);
+    page.nodes.push(node);
     const symbol =
       options?.library?.find((candidate) => candidate.id === element.symbolId) ??
       syntheticSymbolForImport(element.symbolId);
@@ -320,11 +320,11 @@ export function importSpice(
         y: point.y,
         size: 14,
       };
-      cell.annotations.push(annotation);
+      page.annotations.push(annotation);
     });
   });
 
-  return { cell, ...(title ? { title } : {}), warnings };
+  return { page, ...(title ? { title } : {}), warnings };
 }
 
 function syntheticSymbolForImport(symbolId: string): SymbolDefinition {

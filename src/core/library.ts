@@ -84,28 +84,6 @@ export interface LoadedDeviceLibrary {
   byId: ReadonlyMap<string, DeviceSymbol>;
 }
 
-/**
- * Temporary adapter for the renderer migration in progress. New code must load
- * the single-file library through parseDeviceLibrary/loadDeviceLibrary.
- */
-export interface LegacySymbolManifest {
-  manifestVersion: number;
-  collection: string;
-  entries: Array<{
-    id: string;
-    label: string;
-    category: string;
-    electrical: boolean;
-    palette: boolean;
-    frame: { x: number; y: number; width: number; height: number };
-    pins: Array<{ key: string; role: string; side: SymbolSide }>;
-    file: string;
-  }>;
-}
-
-/** @deprecated Use DeviceLibraryFile from parseDeviceLibrary. */
-export type RawSymbolManifest = LegacySymbolManifest;
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -322,98 +300,6 @@ export function loadDeviceLibrary(value: DeviceLibraryFile): LoadedDeviceLibrary
   };
   libraryCache.set(value, loaded);
   return loaded;
-}
-
-export function buildSymbolLibrary(
-  manifest: LegacySymbolManifest,
-  files: Record<string, string>,
-): DeviceSymbol[] {
-  if (manifest.manifestVersion !== 1) {
-    throw new Error(`Unsupported symbol manifest version ${manifest.manifestVersion}.`);
-  }
-  return manifest.entries
-    .map((entry) => {
-      const markup =
-        files[`./assets/device-symbols/svg/${entry.file}`] ??
-        files[`./assets/device-symbols/${entry.file}`];
-      if (!markup) {
-        throw new Error(`Missing bundled SVG for ${entry.id}.`);
-      }
-      const body = markup
-        .replace(/<\?xml[\s\S]*?\?>/gi, "")
-        .replace(/<\/?svg\b[^>]*>/gi, "")
-        .replace(/<title\b[\s\S]*?<\/title>/gi, "")
-        .replace(/<desc\b[\s\S]*?<\/desc>/gi, "")
-        .replace(/(fill|stroke)=["'](?:#000000|#000|black)["']/gi, '$1="currentColor"');
-      const centerX = entry.frame.x + entry.frame.width / 2;
-      const centerY = entry.frame.y + entry.frame.height / 2;
-      const pins: DeviceLibraryPin[] = entry.pins.map((pin, index) => {
-        const sameSide = entry.pins
-          .map((candidate, candidateIndex) => ({ candidate, candidateIndex }))
-          .filter((candidate) => candidate.candidate.side === pin.side);
-        const order = Math.max(
-          0,
-          sameSide.findIndex((candidate) => candidate.candidateIndex === index),
-        );
-        const fraction = (order + 1) / (sameSide.length + 1);
-        const x =
-          pin.side === "east"
-            ? entry.frame.x + entry.frame.width
-            : pin.side === "west"
-              ? entry.frame.x
-              : entry.frame.x + entry.frame.width * fraction;
-        const y =
-          pin.side === "south"
-            ? entry.frame.y + entry.frame.height
-            : pin.side === "north"
-              ? entry.frame.y
-              : entry.frame.y + entry.frame.height * fraction;
-        return {
-          id: pin.key,
-          key: pin.key,
-          name: pin.key,
-          role: pin.role,
-          direction: pin.side,
-          side: pin.side,
-          x: x - centerX,
-          y: y - centerY,
-        };
-      });
-      return {
-        id: entry.id,
-        label: entry.label,
-        category: entry.category,
-        electrical: entry.electrical,
-        palette: entry.palette,
-        frame: entry.frame,
-        pins,
-        file: entry.file,
-        svgBody: body,
-        viewBox: `${entry.frame.x} ${entry.frame.y} ${entry.frame.width} ${entry.frame.height}`,
-        labelAnchors: {
-          reference: {
-            x: entry.frame.width / 2 + 6,
-            y: -3,
-            anchor: "start" as const,
-          },
-          value: {
-            x: entry.frame.width / 2 + 6,
-            y: 12,
-            anchor: "start" as const,
-          },
-        },
-        keywords: [entry.id, entry.label, entry.category].map((term) =>
-          term.toLowerCase(),
-        ),
-        spice: {
-          prefix: entry.id.slice(0, 2).toUpperCase(),
-          defaultValue: "",
-          supported: entry.electrical,
-        },
-        libraryId: "legacy-renderer-migration",
-      };
-    })
-    .sort((a, b) => a.label.localeCompare(b.label));
 }
 
 export function symbolById(

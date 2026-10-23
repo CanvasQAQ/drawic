@@ -594,103 +594,6 @@ button:not(:disabled) {
   background: #0f171d;
 }
 
-.cell-bar {
-  flex: 0 0 40px;
-  min-width: 0;
-  padding: 0 10px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  border-bottom: 1px solid #2d3d46;
-  background: #162129;
-}
-
-.hierarchy-trail {
-  flex: 0 0 auto;
-  max-width: 230px;
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  overflow: hidden;
-  color: #78909a;
-  white-space: nowrap;
-  font-size: 10px;
-}
-
-.hierarchy-trail svg {
-  width: 11px;
-  height: 11px;
-}
-
-.hierarchy-trail span,
-.hierarchy-trail strong {
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.hierarchy-trail strong {
-  color: #cbd7d8;
-}
-
-.hierarchy-root::before {
-  content: "◇";
-  margin-right: 4px;
-  color: var(--teal);
-}
-
-.cell-tabs {
-  flex: 1 1 auto;
-  min-width: 0;
-  height: 100%;
-  display: flex;
-  align-items: stretch;
-  gap: 2px;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.cell-tab {
-  min-width: 86px;
-  padding: 0 11px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  background: transparent;
-  color: #7f949d;
-  white-space: nowrap;
-}
-
-.cell-tab:hover {
-  color: #cbd6d7;
-  background: #1b2932;
-}
-
-.cell-tab.is-active {
-  border-bottom-color: var(--amber);
-  background: #202c33;
-  color: #ecf0ed;
-}
-
-.top-marker {
-  padding: 2px 4px;
-  border: 1px solid #4d776f;
-  border-radius: 3px;
-  color: var(--teal);
-  font-size: 7px;
-  font-weight: 800;
-  letter-spacing: 0.6px;
-}
-
-.cell-actions {
-  flex: 0 0 auto;
-  display: flex;
-  gap: 2px;
-}
-
-.cell-actions button,
 .button-row button,
 .property-field button,
 .status-bar button,
@@ -704,7 +607,6 @@ button:not(:disabled) {
   font-size: 10px;
 }
 
-.cell-actions button:hover:not(:disabled),
 .button-row button:hover:not(:disabled) {
   border-color: #526771;
   color: #eef1ee;
@@ -739,6 +641,16 @@ button:not(:disabled) {
 
 .schematic-canvas.is-placing {
   cursor: copy;
+}
+
+.schematic-canvas.is-panning,
+.schematic-canvas.is-panning * {
+  cursor: grabbing !important;
+}
+
+.schematic-canvas.tool-rectangle,
+.schematic-canvas.tool-ellipse {
+  cursor: crosshair;
 }
 
 .canvas-shell::after {
@@ -790,6 +702,7 @@ button:not(:disabled) {
 }
 
 .component-art {
+  color: #203a45;
   pointer-events: none;
 }
 
@@ -831,6 +744,22 @@ button:not(:disabled) {
   opacity: 0.78;
 }
 
+.port-pin {
+  fill: transparent;
+  stroke: transparent;
+  stroke-width: 1.5;
+  cursor: crosshair;
+  pointer-events: all;
+}
+
+.port-pin:hover,
+.schematic-canvas.tool-wire .port-pin,
+.schematic-canvas.is-placing .port-pin,
+.port-pin.is-snapping {
+  fill: rgb(99 201 186 / 18%);
+  stroke: #218e83;
+}
+
 .missing-symbol rect {
   fill: #fff0eb;
   stroke: #a74635;
@@ -865,15 +794,50 @@ button:not(:disabled) {
 .junction-explicit,
 .junction-auto {
   fill: #15262f;
+  stroke: none;
 }
 
 .junction-explicit {
-  stroke: #f7f4ea;
-  stroke-width: 1.1;
+  stroke: #1d3945;
+  stroke-width: 1;
 }
 
 .junction-auto {
   fill: #49606a;
+}
+
+.junction-ring {
+  fill: none;
+  stroke: rgb(16 45 55 / 34%);
+  stroke-width: 1;
+}
+
+.wire-segment-handle {
+  fill: #f5f3ec;
+  stroke: #b97d35;
+  stroke-width: 2;
+  cursor: move;
+}
+
+.wire-segment-handle:hover {
+  fill: #f4c37c;
+  stroke: #7c511f;
+}
+
+.drawing-shape {
+  cursor: move;
+}
+
+.drawing-shape > rect,
+.drawing-shape > ellipse {
+  vector-effect: non-scaling-stroke;
+}
+
+.drawing-shape.is-selected > rect,
+.drawing-shape.is-selected > ellipse {
+  stroke: #c18438;
+  stroke-width: 2;
+  stroke-dasharray: 7 4;
 }
 
 .annotation {
@@ -917,11 +881,77 @@ button:not(:disabled) {
   stroke-width: 2;
 }
 
+.wire-draft text {
+  fill: #8a5a20;
+  font: 10px ui-monospace, monospace;
+}
+
+.placement-ghost {
+  color: #315d68;
+  opacity: 0.48;
+}
+
+.placement-ghost > g {
+  filter: drop-shadow(0 3px 3px rgb(21 38 47 / 25%));
+}
+
+.placement-ghost circle {
+  fill: #f5f3ec;
+  stroke: #2b7f78;
+  stroke-width: 1.5;
+}
+
+.placement-ghost text {
+  fill: #315d68;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.shape-draft rect,
+.shape-draft ellipse {
+  fill: rgb(99 201 186 / 8%);
+  stroke: #398f86;
+  stroke-width: 1.5;
+  stroke-dasharray: 6 4;
+}
+
 .selection-marquee {
   fill: rgb(72 158 148 / 11%);
   stroke: #398f86;
   stroke-width: 1.4;
   stroke-dasharray: 5 3;
+}
+
+.canvas-controls {
+  position: absolute;
+  z-index: 4;
+  right: 14px;
+  top: 23px;
+  display: flex;
+  overflow: hidden;
+  border: 1px solid #b8c4c5;
+  border-radius: 5px;
+  background: rgb(248 247 242 / 94%);
+  box-shadow: 0 3px 12px rgb(0 0 0 / 12%);
+}
+
+.canvas-controls button {
+  min-height: 26px;
+  padding: 3px 8px;
+  border: 0;
+  border-right: 1px solid #c8d1d1;
+  background: transparent;
+  color: #40545e;
+  font-size: 9px;
+}
+
+.canvas-controls button:last-child {
+  border-right: 0;
+}
+
+.canvas-controls button:hover {
+  background: #e9ece7;
+  color: #192e38;
 }
 
 .panel-rail {
@@ -1008,6 +1038,11 @@ button:not(:disabled) {
 .kind-text {
   border: 0;
   border-left: 3px solid var(--amber-bright);
+}
+
+.kind-shape {
+  border-color: var(--teal);
+  border-radius: 50%;
 }
 
 .kind-multi {
@@ -1110,7 +1145,7 @@ button:not(:disabled) {
   color: #e9a49d;
 }
 
-.cell-summary {
+.page-summary {
   display: flex;
   align-items: center;
   gap: 7px;
@@ -1580,9 +1615,6 @@ button:not(:disabled) {
   }
   .workspace.no-library.no-properties {
     grid-template-columns: 28px minmax(0, 1fr) 28px;
-  }
-  .cell-actions button {
-    padding-inline: 5px;
   }
   .page-actions button {
     padding-inline: 5px;

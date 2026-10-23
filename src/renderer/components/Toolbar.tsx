@@ -7,6 +7,8 @@ export type EditorTool =
   | "junction"
   | "net-label"
   | "text"
+  | "rectangle"
+  | "ellipse"
   | "place";
 
 interface ToolButtonProps {
@@ -49,6 +51,8 @@ interface ToolbarProps {
   canUndo: boolean;
   canRedo: boolean;
   canDelete: boolean;
+  canRotate: boolean;
+  canMirror: boolean;
   placementLabel: string | null;
   onNew: () => void;
   onOpen: () => void;
@@ -73,6 +77,8 @@ export function Toolbar({
   canUndo,
   canRedo,
   canDelete,
+  canRotate,
+  canMirror,
   placementLabel,
   onNew,
   onOpen,
@@ -146,6 +152,18 @@ export function Toolbar({
             active={tool === "text"}
             onClick={() => onTool("text")}
           />
+          <ToolButton
+            label="Rectangle"
+            icon="rectangle"
+            active={tool === "rectangle"}
+            onClick={() => onTool("rectangle")}
+          />
+          <ToolButton
+            label="Ellipse"
+            icon="ellipse"
+            active={tool === "ellipse"}
+            onClick={() => onTool("ellipse")}
+          />
         </div>
         <Separator />
         <div className="tool-group compact-tools">
@@ -155,13 +173,13 @@ export function Toolbar({
             label="Rotate"
             icon="rotate"
             onClick={onRotate}
-            disabled={!canDelete}
+            disabled={!canRotate}
           />
           <ToolButton
             label="Mirror"
             icon="mirror"
             onClick={onMirror}
-            disabled={!canDelete}
+            disabled={!canMirror}
           />
           <ToolButton
             label="Delete"

@@ -8,6 +8,7 @@ import {
 import {
   addComponent,
   addAnnotation as addAnnotationOperation,
+  addShape as addShapeOperation,
   addWire as addWireOperation,
   mirrorSelection,
   moveNodes,
@@ -15,6 +16,7 @@ import {
   rotateSelection,
   updateAnnotation,
   updateNode,
+  updateWirePoints,
 } from "../core/editor";
 import { runElectricalRules } from "../core/erc";
 import { buildSchematicSvg } from "../core/export/svg";
@@ -26,10 +28,10 @@ import {
   type HistoryState,
 } from "../core/history";
 import {
-  activeCell,
   createDocument,
-  createEmptyCell,
+  createEmptyPage,
   createIdentifier,
+  pageById,
   parseProjectText,
   serializeProject,
   type Annotation,
@@ -37,19 +39,21 @@ import {
   type DrawicDocument,
   type Point,
   type SelectionRef,
+  type ShapeKind,
   type SymbolDefinition,
 } from "../core/model";
 import {
-  addCell,
   addJunction,
-  renameCell,
-  setActiveCell as setActiveCellOperation,
-  setTopCell,
+  addPage,
+  deletePage,
+  duplicatePage,
+  movePage,
+  renamePage,
 } from "../core/project";
 import { exportSpice, importSpice } from "../core/spice";
 import type { AppCommand, OpenProjectPayload } from "../shared/bridge";
 import builtInDeviceLibraryJson from "./assets/device-libraries/drawic-built-in.drawiclib.json";
-import { CellBar } from "./components/CellBar";
+import { PageBar } from "./components/PageBar";
 import { ExportDialog, NameDialog, UnsavedDialog } from "./components/Dialogs";
 import { ErcPanel } from "./components/ErcPanel";
 import { Icon } from "./components/Icons";
@@ -61,8 +65,8 @@ import { Toolbar, type EditorTool } from "./components/Toolbar";
 const library = loadDeviceLibrary(parseDeviceLibrary(builtInDeviceLibraryJson)).symbols;
 
 type NameDialogState =
-  | { kind: "new-cell"; initial: string }
-  | { kind: "rename-cell"; initial: string }
+  | { kind: "new-page"; initial: string }
+  | { kind: "rename-page"; initial: string }
   | null;
 
 type PendingAction = () => void | Promise<void>;
@@ -80,12 +84,12 @@ function projectNameFromPath(path: string | null): string {
   );
 }
 
-function nextCellName(document: DrawicDocument): string {
-  let index = document.cells.length + 1;
-  while (document.cells.some((cell) => cell.name === `Cell ${index}`)) {
+function nextPageName(document: DrawicDocument): string {
+  let index = document.pages.length + 1;
+  while (document.pages.some((page) => page.name === `Page ${index}`)) {
     index += 1;
   }
-  return `Cell ${index}`;
+  return `Page ${index}`;
 }
 
 function errorMessage(error: unknown): string {
@@ -94,6 +98,9 @@ function errorMessage(error: unknown): string {
 
 export function App() {
   const [initialDocument] = useState(() => createDocument());
+  const [activePageId, setActivePageId] = useState(
+    () => initialDocument.pages[0]?.id ?? "",
+  );
   const [history, setHistory] = useState<HistoryState<DrawicDocument>>(() =>
     createHistory(initialDocument),
   );
@@ -117,12 +124,16 @@ export function App() {
   const recoveryChecked = useRef(false);
 
   const document = history.present;
-  const cell = useMemo(() => activeCell(document), [document]);
+  const page = useMemo(
+    () => document.pages.find((candidate) => candidate.id === activePageId) ?? document.pages[0]!,
+    [activePageId, document],
+  );
   const serialized = useMemo(() => serializeProject(document), [document]);
   const dirty = serialized !== savedText;
   const visiblePathName = filePath ?? `${document.title}.drawic.json`;
   const hasSelection = selection.length > 0;
   const hasNodeSelection = selection.some((item) => item.kind === "node");
+  const hasShapeSelection = selection.some((item) => item.kind === "shape");
 
   const commitDocument = useCallback((next: DrawicDocument) => {
     setHistory((current) => commitHistory(current, next));
@@ -143,6 +154,7 @@ export function App() {
         setSavedText(saved);
       }
       setFilePath(path);
+      setActivePageId(next.pages[0]?.id ?? "");
       setSelection([]);
       setPlacementSymbol(null);
       setTool("select");
@@ -229,20 +241,21 @@ export function App() {
         return;
       }
       const imported = importSpice(payload.content, {
-        cellName:
+        pageName:
           payload.path
             .split(/[\\/]/)
             .at(-1)
             ?.replace(/\.[^.]+$/, "") ?? "Imported SPICE",
         library,
       });
-      commitMutation((current) => addCell(current, imported.cell));
+      commitMutation((current) => addPage(current, imported.page));
+      setActivePageId(imported.page.id);
       setSelection([]);
       setTool("select");
       const warningText =
         imported.warnings.length > 0 ? ` ${imported.warnings.length} warning(s).` : "";
       setNotice(
-        `Imported ${imported.cell.nodes.length} SPICE element(s) into ${imported.cell.name}.${warningText}`,
+        `Imported ${imported.page.nodes.length} SPICE element(s) into ${imported.page.name}.${warningText}`,
       );
     } catch (error) {
       setNotice(`SPICE import failed: ${errorMessage(error)}`);
@@ -253,10 +266,11 @@ export function App() {
     async (kind: ExportKind) => {
       setExportOpen(false);
       try {
-        const svg = buildSchematicSvg(activeCell(history.present), library);
+        const activePage = pageById(history.present, activePageId);
+        const svg = buildSchematicSvg(activePage, library);
         const result = await window.drawic.exportSchematic({
           kind,
-          suggestedName: `${projectNameFromPath(filePath)}-${activeCell(history.present).name}`,
+          suggestedName: `${projectNameFromPath(filePath)}-${activePage.name}`,
           svg,
         });
         if (!result.canceled && result.path) {
@@ -268,14 +282,15 @@ export function App() {
         setNotice(`Export failed: ${errorMessage(error)}`);
       }
     },
-    [filePath, history.present],
+    [activePageId, filePath, history.present],
   );
 
   const saveSpiceFile = useCallback(async () => {
     try {
-      const result = exportSpice(activeCell(history.present), library);
+      const activePage = pageById(history.present, activePageId);
+      const result = exportSpice(activePage, library);
       const saved = await window.drawic.saveSpice(
-        `${projectNameFromPath(filePath)}-${activeCell(history.present).name}`,
+        `${projectNameFromPath(filePath)}-${activePage.name}`,
         result.text,
       );
       if (!saved.canceled && saved.path) {
@@ -288,15 +303,15 @@ export function App() {
     } catch (error) {
       setNotice(`SPICE export failed: ${errorMessage(error)}`);
     }
-  }, [filePath, history.present]);
+  }, [activePageId, filePath, history.present]);
 
   const runErc = useCallback(() => {
-    setDiagnostics(runElectricalRules(activeCell(history.present), library));
-  }, [history.present]);
+    setDiagnostics(runElectricalRules(pageById(history.present, activePageId), library));
+  }, [activePageId, history.present]);
 
   const goToDiagnostic = useCallback(
     (itemId: string) => {
-      const active = activeCell(history.present);
+      const active = pageById(history.present, activePageId);
       if (active.nodes.some((node) => node.id === itemId)) {
         setSelection([{ kind: "node", id: itemId }]);
       } else if (active.wires.some((wire) => wire.id === itemId)) {
@@ -305,7 +320,7 @@ export function App() {
         setSelection([{ kind: "annotation", id: itemId }]);
       }
     },
-    [history.present],
+    [activePageId, history.present],
   );
 
   const undo = useCallback(() => {
@@ -322,34 +337,34 @@ export function App() {
     if (selection.length === 0) {
       return;
     }
-    commitMutation((current) => removeSelection(current, selection));
+    commitMutation((current) => removeSelection(current, activePageId, selection));
     setSelection([]);
     setDiagnostics(null);
-  }, [commitMutation, selection]);
+  }, [activePageId, commitMutation, selection]);
 
   const rotateSelected = useCallback(() => {
-    commitMutation((current) => rotateSelection(current, selection));
+    commitMutation((current) => rotateSelection(current, activePageId, selection));
     setDiagnostics(null);
-  }, [commitMutation, selection]);
+  }, [activePageId, commitMutation, selection]);
 
   const mirrorSelected = useCallback(() => {
-    commitMutation((current) => mirrorSelection(current, selection));
+    commitMutation((current) => mirrorSelection(current, activePageId, selection));
     setDiagnostics(null);
-  }, [commitMutation, selection]);
+  }, [activePageId, commitMutation, selection]);
 
   const placeAt = useCallback(
     (point: Point) => {
       if (!placementSymbol) {
         return;
       }
-      const active = activeCell(history.present);
+      const active = pageById(history.present, activePageId);
       const reference = suggestedReference(
         placementSymbol,
         active.nodes.map((node) => node.reference),
       );
       const id = createIdentifier("node");
       commitMutation((current) =>
-        addComponent(current, {
+        addComponent(current, activePageId, {
           symbol: placementSymbol,
           reference,
           value: defaultDeviceValue(placementSymbol.id, placementSymbol),
@@ -360,31 +375,64 @@ export function App() {
       setSelection([{ kind: "node", id }]);
       setNotice(`Placed ${reference}. Placement remains active.`);
     },
-    [commitMutation, history.present, placementSymbol],
+    [activePageId, commitMutation, history.present, placementSymbol],
   );
 
   const addWire = useCallback(
-    (points: Point[]) => {
+    (
+      points: Point[],
+      anchors?: {
+        startAnchor?: { deviceId: string; pinId: string };
+        endAnchor?: { deviceId: string; pinId: string };
+      },
+    ) => {
       const id = createIdentifier("wire");
-      commitMutation((current) => addWireOperation(current, { points, id }));
+      commitMutation((current) =>
+        addWireOperation(current, activePageId, { points, id, ...anchors }),
+      );
       setSelection([{ kind: "wire", id }]);
       setDiagnostics(null);
     },
-    [commitMutation],
+    [activePageId, commitMutation],
   );
 
   const addJunctionPoint = useCallback(
     (point: Point) => {
-      commitMutation((current) => addJunction(current, point));
+      commitMutation((current) => addJunction(current, activePageId, point));
       setNotice("Junction added. Crossing wires now share a net at this point.");
       setDiagnostics(null);
     },
-    [commitMutation],
+    [activePageId, commitMutation],
+  );
+
+  const updateWire = useCallback(
+    (wireId: string, points: Point[]) => {
+      commitMutation((current) =>
+        updateWirePoints(current, page.id, wireId, points),
+      );
+      setDiagnostics(null);
+    },
+    [commitMutation, page.id],
+  );
+
+  const addDrawingShape = useCallback(
+    (
+      kind: ShapeKind,
+      bounds: { x: number; y: number; width: number; height: number },
+    ) => {
+      const id = createIdentifier("shape");
+      commitMutation((current) =>
+        addShapeOperation(current, page.id, { ...bounds, kind, id }),
+      );
+      setSelection([{ kind: "shape", id }]);
+      setDiagnostics(null);
+    },
+    [commitMutation, page.id],
   );
 
   const addLabel = useCallback(
     (kind: Annotation["kind"], point: Point) => {
-      const active = activeCell(history.present);
+      const active = pageById(history.present, activePageId);
       let text = "Text";
       if (kind === "net") {
         let index = 1;
@@ -398,7 +446,7 @@ export function App() {
       }
       const id = createIdentifier("annotation");
       commitMutation((current) =>
-        addAnnotationOperation(current, { kind, text, point, id }),
+        addAnnotationOperation(current, activePageId, { kind, text, point, id }),
       );
       setSelection([{ kind: "annotation", id }]);
       setDiagnostics(null);
@@ -408,18 +456,18 @@ export function App() {
           : "Text added. Edit it in Properties.",
       );
     },
-    [commitMutation, history.present],
+    [activePageId, commitMutation, history.present],
   );
 
   const moveSelected = useCallback(
     (delta: Point) => {
       const ids = selection.filter((item) => item.kind === "node").map((item) => item.id);
       if (ids.length > 0) {
-        commitMutation((current) => moveNodes(current, ids, delta));
+        commitMutation((current) => moveNodes(current, activePageId, ids, delta));
         setDiagnostics(null);
       }
     },
-    [commitMutation, selection],
+    [activePageId, commitMutation, selection],
   );
 
   const changeTool = useCallback((nextTool: EditorTool) => {
@@ -435,30 +483,58 @@ export function App() {
     setNotice(`Placement mode: ${symbol.label}. Escape finishes continuous placement.`);
   }, []);
 
-  const createCellWithName = useCallback(
+  const createPageWithName = useCallback(
     (name: string) => {
-      const nextCell = createEmptyCell(name, false, createIdentifier("cell"));
-      commitMutation((current) => addCell(current, nextCell));
+      const nextPage = createEmptyPage(name, createIdentifier("page"));
+      commitMutation((current) => addPage(current, nextPage));
+      setActivePageId(nextPage.id);
       setSelection([]);
       setTool("select");
       setNameDialog(null);
-      setNotice(`Created cell ${name}.`);
+      setNotice(`Created page ${name}.`);
     },
     [commitMutation],
   );
 
-  const renameActiveCell = useCallback(
+  const renameActivePage = useCallback(
     (name: string) => {
-      commitMutation((current) => renameCell(current, current.activeCellId, name));
+      commitMutation((current) => renamePage(current, activePageId, name));
       setNameDialog(null);
     },
-    [commitMutation],
+    [activePageId, commitMutation],
   );
 
-  const setActiveTop = useCallback(() => {
-    commitMutation((current) => setTopCell(current, current.activeCellId));
-    setNotice(`${activeCell(history.present).name} is now the Top cell.`);
-  }, [commitMutation, history.present]);
+  const duplicateActivePage = useCallback(() => {
+    const pageId = createIdentifier("page");
+    commitMutation((current) =>
+      duplicatePage(current, activePageId, { idFactory: createIdentifier, pageId }),
+    );
+    setActivePageId(pageId);
+    setSelection([]);
+    setDiagnostics(null);
+    setNotice("Page duplicated.");
+  }, [activePageId, commitMutation]);
+
+  const deleteActivePage = useCallback(() => {
+    if (document.pages.length <= 1) {
+      return;
+    }
+    const index = document.pages.findIndex((candidate) => candidate.id === activePageId);
+    const fallback = document.pages[index - 1] ?? document.pages[index + 1];
+    commitMutation((current) => deletePage(current, activePageId));
+    if (fallback) {
+      setActivePageId(fallback.id);
+    }
+    setSelection([]);
+    setDiagnostics(null);
+  }, [activePageId, commitMutation, document.pages]);
+
+  const moveActivePage = useCallback(
+    (pageId: string, direction: -1 | 1) => {
+      commitMutation((current) => movePage(current, pageId, direction));
+    },
+    [commitMutation],
+  );
 
   const exportOpenHandler = useCallback(() => setExportOpen(true), []);
 
@@ -509,7 +585,11 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    const active = activeCell(document);
+    if (!document.pages.some((candidate) => candidate.id === activePageId)) {
+      setActivePageId(document.pages[0]?.id ?? "");
+      return;
+    }
+    const active = pageById(document, activePageId);
     setSelection((current) =>
       current.filter((item) => {
         if (item.kind === "node") {
@@ -518,10 +598,13 @@ export function App() {
         if (item.kind === "wire") {
           return active.wires.some((wire) => wire.id === item.id);
         }
-        return active.annotations.some((annotation) => annotation.id === item.id);
+        if (item.kind === "annotation") {
+          return active.annotations.some((annotation) => annotation.id === item.id);
+        }
+        return active.shapes.some((shape) => shape.id === item.id);
       }),
     );
-  }, [document]);
+  }, [activePageId, document]);
 
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
@@ -694,7 +777,9 @@ export function App() {
         tool={tool}
         canUndo={history.past.length > 0}
         canRedo={history.future.length > 0}
-        canDelete={hasNodeSelection}
+        canDelete={hasSelection}
+        canRotate={hasNodeSelection || hasShapeSelection}
+        canMirror={hasNodeSelection}
         placementLabel={placementSymbol?.label ?? null}
         onNew={newProject}
         onOpen={openProject}
@@ -757,23 +842,26 @@ export function App() {
         )}
 
         <main className="editor-column">
-          <CellBar
-            document={document}
-            onSelectCell={(cellId) => {
-              commitMutation((current) => setActiveCellOperation(current, cellId));
+          <PageBar
+            pages={document.pages}
+            activePageId={page.id}
+            onSelect={(pageId) => {
+              setActivePageId(pageId);
               setSelection([]);
               setDiagnostics(null);
             }}
-            onNewCell={() =>
-              setNameDialog({ kind: "new-cell", initial: nextCellName(document) })
+            onAdd={() =>
+              setNameDialog({ kind: "new-page", initial: nextPageName(document) })
             }
-            onRenameCell={() =>
-              setNameDialog({ kind: "rename-cell", initial: activeCell(document).name })
+            onRename={() =>
+              setNameDialog({ kind: "rename-page", initial: page.name })
             }
-            onSetTop={setActiveTop}
+            onDuplicate={duplicateActivePage}
+            onDelete={deleteActivePage}
+            onMove={moveActivePage}
           />
           <SchematicCanvas
-            cell={cell}
+            page={page}
             library={library}
             tool={tool}
             placementSymbol={placementSymbol}
@@ -781,33 +869,33 @@ export function App() {
             onSelectionChange={setSelection}
             onPlace={placeAt}
             onAddWire={addWire}
+            onUpdateWire={updateWire}
             onAddJunction={addJunctionPoint}
             onAddAnnotation={addLabel}
+            onAddShape={addDrawingShape}
             onMoveSelected={moveSelected}
           />
         </main>
 
         {propertiesVisible ? (
           <PropertiesPanel
-            document={document}
-            cell={cell}
+            page={page}
             selection={selection}
             onUpdateNode={(nodeId, patch) =>
-              commitMutation((current) => updateNode(current, nodeId, patch))
+              commitMutation((current) => updateNode(current, page.id, nodeId, patch))
             }
             onUpdateAnnotation={(annotationId, patch) =>
               commitMutation((current) =>
-                updateAnnotation(current, annotationId, patch),
+                updateAnnotation(current, page.id, annotationId, patch),
               )
             }
             onRotate={rotateSelected}
             onMirror={mirrorSelected}
             onDelete={deleteSelection}
             onCollapse={() => setPropertiesVisible(false)}
-            onRenameCell={() =>
-              setNameDialog({ kind: "rename-cell", initial: cell.name })
+            onRenamePage={() =>
+              setNameDialog({ kind: "rename-page", initial: page.name })
             }
-            onSetTop={setActiveTop}
           />
         ) : (
           <button
@@ -825,10 +913,10 @@ export function App() {
       <footer className="status-bar">
         <div>
           <span className="status-led" aria-hidden="true" />
-          <span>{cell.name}</span>
-          <span>{cell.nodes.length} devices</span>
-          <span>{cell.wires.length} wires</span>
-          <span>{cell.annotations.length} labels</span>
+          <span>{page.name}</span>
+          <span>{page.nodes.length} devices</span>
+          <span>{page.wires.length} wires</span>
+          <span>{page.annotations.length} labels</span>
         </div>
         <div>
           <span>Tool: {placementSymbol ? `Place ${placementSymbol.label}` : tool}</span>
@@ -836,7 +924,7 @@ export function App() {
             Run ERC
           </button>
           <span>{dirty ? "Modified" : "Local file synced"}</span>
-          <span>Preview 0.1.1</span>
+          <span>Preview 0.2.0</span>
         </div>
       </footer>
 
@@ -851,13 +939,13 @@ export function App() {
       {nameDialog ? (
         <NameDialog
           key={`${nameDialog.kind}-${nameDialog.initial}`}
-          title={nameDialog.kind === "new-cell" ? "Create cell" : "Rename cell"}
-          label="Cell name"
+          title={nameDialog.kind === "new-page" ? "Create page" : "Rename page"}
+          label="Page name"
           initialValue={nameDialog.initial}
-          confirmLabel={nameDialog.kind === "new-cell" ? "Create" : "Rename"}
+          confirmLabel={nameDialog.kind === "new-page" ? "Create" : "Rename"}
           onCancel={() => setNameDialog(null)}
           onConfirm={
-            nameDialog.kind === "new-cell" ? createCellWithName : renameActiveCell
+            nameDialog.kind === "new-page" ? createPageWithName : renameActivePage
           }
         />
       ) : null}
@@ -918,7 +1006,7 @@ export function App() {
               }}
             >
               <span className="export-format">ERC</span>
-              <strong>Check active cell</strong>
+              <strong>Check active page</strong>
               <small>References, dangling pins, and wire geometry</small>
             </button>
           </div>

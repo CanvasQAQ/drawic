@@ -1,9 +1,8 @@
 import {
   createDocument,
-  createEmptyCell,
+  createEmptyPage,
   type DrawicDocument,
   type SymbolDefinition,
-  type SymbolPin,
 } from "../src/core/model";
 
 export const twoPinSymbol: SymbolDefinition = {
@@ -80,15 +79,15 @@ export const testLibrary = [
 ];
 
 export function fixtureDocument(): DrawicDocument {
-  const cell = createEmptyCell("Main", true, "cell_main");
+  const page = createEmptyPage("Main", "page_main");
   return {
     ...createDocument({
       title: "Fixture",
       now: "2026-10-23T00:00:00.000Z",
       id: "project_test",
-      cellId: "cell_main",
+      pageId: "page_main",
     }),
-    cells: [cell],
+    pages: [page],
   };
 }
 
@@ -97,7 +96,6 @@ export function nodePin(
   y: number,
   symbolId = "resistor",
   rotation: 0 | 90 | 180 | 270 = 0,
-  pins: SymbolPin[] = twoPinSymbol.pins,
 ) {
   return {
     id: `node_${x}_${y}`,
@@ -108,6 +106,5 @@ export function nodePin(
     y,
     rotation,
     mirrored: false,
-    pins,
   };
 }

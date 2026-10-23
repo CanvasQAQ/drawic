@@ -1,5 +1,5 @@
-export const DOCUMENT_SCHEMA_VERSION = 1 as const;
-export const DOCUMENT_KIND = "drawic-schematic" as const;
+export const DOCUMENT_SCHEMA_VERSION = 2 as const;
+export const DOCUMENT_KIND = "drawic-drawing" as const;
 
 export type Rotation = 0 | 90 | 180 | 270;
 export type SymbolSide = "north" | "east" | "south" | "west";
@@ -13,6 +13,8 @@ export interface SymbolPin {
   key: string;
   role: string;
   side: SymbolSide;
+  x?: number;
+  y?: number;
 }
 
 export interface SymbolFrame {
@@ -32,6 +34,11 @@ export interface SymbolDefinition {
   pins: SymbolPin[];
   file: string;
   svgBody: string;
+  viewBox?: string;
+  labelAnchors?: {
+    reference: { x: number; y: number; anchor: "start" | "middle" | "end" };
+    value: { x: number; y: number; anchor: "start" | "middle" | "end" };
+  };
 }
 
 export interface ComponentNode {
@@ -45,9 +52,16 @@ export interface ComponentNode {
   mirrored: boolean;
 }
 
+export interface ConnectionAnchor {
+  deviceId: string;
+  pinId: string;
+}
+
 export interface Wire {
   id: string;
   points: Point[];
+  startAnchor?: ConnectionAnchor;
+  endAnchor?: ConnectionAnchor;
 }
 
 export interface Annotation {
@@ -59,14 +73,28 @@ export interface Annotation {
   size: number;
 }
 
-export interface SchematicCell {
+export type ShapeKind = "rectangle" | "ellipse";
+
+export interface DrawingShape {
+  id: string;
+  kind: ShapeKind;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation: Rotation;
+  stroke: string;
+  fill: string;
+}
+
+export interface DrawingPage {
   id: string;
   name: string;
-  isTop: boolean;
   nodes: ComponentNode[];
   wires: Wire[];
   junctions: Point[];
   annotations: Annotation[];
+  shapes: DrawingShape[];
 }
 
 export interface DrawicDocument {
@@ -76,11 +104,10 @@ export interface DrawicDocument {
   title: string;
   createdAt: string;
   modifiedAt: string;
-  activeCellId: string;
-  cells: SchematicCell[];
+  pages: DrawingPage[];
 }
 
-export type SelectionKind = "node" | "wire" | "annotation";
+export type SelectionKind = "node" | "wire" | "annotation" | "shape";
 
 export interface SelectionRef {
   kind: SelectionKind;
@@ -93,7 +120,7 @@ export interface Diagnostic {
   code: string;
   severity: DiagnosticSeverity;
   message: string;
-  cellId: string;
+  pageId: string;
   itemId?: string;
 }
 
@@ -115,19 +142,18 @@ export function createIdentifier(prefix: string): string {
   return `${prefix}_${globalThis.crypto.randomUUID()}`;
 }
 
-export function createEmptyCell(
-  name = "Cell 1",
-  isTop = true,
-  id = createIdentifier("cell"),
-): SchematicCell {
+export function createEmptyPage(
+  name = "Page 1",
+  id = createIdentifier("page"),
+): DrawingPage {
   return {
     id,
     name,
-    isTop,
     nodes: [],
     wires: [],
     junctions: [],
     annotations: [],
+    shapes: [],
   };
 }
 
@@ -135,10 +161,10 @@ export function createDocument(options?: {
   title?: string;
   now?: string;
   id?: string;
-  cellId?: string;
+  pageId?: string;
 }): DrawicDocument {
   const now = options?.now ?? new Date().toISOString();
-  const cell = createEmptyCell("Cell 1", true, options?.cellId ?? createIdentifier("cell"));
+  const page = createEmptyPage("Page 1", options?.pageId ?? createIdentifier("page"));
   return {
     schemaVersion: DOCUMENT_SCHEMA_VERSION,
     kind: DOCUMENT_KIND,
@@ -146,17 +172,16 @@ export function createDocument(options?: {
     title: options?.title ?? "Untitled",
     createdAt: now,
     modifiedAt: now,
-    activeCellId: cell.id,
-    cells: [cell],
+    pages: [page],
   };
 }
 
-export function activeCell(document: DrawicDocument): SchematicCell {
-  const cell = document.cells.find((candidate) => candidate.id === document.activeCellId);
-  if (!cell) {
-    throw new ProjectFormatError("active-cell-missing", "The active cell does not exist.");
+export function pageById(document: DrawicDocument, pageId: string): DrawingPage {
+  const page = document.pages.find((candidate) => candidate.id === pageId);
+  if (!page) {
+    throw new ProjectFormatError("page-missing", "The selected page does not exist.");
   }
-  return cell;
+  return page;
 }
 
 export function touchDocument(
@@ -166,15 +191,20 @@ export function touchDocument(
   return { ...document, modifiedAt: now };
 }
 
-export function replaceActiveCell(
+export function replacePage(
   document: DrawicDocument,
-  cell: SchematicCell,
+  page: DrawingPage,
   now = new Date().toISOString(),
 ): DrawicDocument {
+  if (!document.pages.some((candidate) => candidate.id === page.id)) {
+    return document;
+  }
   return touchDocument(
     {
       ...document,
-      cells: document.cells.map((candidate) => (candidate.id === cell.id ? cell : candidate)),
+      pages: document.pages.map((candidate) =>
+        candidate.id === page.id ? page : candidate,
+      ),
     },
     now,
   );
@@ -202,6 +232,14 @@ function expectFinite(value: unknown, field: string): number {
   return value;
 }
 
+function expectRotation(value: unknown, field: string): Rotation {
+  const rotation = expectFinite(value, field);
+  if (![0, 90, 180, 270].includes(rotation)) {
+    throw new ProjectFormatError("invalid-field", `${field} is not supported.`);
+  }
+  return rotation as Rotation;
+}
+
 function parsePoint(value: unknown, field: string): Point {
   if (!isRecord(value)) {
     throw new ProjectFormatError("invalid-field", `${field} must be a point.`);
@@ -212,14 +250,23 @@ function parsePoint(value: unknown, field: string): Point {
   };
 }
 
+function parseAnchor(value: unknown, field: string): ConnectionAnchor | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (!isRecord(value)) {
+    throw new ProjectFormatError("invalid-field", `${field} must be a connection anchor.`);
+  }
+  return {
+    deviceId: expectString(value.deviceId, `${field}.deviceId`),
+    pinId: expectString(value.pinId, `${field}.pinId`),
+  };
+}
+
 function parseNode(value: unknown, index: number): ComponentNode {
-  const field = `cells[].nodes[${index}]`;
+  const field = `pages[].nodes[${index}]`;
   if (!isRecord(value)) {
     throw new ProjectFormatError("invalid-field", `${field} must be an object.`);
-  }
-  const rotation = expectFinite(value.rotation, `${field}.rotation`);
-  if (![0, 90, 180, 270].includes(rotation)) {
-    throw new ProjectFormatError("invalid-field", `${field}.rotation is not supported.`);
   }
   if (typeof value.mirrored !== "boolean") {
     throw new ProjectFormatError("invalid-field", `${field}.mirrored must be boolean.`);
@@ -231,26 +278,30 @@ function parseNode(value: unknown, index: number): ComponentNode {
     value: expectString(value.value, `${field}.value`),
     x: expectFinite(value.x, `${field}.x`),
     y: expectFinite(value.y, `${field}.y`),
-    rotation: rotation as Rotation,
+    rotation: expectRotation(value.rotation, `${field}.rotation`),
     mirrored: value.mirrored,
   };
 }
 
 function parseWire(value: unknown, index: number): Wire {
-  const field = `cells[].wires[${index}]`;
+  const field = `pages[].wires[${index}]`;
   if (!isRecord(value) || !Array.isArray(value.points)) {
     throw new ProjectFormatError("invalid-field", `${field} must contain a points array.`);
   }
+  const startAnchor = parseAnchor(value.startAnchor, `${field}.startAnchor`);
+  const endAnchor = parseAnchor(value.endAnchor, `${field}.endAnchor`);
   return {
     id: expectString(value.id, `${field}.id`),
     points: value.points.map((point, pointIndex) =>
       parsePoint(point, `${field}.points[${pointIndex}]`),
     ),
+    ...(startAnchor ? { startAnchor } : {}),
+    ...(endAnchor ? { endAnchor } : {}),
   };
 }
 
 function parseAnnotation(value: unknown, index: number): Annotation {
-  const field = `cells[].annotations[${index}]`;
+  const field = `pages[].annotations[${index}]`;
   if (!isRecord(value)) {
     throw new ProjectFormatError("invalid-field", `${field} must be an object.`);
   }
@@ -267,30 +318,46 @@ function parseAnnotation(value: unknown, index: number): Annotation {
   };
 }
 
-function parseCell(value: unknown, index: number): SchematicCell {
-  const field = `cells[${index}]`;
+function parseShape(value: unknown, index: number): DrawingShape {
+  const field = `pages[].shapes[${index}]`;
+  if (!isRecord(value) || (value.kind !== "rectangle" && value.kind !== "ellipse")) {
+    throw new ProjectFormatError("invalid-field", `${field} has an invalid shape.`);
+  }
+  return {
+    id: expectString(value.id, `${field}.id`),
+    kind: value.kind,
+    x: expectFinite(value.x, `${field}.x`),
+    y: expectFinite(value.y, `${field}.y`),
+    width: expectFinite(value.width, `${field}.width`),
+    height: expectFinite(value.height, `${field}.height`),
+    rotation: expectRotation(value.rotation, `${field}.rotation`),
+    stroke: expectString(value.stroke, `${field}.stroke`),
+    fill: expectString(value.fill, `${field}.fill`),
+  };
+}
+
+function parsePage(value: unknown, index: number): DrawingPage {
+  const field = `pages[${index}]`;
   if (
     !isRecord(value) ||
     !Array.isArray(value.nodes) ||
     !Array.isArray(value.wires) ||
     !Array.isArray(value.junctions) ||
-    !Array.isArray(value.annotations)
+    !Array.isArray(value.annotations) ||
+    !Array.isArray(value.shapes)
   ) {
     throw new ProjectFormatError("invalid-field", `${field} has an invalid shape.`);
-  }
-  if (typeof value.isTop !== "boolean") {
-    throw new ProjectFormatError("invalid-field", `${field}.isTop must be boolean.`);
   }
   return {
     id: expectString(value.id, `${field}.id`),
     name: expectString(value.name, `${field}.name`),
-    isTop: value.isTop,
     nodes: value.nodes.map(parseNode),
     wires: value.wires.map(parseWire),
     junctions: value.junctions.map((point, pointIndex) =>
       parsePoint(point, `${field}.junctions[${pointIndex}]`),
     ),
     annotations: value.annotations.map(parseAnnotation),
+    shapes: value.shapes.map(parseShape),
   };
 }
 
@@ -314,14 +381,14 @@ export function parseProjectText(text: string): DrawicDocument {
     }
     throw new ProjectFormatError(
       "unsupported-schema",
-      "This project format version is not supported by Drawic 0.1.",
+      "This project uses a retired Drawic format. Create a new Drawic 0.2 drawing.",
     );
   }
   if (raw.kind !== DOCUMENT_KIND) {
-    throw new ProjectFormatError("invalid-kind", "This JSON file is not a Drawic schematic.");
+    throw new ProjectFormatError("invalid-kind", "This JSON file is not a Drawic drawing.");
   }
-  if (!Array.isArray(raw.cells) || raw.cells.length === 0) {
-    throw new ProjectFormatError("invalid-field", "The project must contain at least one cell.");
+  if (!Array.isArray(raw.pages) || raw.pages.length === 0) {
+    throw new ProjectFormatError("invalid-field", "The drawing must contain at least one page.");
   }
 
   const document: DrawicDocument = {
@@ -331,25 +398,18 @@ export function parseProjectText(text: string): DrawicDocument {
     title: expectString(raw.title, "title"),
     createdAt: expectString(raw.createdAt, "createdAt"),
     modifiedAt: expectString(raw.modifiedAt, "modifiedAt"),
-    activeCellId: expectString(raw.activeCellId, "activeCellId"),
-    cells: raw.cells.map(parseCell),
+    pages: raw.pages.map(parsePage),
   };
-
-  if (!document.cells.some((cell) => cell.id === document.activeCellId)) {
-    throw new ProjectFormatError("active-cell-missing", "The active cell does not exist.");
-  }
-  if (document.cells.filter((cell) => cell.isTop).length !== 1) {
-    throw new ProjectFormatError("top-cell-count", "Exactly one cell must be marked as Top.");
-  }
 
   const ids = new Set<string>();
   for (const id of [
     document.id,
-    ...document.cells.flatMap((cell) => [
-      cell.id,
-      ...cell.nodes.map((node) => node.id),
-      ...cell.wires.map((wire) => wire.id),
-      ...cell.annotations.map((annotation) => annotation.id),
+    ...document.pages.flatMap((page) => [
+      page.id,
+      ...page.nodes.map((node) => node.id),
+      ...page.wires.map((wire) => wire.id),
+      ...page.annotations.map((annotation) => annotation.id),
+      ...page.shapes.map((shape) => shape.id),
     ]),
   ]) {
     if (ids.has(id)) {

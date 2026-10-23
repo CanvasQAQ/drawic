@@ -23,7 +23,7 @@ export function ErcPanel({ diagnostics, onClose, onSelectItem }: ErcPanelProps) 
       </header>
       {diagnostics.length === 0 ? (
         <p className="erc-empty">
-          <Icon name="check" /> The active cell passes the basic Drawic 0.1 checks.
+          <Icon name="check" /> The active page passes the basic Drawic 0.2 checks.
         </p>
       ) : (
         <ul>

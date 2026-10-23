@@ -1,23 +1,23 @@
 import { buildConnectivity, pinGraphKey, wireGraphKey } from "./connectivity";
 import { isOrthogonalPath } from "./geometry";
-import type { Diagnostic, SchematicCell, SymbolDefinition } from "./model";
+import type { Diagnostic, DrawingPage, SymbolDefinition } from "./model";
 
 export function runElectricalRules(
-  cell: SchematicCell,
+  page: DrawingPage,
   library: readonly SymbolDefinition[],
 ): Diagnostic[] {
   const diagnostics: Diagnostic[] = [];
-  const connectivity = buildConnectivity(cell, library);
+  const connectivity = buildConnectivity(page, library);
   const symbols = new Map(library.map((symbol) => [symbol.id, symbol]));
 
   const refs = new Map<string, string[]>();
-  for (const node of cell.nodes) {
+  for (const node of page.nodes) {
     if (!node.reference.trim()) {
       diagnostics.push({
         code: "empty-reference",
         severity: "error",
         message: `Device ${node.id} has no reference designator.`,
-        cellId: cell.id,
+        pageId: page.id,
         itemId: node.id,
       });
     } else {
@@ -33,7 +33,7 @@ export function runElectricalRules(
           code: "duplicate-reference",
           severity: "error",
           message: `Reference ${reference} is used more than once.`,
-          cellId: cell.id,
+          pageId: page.id,
           itemId: nodeId,
         });
       }
@@ -52,31 +52,31 @@ export function runElectricalRules(
         code: "dangling-pin",
         severity: "warning",
         message: `${reference} pin ${pin.symbol.pins[pin.pinIndex]?.key ?? pin.pinIndex + 1} is not connected.`,
-        cellId: cell.id,
+        pageId: page.id,
         itemId: pin.node.id,
       });
     }
   }
 
-  for (const node of cell.nodes) {
+  for (const node of page.nodes) {
     if (!symbols.has(node.symbolId)) {
       diagnostics.push({
         code: "missing-symbol",
         severity: "error",
         message: `${node.reference || node.id} uses an unavailable device symbol.`,
-        cellId: cell.id,
+        pageId: page.id,
         itemId: node.id,
       });
     }
   }
 
-  for (const wire of cell.wires) {
+  for (const wire of page.wires) {
     if (wire.points.length < 2 || !isOrthogonalPath(wire.points)) {
       diagnostics.push({
         code: "invalid-wire",
         severity: "error",
         message: "A wire must contain at least two orthogonal points.",
-        cellId: cell.id,
+        pageId: page.id,
         itemId: wire.id,
       });
     }
@@ -91,7 +91,7 @@ export function runElectricalRules(
         code: "conflicting-net-names",
         severity: "warning",
         message: `One electrical network has conflicting labels: ${names.join(", ")}.`,
-        cellId: cell.id,
+        pageId: page.id,
         ...(item ? { itemId: item.slice("label:".length) } : {}),
       });
     }
@@ -101,21 +101,21 @@ export function runElectricalRules(
   for (const pin of connectivity.pinTerminals) {
     coveredPins.set(pinGraphKey(pin.node.id, pin.pinIndex), pin.pinIndex);
   }
-  if (cell.nodes.length > 0 && connectivity.pinTerminals.length === 0) {
+  if (page.nodes.length > 0 && connectivity.pinTerminals.length === 0) {
     diagnostics.push({
       code: "no-electrical-terminals",
       severity: "warning",
-      message: "No resolvable electrical terminals were found in this cell.",
-      cellId: cell.id,
+      message: "No resolvable electrical terminals were found on this page.",
+      pageId: page.id,
     });
   }
-  for (const wire of cell.wires) {
+  for (const wire of page.wires) {
     if (!connectivity.networkIdByKey.has(wireGraphKey(wire.id))) {
       diagnostics.push({
         code: "disconnected-wire",
         severity: "warning",
         message: "A wire is not represented in the connectivity graph.",
-        cellId: cell.id,
+        pageId: page.id,
         itemId: wire.id,
       });
     }

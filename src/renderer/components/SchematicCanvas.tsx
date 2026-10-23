@@ -1,13 +1,12 @@
-import {
+import React, {
+  useEffect,
   useMemo,
   useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
+  type WheelEvent as ReactWheelEvent,
 } from "react";
-import {
-  buildConnectivity,
-  selectedNetworkIds,
-} from "../../core/connectivity";
+import { buildConnectivity, selectedNetworkIds } from "../../core/connectivity";
 import {
   distance,
   nodeBounds,
@@ -15,34 +14,56 @@ import {
   orthogonalPath,
   pointsEqual,
   roundToGrid,
-  segmentIntersection,
   snapPoint,
+  symbolLabelPosition,
   symbolTransform,
 } from "../../core/geometry";
 import type {
   Annotation,
+  ComponentNode,
+  ConnectionAnchor,
+  DrawingPage,
+  DrawingShape,
   Point,
-  SchematicCell,
   SelectionRef,
+  ShapeKind,
   SymbolDefinition,
+  Wire,
 } from "../../core/model";
 import type { EditorTool } from "./Toolbar";
 
-const VIEW_WIDTH = 1600;
-const VIEW_HEIGHT = 1000;
+const BASE_WIDTH = 1600;
+const BASE_HEIGHT = 1000;
+const MIN_VIEW_WIDTH = 320;
+const MAX_VIEW_WIDTH = 5200;
 const SNAP_PIXELS = 13;
 
+export interface Viewport {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 interface SchematicCanvasProps {
-  cell: SchematicCell;
+  page: DrawingPage;
   library: readonly SymbolDefinition[];
   tool: EditorTool;
   placementSymbol: SymbolDefinition | null;
   selection: readonly SelectionRef[];
   onSelectionChange: (selection: SelectionRef[]) => void;
   onPlace: (point: Point) => void;
-  onAddWire: (points: Point[]) => void;
+  onAddWire: (
+    points: Point[],
+    anchors?: {
+      startAnchor?: ConnectionAnchor;
+      endAnchor?: ConnectionAnchor;
+    },
+  ) => void;
+  onUpdateWire: (wireId: string, points: Point[]) => void;
   onAddJunction: (point: Point) => void;
   onAddAnnotation: (kind: Annotation["kind"], point: Point) => void;
+  onAddShape: (kind: ShapeKind, bounds: { x: number; y: number; width: number; height: number }) => void;
   onMoveSelected: (delta: Point) => void;
 }
 
@@ -62,6 +83,32 @@ interface MarqueeState {
 interface WireDraft {
   start: Point;
   current: Point;
+  startAnchor?: ConnectionAnchor;
+  endAnchor?: ConnectionAnchor;
+}
+
+interface SegmentDrag {
+  wire: Wire;
+  segmentIndex: number;
+  origin: Point;
+  delta: Point;
+}
+
+interface ShapeDraft {
+  kind: ShapeKind;
+  start: Point;
+  current: Point;
+}
+
+interface PanState {
+  clientX: number;
+  clientY: number;
+  view: Viewport;
+}
+
+interface SnapResult {
+  point: Point;
+  anchor?: ConnectionAnchor;
 }
 
 function isSelected(selection: readonly SelectionRef[], kind: SelectionRef["kind"], id: string) {
@@ -86,8 +133,52 @@ function pathData(points: readonly Point[]): string {
   return points.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`).join(" ");
 }
 
+function clamp(value: number, minimum: number, maximum: number): number {
+  return Math.min(maximum, Math.max(minimum, value));
+}
+
+function shapeBounds(shape: DrawingShape) {
+  return {
+    minX: Math.min(shape.x, shape.x + shape.width),
+    minY: Math.min(shape.y, shape.y + shape.height),
+    maxX: Math.max(shape.x, shape.x + shape.width),
+    maxY: Math.max(shape.y, shape.y + shape.height),
+  };
+}
+
+export function dragSegment(wire: Wire, segmentIndex: number, delta: Point): Point[] {
+  const points = wire.points.map((point) => ({ ...point }));
+  const start = points[segmentIndex];
+  const end = points[segmentIndex + 1];
+  if (!start || !end) {
+    return points;
+  }
+  if (start.y === end.y) {
+    start.y = roundToGrid(start.y + delta.y);
+    end.y = roundToGrid(end.y + delta.y);
+  } else if (start.x === end.x) {
+    start.x = roundToGrid(start.x + delta.x);
+    end.x = roundToGrid(end.x + delta.x);
+  }
+  return points;
+}
+
+export function zoomViewport(view: Viewport, center: Point, factor: number): Viewport {
+  const width = clamp(view.width * factor, MIN_VIEW_WIDTH, MAX_VIEW_WIDTH);
+  const scale = width / view.width;
+  const height = view.height * scale;
+  const ratioX = (center.x - view.x) / view.width;
+  const ratioY = (center.y - view.y) / view.height;
+  return {
+    x: center.x - ratioX * width,
+    y: center.y - ratioY * height,
+    width,
+    height,
+  };
+}
+
 export function SchematicCanvas({
-  cell,
+  page,
   library,
   tool,
   placementSymbol,
@@ -95,17 +186,30 @@ export function SchematicCanvas({
   onSelectionChange,
   onPlace,
   onAddWire,
+  onUpdateWire,
   onAddJunction,
   onAddAnnotation,
+  onAddShape,
   onMoveSelected,
 }: SchematicCanvasProps) {
   const svgRef = useRef<SVGSVGElement>(null);
+  const [view, setView] = useState<Viewport>({
+    x: 0,
+    y: 0,
+    width: BASE_WIDTH,
+    height: BASE_HEIGHT,
+  });
+  const [pointer, setPointer] = useState<Point>({ x: 0, y: 0 });
   const [drag, setDrag] = useState<DragState | null>(null);
   const [marquee, setMarquee] = useState<MarqueeState | null>(null);
   const [wireDraft, setWireDraft] = useState<WireDraft | null>(null);
+  const [segmentDrag, setSegmentDrag] = useState<SegmentDrag | null>(null);
+  const [shapeDraft, setShapeDraft] = useState<ShapeDraft | null>(null);
+  const [pan, setPan] = useState<PanState | null>(null);
+  const [spacePressed, setSpacePressed] = useState(false);
   const [hovered, setHovered] = useState<SelectionRef | null>(null);
   const symbols = useMemo(() => new Map(library.map((symbol) => [symbol.id, symbol])), [library]);
-  const connectivity = useMemo(() => buildConnectivity(cell, library), [cell, library]);
+  const connectivity = useMemo(() => buildConnectivity(page, library), [page, library]);
 
   const highlightedNetworks = useMemo(() => {
     const networks = selectedNetworkIds(connectivity, selection);
@@ -114,7 +218,7 @@ export function SchematicCanvas({
       if (item.kind !== "node") {
         continue;
       }
-      const node = cell.nodes.find((candidate) => candidate.id === item.id);
+      const node = page.nodes.find((candidate) => candidate.id === item.id);
       const symbol = node ? symbols.get(node.symbolId) : undefined;
       if (!node || !symbol) {
         continue;
@@ -127,7 +231,47 @@ export function SchematicCanvas({
       });
     }
     return networks;
-  }, [connectivity, selection, hovered, cell.nodes, symbols]);
+  }, [connectivity, selection, hovered, page.nodes, symbols]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent): void => {
+      const target = event.target as HTMLElement | null;
+      const isTyping =
+        target?.tagName === "INPUT" ||
+        target?.tagName === "TEXTAREA" ||
+        target?.tagName === "SELECT" ||
+        target?.isContentEditable;
+      if (isTyping) {
+        return;
+      }
+      if (event.code === "Space") {
+        setSpacePressed(true);
+        event.preventDefault();
+      }
+      if ((event.ctrlKey || event.metaKey) && event.key === "0") {
+        event.preventDefault();
+        setView({ x: 0, y: 0, width: BASE_WIDTH, height: BASE_HEIGHT });
+      }
+    };
+    const handleKeyUp = (event: KeyboardEvent): void => {
+      if (event.code === "Space") {
+        setSpacePressed(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, []);
+
+  useEffect(() => {
+    setWireDraft(null);
+    setSegmentDrag(null);
+    setShapeDraft(null);
+    setMarquee(null);
+  }, [page.id]);
 
   function clientToSvg(event: { clientX: number; clientY: number }): Point {
     const svg = svgRef.current;
@@ -141,69 +285,133 @@ export function SchematicCanvas({
     return matrix ? point.matrixTransform(matrix.inverse()) : { x: point.x, y: point.y };
   }
 
-  function snapWirePoint(point: Point): Point {
-    let closestPin: Point | null = null;
-    let closestPinDistance = SNAP_PIXELS;
-    for (const node of cell.nodes) {
+  function zoomAt(clientX: number, clientY: number, factor: number): void {
+    const svg = svgRef.current;
+    if (!svg) {
+      return;
+    }
+    const center = clientToSvg({ clientX, clientY });
+    setView((current) => zoomViewport(current, center, factor));
+  }
+
+  function snapWirePoint(point: Point): SnapResult {
+    const svg = svgRef.current;
+    const rect = svg?.getBoundingClientRect();
+    const tolerance = rect?.width
+      ? Math.max(8, (SNAP_PIXELS * view.width) / rect.width)
+      : SNAP_PIXELS;
+    let closestPin: { point: Point; anchor: ConnectionAnchor; distance: number } | null = null;
+    for (const node of page.nodes) {
       const symbol = symbols.get(node.symbolId);
       if (!symbol) {
         continue;
       }
-      symbol.pins.forEach((_pin, index) => {
-        const pin = nodePinPosition(node, symbol, index);
-        const candidateDistance = distance(point, pin);
-        if (candidateDistance < closestPinDistance) {
-          closestPin = pin;
-          closestPinDistance = candidateDistance;
+      for (let index = 0; index < symbol.pins.length; index += 1) {
+        const pin = symbol.pins[index]!;
+        const pinPoint = nodePinPosition(node, symbol, index);
+        const candidateDistance = distance(point, pinPoint);
+        if (
+          candidateDistance <= tolerance &&
+          (!closestPin || candidateDistance < closestPin.distance)
+        ) {
+          closestPin = {
+            point: pinPoint,
+            anchor: { deviceId: node.id, pinId: pin.key },
+            distance: candidateDistance,
+          };
         }
-      });
+      }
     }
     if (closestPin) {
-      return { x: (closestPin as Point).x, y: (closestPin as Point).y };
+      return { point: closestPin.point, anchor: closestPin.anchor };
     }
 
-    let closest: Point | null = null;
-    let closestDistance = SNAP_PIXELS;
+    let closest: { point: Point; distance: number } | null = null;
     for (const segment of connectivity.segments) {
-      for (const candidate of [segment.start, segment.end]) {
+      const dx = segment.end.x - segment.start.x;
+      const dy = segment.end.y - segment.start.y;
+      let candidate: Point | null = null;
+      if (Math.abs(dx) < 0.001) {
+        if (Math.abs(point.x - segment.start.x) <= tolerance) {
+          candidate = {
+            x: segment.start.x,
+            y: clamp(point.y, Math.min(segment.start.y, segment.end.y), Math.max(segment.start.y, segment.end.y)),
+          };
+        }
+      } else if (Math.abs(dy) < 0.001 && Math.abs(point.y - segment.start.y) <= tolerance) {
+        candidate = {
+          x: clamp(point.x, Math.min(segment.start.x, segment.end.x), Math.max(segment.start.x, segment.end.x)),
+          y: segment.start.y,
+        };
+      }
+      if (candidate) {
         const candidateDistance = distance(point, candidate);
-        if (candidateDistance < closestDistance) {
-          closest = candidate;
-          closestDistance = candidateDistance;
-        }
-      }
-      if (point.x === segment.start.x && point.x === segment.end.x) {
-        const start = Math.min(segment.start.y, segment.end.y);
-        const end = Math.max(segment.start.y, segment.end.y);
-        if (point.y >= start - SNAP_PIXELS && point.y <= end + SNAP_PIXELS) {
-          const candidate = { x: segment.start.x, y: Math.max(start, Math.min(end, point.y)) };
-          const candidateDistance = Math.abs(point.y - candidate.y);
-          if (candidateDistance < closestDistance) {
-            closest = candidate;
-            closestDistance = candidateDistance;
-          }
-        }
-      }
-      if (point.y === segment.start.y && point.y === segment.end.y) {
-        const start = Math.min(segment.start.x, segment.end.x);
-        const end = Math.max(segment.start.x, segment.end.x);
-        if (point.x >= start - SNAP_PIXELS && point.x <= end + SNAP_PIXELS) {
-          const candidate = { x: Math.max(start, Math.min(end, point.x)), y: segment.start.y };
-          const candidateDistance = Math.abs(point.x - candidate.x);
-          if (candidateDistance < closestDistance) {
-            closest = candidate;
-            closestDistance = candidateDistance;
-          }
+        if (candidateDistance <= tolerance && (!closest || candidateDistance < closest.distance)) {
+          closest = { point: candidate, distance: candidateDistance };
         }
       }
     }
-    return closest ? { ...closest } : snapPoint(point);
+    return { point: closest ? { ...closest.point } : snapPoint(point) };
   }
 
-  function beginNodePointer(
-    event: ReactPointerEvent<SVGGElement>,
-    nodeId: string,
+  function finishWire(current: Point, endAnchor?: ConnectionAnchor): void {
+    if (!wireDraft) {
+      return;
+    }
+    if (!pointsEqual(wireDraft.start, current, 0.1)) {
+      onAddWire(orthogonalPath(wireDraft.start, current), {
+        ...(wireDraft.startAnchor ? { startAnchor: wireDraft.startAnchor } : {}),
+        ...(endAnchor ? { endAnchor } : {}),
+      });
+    }
+    setWireDraft(null);
+  }
+
+  function beginWireAt(point: Point): void {
+    const snapped = snapWirePoint(point);
+    if (wireDraft) {
+      finishWire(snapped.point, snapped.anchor);
+      return;
+    }
+    setWireDraft({
+      start: snapped.point,
+      current: snapped.point,
+      ...(snapped.anchor ? { startAnchor: snapped.anchor } : {}),
+    });
+  }
+
+  function beginPinPointer(
+    event: ReactPointerEvent<SVGCircleElement>,
+    node: ComponentNode,
+    pinIndex: number,
   ): void {
+    if (event.button !== 0 || spacePressed) {
+      return;
+    }
+    event.stopPropagation();
+    const symbol = symbols.get(node.symbolId);
+    if (!symbol) {
+      return;
+    }
+    const point = nodePinPosition(node, symbol, pinIndex);
+    if (placementSymbol) {
+      onPlace(point);
+      return;
+    }
+    if (tool === "wire") {
+      const anchor = { deviceId: node.id, pinId: symbol.pins[pinIndex]!.key };
+      if (wireDraft) {
+        finishWire(point, anchor);
+      } else {
+        setWireDraft({ start: point, current: point, startAnchor: anchor });
+      }
+    }
+  }
+
+  function beginNodePointer(event: ReactPointerEvent<SVGGElement>, nodeId: string): void {
+    if (event.button !== 0 || spacePressed) {
+      return;
+    }
     event.stopPropagation();
     const point = clientToSvg(event);
     if (placementSymbol) {
@@ -211,9 +419,7 @@ export function SchematicCanvas({
       return;
     }
     if (tool === "wire") {
-      const start = snapWirePoint(point);
-      event.currentTarget.setPointerCapture(event.pointerId);
-      setWireDraft({ start, current: start });
+      beginWireAt(point);
       return;
     }
     if (tool === "junction") {
@@ -221,7 +427,7 @@ export function SchematicCanvas({
       return;
     }
     if (tool === "net-label") {
-      onAddAnnotation("net", snapWirePoint(point));
+      onAddAnnotation("net", snapWirePoint(point).point);
       return;
     }
     if (tool === "text") {
@@ -252,19 +458,43 @@ export function SchematicCanvas({
     });
   }
 
-  function beginWire(
-    event: ReactPointerEvent<SVGSVGElement>,
-    segmentId?: string,
+  function beginSegmentDrag(
+    event: ReactPointerEvent<SVGCircleElement>,
+    wire: Wire,
+    segmentIndex: number,
   ): void {
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setSegmentDrag({
+      wire,
+      segmentIndex,
+      origin: clientToSvg(event),
+      delta: { x: 0, y: 0 },
+    });
+  }
+
+  function beginCanvasPointer(event: ReactPointerEvent<SVGSVGElement>): void {
     const point = clientToSvg(event);
+    setPointer(point);
+    if (event.button === 1 || spacePressed) {
+      event.preventDefault();
+      event.currentTarget.setPointerCapture(event.pointerId);
+      setPan({
+        clientX: event.clientX,
+        clientY: event.clientY,
+        view,
+      });
+      return;
+    }
+    if (event.button !== 0) {
+      return;
+    }
     if (placementSymbol) {
       onPlace(snapPoint(point));
       return;
     }
     if (tool === "wire") {
-      event.currentTarget.setPointerCapture(event.pointerId);
-      const start = snapWirePoint(point);
-      setWireDraft({ start, current: start });
+      beginWireAt(point);
       return;
     }
     if (tool === "junction") {
@@ -272,21 +502,17 @@ export function SchematicCanvas({
       return;
     }
     if (tool === "net-label") {
-      onAddAnnotation("net", snapWirePoint(point));
+      onAddAnnotation("net", snapWirePoint(point).point);
       return;
     }
     if (tool === "text") {
       onAddAnnotation("text", snapPoint(point));
       return;
     }
-    if (tool !== "select") {
-      return;
-    }
-
-    if (segmentId) {
-      onSelectionChange(
-        selectionWith(selection, { kind: "wire", id: segmentId }, event.shiftKey),
-      );
+    if (tool === "rectangle" || tool === "ellipse") {
+      event.currentTarget.setPointerCapture(event.pointerId);
+      const snapped = snapPoint(point);
+      setShapeDraft({ kind: tool, start: snapped, current: snapped });
       return;
     }
     if (!event.shiftKey) {
@@ -302,38 +528,95 @@ export function SchematicCanvas({
 
   function movePointer(event: ReactPointerEvent<SVGSVGElement>): void {
     const point = clientToSvg(event);
+    setPointer(point);
+    if (pan) {
+      const svg = svgRef.current;
+      const rect = svg?.getBoundingClientRect();
+      const scaleX = rect?.width ? pan.view.width / rect.width : 1;
+      const scaleY = rect?.height ? pan.view.height / rect.height : 1;
+      setView({
+        ...pan.view,
+        x: pan.view.x - (event.clientX - pan.clientX) * scaleX,
+        y: pan.view.y - (event.clientY - pan.clientY) * scaleY,
+      });
+      return;
+    }
     if (drag) {
       let delta = {
         x: roundToGrid(point.x - drag.origin.x),
         y: roundToGrid(point.y - drag.origin.y),
       };
       if (event.shiftKey) {
-        if (Math.abs(delta.x) >= Math.abs(delta.y)) {
-          delta = { x: delta.x, y: 0 };
-        } else {
-          delta = { x: 0, y: delta.y };
-        }
+        delta =
+          Math.abs(delta.x) >= Math.abs(delta.y)
+            ? { x: delta.x, y: 0 }
+            : { x: 0, y: delta.y };
       }
       setDrag({ ...drag, current: point, delta });
-    } else if (wireDraft) {
-      setWireDraft({ ...wireDraft, current: snapWirePoint(point) });
-    } else if (marquee) {
+      return;
+    }
+    if (wireDraft) {
+      const snapped = snapWirePoint(point);
+      setWireDraft({
+        ...wireDraft,
+        current: snapped.point,
+        ...(snapped.anchor ? { endAnchor: snapped.anchor } : {}),
+      });
+      return;
+    }
+    if (segmentDrag) {
+      setSegmentDrag({
+        ...segmentDrag,
+        delta: {
+          x: roundToGrid(point.x - segmentDrag.origin.x),
+          y: roundToGrid(point.y - segmentDrag.origin.y),
+        },
+      });
+      return;
+    }
+    if (shapeDraft) {
+      setShapeDraft({ ...shapeDraft, current: snapPoint(point) });
+      return;
+    }
+    if (marquee) {
       setMarquee({ ...marquee, current: point });
     }
   }
 
   function endPointer(): void {
+    if (pan) {
+      setPan(null);
+      return;
+    }
     if (drag) {
       if (drag.delta.x !== 0 || drag.delta.y !== 0) {
         onMoveSelected(drag.delta);
       }
       setDrag(null);
-    } else if (wireDraft) {
-      if (!pointsEqual(wireDraft.start, wireDraft.current, 0.1)) {
-        onAddWire(orthogonalPath(wireDraft.start, wireDraft.current));
+      return;
+    }
+    if (segmentDrag) {
+      if (segmentDrag.delta.x !== 0 || segmentDrag.delta.y !== 0) {
+        onUpdateWire(
+          segmentDrag.wire.id,
+          dragSegment(segmentDrag.wire, segmentDrag.segmentIndex, segmentDrag.delta),
+        );
       }
-      setWireDraft(null);
-    } else if (marquee) {
+      setSegmentDrag(null);
+      return;
+    }
+    if (shapeDraft) {
+      const x = Math.min(shapeDraft.start.x, shapeDraft.current.x);
+      const y = Math.min(shapeDraft.start.y, shapeDraft.current.y);
+      const width = Math.abs(shapeDraft.current.x - shapeDraft.start.x);
+      const height = Math.abs(shapeDraft.current.y - shapeDraft.start.y);
+      if (width >= 10 && height >= 10) {
+        onAddShape(shapeDraft.kind, { x, y, width, height });
+      }
+      setShapeDraft(null);
+      return;
+    }
+    if (marquee) {
       finishMarquee(marquee);
       setMarquee(null);
     }
@@ -353,22 +636,17 @@ export function SchematicCanvas({
         next.push(item);
       }
     };
-    for (const node of cell.nodes) {
+    for (const node of page.nodes) {
       const symbol = symbols.get(node.symbolId);
       if (!symbol) {
         continue;
       }
       const bounds = nodeBounds(node, symbol);
-      if (
-        bounds.maxX >= minX &&
-        bounds.minX <= maxX &&
-        bounds.maxY >= minY &&
-        bounds.minY <= maxY
-      ) {
+      if (bounds.maxX >= minX && bounds.minX <= maxX && bounds.maxY >= minY && bounds.minY <= maxY) {
         add({ kind: "node", id: node.id });
       }
     }
-    for (const wire of cell.wires) {
+    for (const wire of page.wires) {
       if (
         wire.points.some(
           (point) => point.x >= minX && point.x <= maxX && point.y >= minY && point.y <= maxY,
@@ -377,46 +655,53 @@ export function SchematicCanvas({
         add({ kind: "wire", id: wire.id });
       }
     }
-    for (const annotation of cell.annotations) {
-      if (
-        annotation.x >= minX &&
-        annotation.x <= maxX &&
-        annotation.y >= minY &&
-        annotation.y <= maxY
-      ) {
+    for (const annotation of page.annotations) {
+      if (annotation.x >= minX && annotation.x <= maxX && annotation.y >= minY && annotation.y <= maxY) {
         add({ kind: "annotation", id: annotation.id });
+      }
+    }
+    for (const shape of page.shapes) {
+      const bounds = shapeBounds(shape);
+      if (bounds.maxX >= minX && bounds.minX <= maxX && bounds.maxY >= minY && bounds.minY <= maxY) {
+        add({ kind: "shape", id: shape.id });
       }
     }
     onSelectionChange(next);
   }
 
-  const dragDelta =
-    drag && drag.nodeIds.length > 0
-      ? drag.delta
-      : { x: 0, y: 0 };
+  const dragDelta = drag ? drag.delta : { x: 0, y: 0 };
+  const placementPoint = snapPoint(pointer);
+  const zoomPercent = Math.round((BASE_WIDTH / view.width) * 100);
+  const canvasClassName = `schematic-canvas tool-${tool}${placementSymbol ? " is-placing" : ""}${pan || spacePressed ? " is-panning" : ""}`;
 
   return (
     <div className="canvas-shell" data-testid="schematic-canvas">
       <div className="canvas-ruler canvas-ruler-x" aria-hidden="true">
-        <span>0</span>
-        <span>400</span>
-        <span>800</span>
-        <span>1200</span>
+        <span>{Math.round(view.x)}</span>
+        <span>{Math.round(view.x + view.width / 2)}</span>
+        <span>{Math.round(view.x + view.width)}</span>
       </div>
       <svg
         ref={svgRef}
-        className={`schematic-canvas tool-${tool}${placementSymbol ? " is-placing" : ""}`}
-        viewBox={`0 0 ${VIEW_WIDTH} ${VIEW_HEIGHT}`}
+        className={canvasClassName}
+        viewBox={`${view.x} ${view.y} ${view.width} ${view.height}`}
         role="application"
-        aria-label={`${cell.name} schematic canvas`}
-        onPointerDown={(event) => beginWire(event)}
+        aria-label={`${page.name} drawing canvas`}
+        onPointerDown={beginCanvasPointer}
         onPointerMove={movePointer}
         onPointerUp={endPointer}
         onPointerCancel={endPointer}
+        onWheel={(event: ReactWheelEvent<SVGSVGElement>) => {
+          if (event.ctrlKey || event.metaKey) {
+            event.preventDefault();
+            zoomAt(event.clientX, event.clientY, Math.exp(event.deltaY * 0.0015));
+          }
+        }}
         onContextMenu={(event) => {
           event.preventDefault();
           setWireDraft(null);
           setMarquee(null);
+          setShapeDraft(null);
         }}
       >
         <defs>
@@ -435,88 +720,163 @@ export function SchematicCanvas({
             </feMerge>
           </filter>
         </defs>
-        <rect width={VIEW_WIDTH} height={VIEW_HEIGHT} fill="#f5f3ec" />
-        <rect width={VIEW_WIDTH} height={VIEW_HEIGHT} fill="url(#grid-large)" />
+        <rect
+          x={view.x}
+          y={view.y}
+          width={view.width}
+          height={view.height}
+          fill="#f5f3ec"
+        />
+        <rect
+          x={view.x}
+          y={view.y}
+          width={view.width}
+          height={view.height}
+          fill="url(#grid-large)"
+        />
+
+        <g className="shape-layer">
+          {page.shapes.map((shape) => {
+            const centerX = shape.x + shape.width / 2;
+            const centerY = shape.y + shape.height / 2;
+            const transform =
+              shape.rotation === 0
+                ? undefined
+                : `rotate(${shape.rotation} ${centerX} ${centerY})`;
+            return (
+              <g
+                key={shape.id}
+                className={`drawing-shape${isSelected(selection, "shape", shape.id) ? " is-selected" : ""}`}
+                onPointerDown={(event) => {
+                  if (tool !== "select" || placementSymbol) {
+                    return;
+                  }
+                  event.stopPropagation();
+                  onSelectionChange(
+                    selectionWith(selection, { kind: "shape", id: shape.id }, event.shiftKey),
+                  );
+                }}
+              >
+                {shape.kind === "ellipse" ? (
+                  <ellipse
+                    cx={centerX}
+                    cy={centerY}
+                    rx={shape.width / 2}
+                    ry={shape.height / 2}
+                    fill={shape.fill}
+                    stroke={shape.stroke}
+                    transform={transform}
+                  />
+                ) : (
+                  <rect
+                    x={shape.x}
+                    y={shape.y}
+                    width={shape.width}
+                    height={shape.height}
+                    fill={shape.fill}
+                    stroke={shape.stroke}
+                    transform={transform}
+                  />
+                )}
+              </g>
+            );
+          })}
+        </g>
 
         <g className="wire-layer">
-          {cell.wires.map((wire) => {
+          {page.wires.map((wire) => {
             const networkId = connectivity.networkIdByWire.get(wire.id);
             const highlighted = networkId ? highlightedNetworks.has(networkId) : false;
             const selected = isSelected(selection, "wire", wire.id);
+            const previewPoints =
+              segmentDrag?.wire.id === wire.id
+                ? dragSegment(segmentDrag.wire, segmentDrag.segmentIndex, segmentDrag.delta)
+                : wire.points;
             return (
               <g
                 key={wire.id}
                 className={`wire-group${selected ? " is-selected" : ""}${highlighted ? " is-net-highlighted" : ""}`}
                 onPointerDown={(event) => {
+                  if (event.button !== 0 || spacePressed) {
+                    return;
+                  }
                   event.stopPropagation();
                   if (placementSymbol) {
                     onPlace(snapPoint(clientToSvg(event)));
                   } else if (tool === "wire") {
-                    const point = clientToSvg(event);
-                    const start = snapWirePoint(point);
-                    event.currentTarget.setPointerCapture(event.pointerId);
-                    setWireDraft({ start, current: start });
+                    beginWireAt(clientToSvg(event));
                   } else if (tool === "junction") {
                     onAddJunction(snapPoint(clientToSvg(event)));
                   } else if (tool === "net-label") {
-                    onAddAnnotation("net", snapWirePoint(clientToSvg(event)));
+                    onAddAnnotation("net", snapWirePoint(clientToSvg(event)).point);
                   } else if (tool === "text") {
                     onAddAnnotation("text", snapPoint(clientToSvg(event)));
                   } else if (tool === "select") {
                     onSelectionChange(
-                      selectionWith(
-                        selection,
-                        { kind: "wire", id: wire.id },
-                        event.shiftKey,
-                      ),
+                      selectionWith(selection, { kind: "wire", id: wire.id }, event.shiftKey),
                     );
                   }
                 }}
                 onPointerEnter={() => setHovered({ kind: "wire", id: wire.id })}
                 onPointerLeave={() => setHovered(null)}
               >
-                <path
-                  className="wire-hit"
-                  d={pathData(wire.points)}
-                  fill="none"
-                  stroke="transparent"
-                  strokeWidth="16"
-                />
+                <path className="wire-hit" d={pathData(previewPoints)} fill="none" stroke="transparent" strokeWidth="16" />
                 <path
                   className="wire-visible"
-                  d={pathData(wire.points)}
+                  d={pathData(previewPoints)}
                   fill="none"
                   strokeWidth={highlighted ? 3.4 : 2.2}
                 />
                 {selected ? (
                   <path
                     className="wire-selection-outline"
-                    d={pathData(wire.points)}
+                    d={pathData(previewPoints)}
                     fill="none"
                     strokeWidth="7"
                   />
                 ) : null}
+                {selected
+                  ? wire.points.slice(0, -1).map((start, index) => {
+                    const end = wire.points[index + 1]!;
+                    const endpointAnchored =
+                      (index === 0 && wire.startAnchor) ||
+                      (index === wire.points.length - 2 && wire.endAnchor);
+                    if (endpointAnchored) {
+                      return null;
+                    }
+                    return (
+                      <circle
+                        key={`${wire.id}-handle-${index}`}
+                        className="wire-segment-handle"
+                        cx={(start.x + end.x) / 2}
+                        cy={(start.y + end.y) / 2}
+                        r="5"
+                        onPointerDown={(event) => beginSegmentDrag(event, wire, index)}
+                      />
+                    );
+                  })
+                  : null}
               </g>
             );
           })}
         </g>
 
         <g className="component-layer">
-          {cell.nodes.map((node) => {
+          {page.nodes.map((node) => {
             const symbol = symbols.get(node.symbolId);
             if (!symbol) {
               return (
                 <g key={node.id} className="missing-symbol" transform={`translate(${node.x} ${node.y})`}>
                   <rect x="-30" y="-20" width="60" height="40" />
-                  <text textAnchor="middle" y="5">
-                    Missing symbol
-                  </text>
+                  <text textAnchor="middle" y="5">Missing symbol</text>
                 </g>
               );
             }
             const moving = drag?.nodeIds.includes(node.id) ?? false;
             const selected = isSelected(selection, "node", node.id);
             const bounds = nodeBounds(node, symbol);
+            const reference = symbolLabelPosition(node, symbol, "reference");
+            const value = symbolLabelPosition(node, symbol, "value");
             const networkHighlighted = symbol.pins.some((_pin, pinIndex) => {
               const network = connectivity.networkIdByPin.get(`pin:${node.id}:${pinIndex}`);
               return network ? highlightedNetworks.has(network) : false;
@@ -526,9 +886,7 @@ export function SchematicCanvas({
                 key={node.id}
                 className={`component-node${selected ? " is-selected" : ""}${networkHighlighted ? " is-net-highlighted" : ""}${moving ? " is-moving" : ""}`}
                 data-node-id={node.id}
-                transform={
-                  moving ? `translate(${dragDelta.x} ${dragDelta.y})` : undefined
-                }
+                transform={moving ? `translate(${dragDelta.x} ${dragDelta.y})` : undefined}
                 onPointerDown={(event) => beginNodePointer(event, node.id)}
                 onPointerEnter={() => setHovered({ kind: "node", id: node.id })}
                 onPointerLeave={() => setHovered(null)}
@@ -547,29 +905,41 @@ export function SchematicCanvas({
                 />
                 <text
                   className="component-reference"
-                  x={node.x + 8}
-                  y={node.y - 2}
+                  x={reference.point.x}
+                  y={reference.point.y}
+                  textAnchor={reference.anchor}
                 >
                   {node.reference || "?"}
                 </text>
                 {node.value ? (
-                  <text className="component-value" x={node.x + 8} y={node.y + 13}>
+                  <text
+                    className="component-value"
+                    x={value.point.x}
+                    y={value.point.y}
+                    textAnchor={value.anchor}
+                  >
                     {node.value}
                   </text>
                 ) : null}
+                {symbol.pins.map((pin, pinIndex) => {
+                  const point = nodePinPosition(node, symbol, pinIndex);
+                  return (
+                    <circle
+                      key={pin.key}
+                      className={`port-pin${wireDraft ? " is-snapping" : ""}`}
+                      cx={point.x}
+                      cy={point.y}
+                      r="6"
+                      data-pin-id={pin.key}
+                      onPointerDown={(event) => beginPinPointer(event, node, pinIndex)}
+                    />
+                  );
+                })}
                 {networkHighlighted
-                  ? symbol.pins.map((_pin, pinIndex) => {
-                      const point = nodePinPosition(node, symbol, pinIndex);
-                      return (
-                        <circle
-                          key={pinIndex}
-                          className="net-pin"
-                          cx={point.x}
-                          cy={point.y}
-                          r="4"
-                        />
-                      );
-                    })
+                  ? symbol.pins.map((pin, pinIndex) => {
+                    const point = nodePinPosition(node, symbol, pinIndex);
+                    return <circle key={`net-${pin.key}`} className="net-pin" cx={point.x} cy={point.y} r="4" />;
+                  })
                   : null}
               </g>
             );
@@ -578,10 +948,12 @@ export function SchematicCanvas({
 
         <g className="junction-layer">
           {connectivity.junctionPoints.map((point, index) => {
-            const explicit = cell.junctions.some((junction) => pointsEqual(junction, point, 0.5));
+            const explicit = page.junctions.some((junction) => pointsEqual(junction, point, 0.5));
             return (
               <g key={`${point.x}_${point.y}_${index}`} className="junction">
-                <circle cx={point.x} cy={point.y} r="7" fill="#f5f3ec" />
+                {explicit ? (
+                  <circle className="junction-ring" cx={point.x} cy={point.y} r="7" />
+                ) : null}
                 <circle
                   cx={point.x}
                   cy={point.y}
@@ -594,7 +966,7 @@ export function SchematicCanvas({
         </g>
 
         <g className="annotation-layer">
-          {cell.annotations.map((annotation) => {
+          {page.annotations.map((annotation) => {
             const network = connectivity.networkIdByAnnotation.get(annotation.id);
             const highlighted = network ? highlightedNetworks.has(network) : false;
             return (
@@ -610,11 +982,7 @@ export function SchematicCanvas({
                     onPlace(snapPoint(clientToSvg(event)));
                   } else if (tool === "select") {
                     onSelectionChange(
-                      selectionWith(
-                        selection,
-                        { kind: "annotation", id: annotation.id },
-                        event.shiftKey,
-                      ),
+                      selectionWith(selection, { kind: "annotation", id: annotation.id }, event.shiftKey),
                     );
                   }
                 }}
@@ -629,12 +997,72 @@ export function SchematicCanvas({
 
         {wireDraft ? (
           <g className="wire-draft" pointerEvents="none">
-            <path
-              d={pathData(orthogonalPath(wireDraft.start, wireDraft.current))}
-              fill="none"
-            />
+            <path d={pathData(orthogonalPath(wireDraft.start, wireDraft.current))} fill="none" />
             <circle cx={wireDraft.start.x} cy={wireDraft.start.y} r="5" />
             <circle cx={wireDraft.current.x} cy={wireDraft.current.y} r="5" />
+            <text x={wireDraft.current.x + 9} y={wireDraft.current.y - 9}>
+              {wireDraft.endAnchor ? "connect" : "wire"}
+            </text>
+          </g>
+        ) : null}
+
+        {placementSymbol ? (
+          <g className="placement-ghost" pointerEvents="none">
+            <g transform={symbolTransform(
+              {
+                id: "placement-preview",
+                symbolId: placementSymbol.id,
+                reference: "",
+                value: "",
+                x: placementPoint.x,
+                y: placementPoint.y,
+                rotation: 0,
+                mirrored: false,
+              },
+              placementSymbol,
+            )}>
+              <g dangerouslySetInnerHTML={{ __html: placementSymbol.svgBody }} />
+            </g>
+            {placementSymbol.pins.map((pin, pinIndex) => {
+              const point = nodePinPosition(
+                {
+                  id: "placement-preview",
+                  symbolId: placementSymbol.id,
+                  reference: "",
+                  value: "",
+                  x: placementPoint.x,
+                  y: placementPoint.y,
+                  rotation: 0,
+                  mirrored: false,
+                },
+                placementSymbol,
+                pinIndex,
+              );
+              return <circle key={pin.key} cx={point.x} cy={point.y} r="4" />;
+            })}
+            <text x={placementPoint.x} y={placementPoint.y - 34} textAnchor="middle">
+              {placementSymbol.label}
+            </text>
+          </g>
+        ) : null}
+
+        {shapeDraft ? (
+          <g className="shape-draft" pointerEvents="none">
+            {shapeDraft.kind === "ellipse" ? (
+              <ellipse
+                cx={(shapeDraft.start.x + shapeDraft.current.x) / 2}
+                cy={(shapeDraft.start.y + shapeDraft.current.y) / 2}
+                rx={Math.abs(shapeDraft.current.x - shapeDraft.start.x) / 2}
+                ry={Math.abs(shapeDraft.current.y - shapeDraft.start.y) / 2}
+              />
+            ) : (
+              <rect
+                x={Math.min(shapeDraft.start.x, shapeDraft.current.x)}
+                y={Math.min(shapeDraft.start.y, shapeDraft.current.y)}
+                width={Math.abs(shapeDraft.current.x - shapeDraft.start.x)}
+                height={Math.abs(shapeDraft.current.y - shapeDraft.start.y)}
+              />
+            )}
           </g>
         ) : null}
 
@@ -649,7 +1077,18 @@ export function SchematicCanvas({
           />
         ) : null}
       </svg>
-      <div className="canvas-axis-label">100 mil grid</div>
+      <div className="canvas-controls" aria-label="Canvas view controls">
+        <button type="button" onClick={() => zoomAt(window.innerWidth / 2, window.innerHeight / 2, 1.2)}>
+          Zoom in
+        </button>
+        <button type="button" onClick={() => setView({ x: 0, y: 0, width: BASE_WIDTH, height: BASE_HEIGHT })}>
+          {zoomPercent}%
+        </button>
+        <button type="button" onClick={() => zoomAt(window.innerWidth / 2, window.innerHeight / 2, 1 / 1.2)}>
+          Zoom out
+        </button>
+      </div>
+      <div className="canvas-axis-label">Grid 10 · Ctrl+wheel zoom · Space drag</div>
     </div>
   );
 }

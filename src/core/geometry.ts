@@ -30,6 +30,16 @@ export function localPinPosition(symbol: SymbolDefinition, pinIndex: number): Po
   if (!pin) {
     throw new Error(`Unknown pin index ${pinIndex} for ${symbol.id}.`);
   }
+  const centerX = symbol.frame.x + symbol.frame.width / 2;
+  const centerY = symbol.frame.y + symbol.frame.height / 2;
+  if (
+    typeof pin.x === "number" &&
+    Number.isFinite(pin.x) &&
+    typeof pin.y === "number" &&
+    Number.isFinite(pin.y)
+  ) {
+    return { x: centerX + pin.x, y: centerY + pin.y };
+  }
   const sameSide = pinsOnSide(symbol, pin.side);
   const order = Math.max(0, sameSide.findIndex((entry) => entry.index === pinIndex));
   const fraction = (order + 1) / (sameSide.length + 1);
@@ -59,6 +69,22 @@ export function localPinPosition(symbol: SymbolDefinition, pinIndex: number): Po
         y: top + symbol.frame.height * fraction,
       };
   }
+}
+
+export function symbolLabelPosition(
+  node: Pick<ComponentNode, "x" | "y" | "rotation" | "mirrored">,
+  symbol: SymbolDefinition,
+  kind: "reference" | "value",
+): { point: Point; anchor: "start" | "middle" | "end" } {
+  const fallback =
+    kind === "reference"
+      ? { x: 8, y: -2, anchor: "start" as const }
+      : { x: 8, y: 13, anchor: "start" as const };
+  const configured = symbol.labelAnchors?.[kind] ?? fallback;
+  return {
+    point: transformLocalPoint(node, { x: configured.x, y: configured.y }),
+    anchor: configured.anchor,
+  };
 }
 
 export function transformLocalPoint(

@@ -8,6 +8,8 @@ export type IconName =
   | "wire"
   | "junction"
   | "text"
+  | "rectangle"
+  | "ellipse"
   | "net"
   | "undo"
   | "redo"
@@ -82,6 +84,18 @@ export function Icon({
       return (
         <svg {...common}>
           <path d="M5 5h14M12 5v14M8 19h8" />
+        </svg>
+      );
+    case "rectangle":
+      return (
+        <svg {...common}>
+          <rect x="4" y="5" width="16" height="14" rx="1" />
+        </svg>
+      );
+    case "ellipse":
+      return (
+        <svg {...common}>
+          <ellipse cx="12" cy="12" rx="8" ry="6" />
         </svg>
       );
     case "net":

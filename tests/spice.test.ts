@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { createEmptyCell } from "../src/core/model";
+import { createEmptyPage } from "../src/core/model";
 import { exportSpice, importSpice } from "../src/core/spice";
 import { testLibrary, twoPinSymbol } from "./fixtures";
 
 describe("SPICE interchange", () => {
   it("exports a deterministic golden netlist", () => {
-    const cell = createEmptyCell("Main");
-    cell.nodes.push({
+    const page = createEmptyPage("Main");
+    page.nodes.push({
       id: "r1",
       symbolId: twoPinSymbol.id,
       reference: "R1",
@@ -16,14 +16,14 @@ describe("SPICE interchange", () => {
       rotation: 0,
       mirrored: false,
     });
-    cell.annotations.push(
+    page.annotations.push(
       { id: "in", kind: "net", text: "IN", x: 100, y: 80, size: 14 },
       { id: "out", kind: "net", text: "OUT", x: 100, y: 120, size: 14 },
     );
-    expect(exportSpice(cell, testLibrary).text).toBe(
+    expect(exportSpice(page, testLibrary).text).toBe(
       [
         "* Drawic SPICE netlist",
-        "* Cell: Main",
+        "* Page: Main",
         "* Generated locally; values are normalized only by trimming whitespace.",
         "R1 IN OUT 1k",
         ".end",
@@ -40,21 +40,21 @@ describe("SPICE interchange", () => {
         return (prefix: string) => `${prefix}_${++index}`;
       })(),
     });
-    expect(imported.cell.nodes).toHaveLength(2);
-    expect(imported.cell.annotations.map((annotation) => annotation.text)).toEqual([
+    expect(imported.page.nodes).toHaveLength(2);
+    expect(imported.page.annotations.map((annotation) => annotation.text)).toEqual([
       "IN",
       "OUT",
       "OUT",
       "0",
     ]);
-    const output = exportSpice(imported.cell, testLibrary).text;
+    const output = exportSpice(imported.page, testLibrary).text;
     expect(output).toContain("R1 IN OUT 2k");
     expect(output).toContain("C1 OUT 0 10u");
   });
 
   it("reports non-SPICE electrical blocks instead of pretending to export them", () => {
-    const cell = createEmptyCell("Blocks");
-    cell.nodes.push({
+    const page = createEmptyPage("Blocks");
+    page.nodes.push({
       id: "op",
       symbolId: "opamp",
       reference: "U1",
@@ -64,8 +64,8 @@ describe("SPICE interchange", () => {
       rotation: 0,
       mirrored: false,
     });
-    const result = exportSpice(cell, testLibrary);
+    const result = exportSpice(page, testLibrary);
     expect(result.unsupportedDevices).toEqual(["U1: Operational Amplifier"]);
-    expect(result.text).toContain("* Not exported by Drawic 0.1:");
+    expect(result.text).toContain("* Not exported by Drawic 0.2:");
   });
 });

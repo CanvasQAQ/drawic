@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { buildSchematicSvg } from "../src/core/export/svg";
 import { buildBitmapPdf } from "../src/core/export/pdf";
-import { createEmptyCell } from "../src/core/model";
+import { createEmptyPage } from "../src/core/model";
 import { testLibrary, twoPinSymbol } from "./fixtures";
 
 describe("export formats", () => {
   it("produces deterministic standalone SVG", () => {
-    const cell = createEmptyCell("Export & Test");
-    cell.nodes.push({
+    const page = createEmptyPage("Export & Test");
+    page.nodes.push({
       id: "r1",
       symbolId: twoPinSymbol.id,
       reference: "R1",
@@ -17,15 +17,15 @@ describe("export formats", () => {
       rotation: 0,
       mirrored: false,
     });
-    cell.wires.push({
+    page.wires.push({
       id: "wire",
       points: [
         { x: 100, y: 80 },
         { x: 180, y: 80 },
       ],
     });
-    const first = buildSchematicSvg(cell, testLibrary);
-    const second = buildSchematicSvg(cell, testLibrary);
+    const first = buildSchematicSvg(page, testLibrary);
+    const second = buildSchematicSvg(page, testLibrary);
     expect(first).toBe(second);
     expect(first).toContain("<svg");
     expect(first).toContain("Export &amp; Test");

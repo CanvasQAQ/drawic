@@ -1,26 +1,36 @@
-import { activeCell, replaceActiveCell, touchDocument, type DrawicDocument, type Point } from "./model";
 import { isOrthogonalPath } from "./geometry";
+import {
+  createIdentifier,
+  pageById,
+  replacePage,
+  touchDocument,
+  type ConnectionAnchor,
+  type DrawingPage,
+  type DrawicDocument,
+  type Point,
+} from "./model";
 
 export type DocumentClock = () => string;
 
 const nowIso: DocumentClock = () => new Date().toISOString();
 
-export function mutateActiveCell(
+export function mutatePage(
   document: DrawicDocument,
-  mutate: (cell: ReturnType<typeof activeCell>) => ReturnType<typeof activeCell>,
+  pageId: string,
+  mutate: (page: DrawingPage) => DrawingPage,
   clock: DocumentClock = nowIso,
 ): DrawicDocument {
-  const cell = activeCell(document);
-  const nextCell = mutate(cell);
-  if (nextCell === cell) {
+  const page = pageById(document, pageId);
+  const nextPage = mutate(page);
+  if (nextPage === page) {
     return document;
   }
-  return replaceActiveCell(document, nextCell, clock());
+  return replacePage(document, nextPage, clock());
 }
 
-export function renameCell(
+export function renamePage(
   document: DrawicDocument,
-  cellId: string,
+  pageId: string,
   name: string,
   clock: DocumentClock = nowIso,
 ): DrawicDocument {
@@ -28,88 +38,138 @@ export function renameCell(
   if (!clean) {
     return document;
   }
-  return touchDocument(
-    {
-      ...document,
-      cells: document.cells.map((cell) => (cell.id === cellId ? { ...cell, name: clean } : cell)),
-    },
-    clock(),
+  return mutatePage(
+    document,
+    pageId,
+    (page) => (page.name === clean ? page : { ...page, name: clean }),
+    clock,
   );
 }
 
-export function setActiveCell(document: DrawicDocument, cellId: string): DrawicDocument {
-  if (!document.cells.some((cell) => cell.id === cellId)) {
-    return document;
-  }
-  return { ...document, activeCellId: cellId };
-}
-
-export function setTopCell(
+export function addPage(
   document: DrawicDocument,
-  cellId: string,
+  page: DrawingPage,
   clock: DocumentClock = nowIso,
 ): DrawicDocument {
-  if (!document.cells.some((cell) => cell.id === cellId)) {
+  if (document.pages.some((candidate) => candidate.id === page.id)) {
     return document;
   }
   return touchDocument(
     {
       ...document,
-      cells: document.cells.map((cell) => ({ ...cell, isTop: cell.id === cellId })),
+      pages: [...document.pages, page],
     },
     clock(),
   );
 }
 
-export function addCell(
+export function deletePage(
   document: DrawicDocument,
-  cell: ReturnType<typeof activeCell>,
+  pageId: string,
   clock: DocumentClock = nowIso,
 ): DrawicDocument {
+  if (document.pages.length <= 1 || !document.pages.some((page) => page.id === pageId)) {
+    return document;
+  }
   return touchDocument(
     {
       ...document,
-      activeCellId: cell.id,
-      cells: [...document.cells, { ...cell, isTop: false }],
+      pages: document.pages.filter((page) => page.id !== pageId),
     },
     clock(),
   );
 }
 
-export function deleteCell(
+export function movePage(
   document: DrawicDocument,
-  cellId: string,
+  pageId: string,
+  direction: -1 | 1,
   clock: DocumentClock = nowIso,
 ): DrawicDocument {
-  if (document.cells.length <= 1) {
+  const index = document.pages.findIndex((page) => page.id === pageId);
+  const targetIndex = index + direction;
+  if (index < 0 || targetIndex < 0 || targetIndex >= document.pages.length) {
     return document;
   }
-  const target = document.cells.find((cell) => cell.id === cellId);
-  if (!target) {
+  const pages = [...document.pages];
+  const [page] = pages.splice(index, 1);
+  if (!page) {
     return document;
   }
-  const remaining = document.cells.filter((cell) => cell.id !== cellId);
-  const fallback = target.isTop ? remaining[0] : undefined;
-  const cells = remaining.map((cell) =>
-    cell.id === fallback?.id ? { ...cell, isTop: true } : cell,
-  );
-  const activeCellId =
-    document.activeCellId === cellId ? (cells[0]?.id ?? document.activeCellId) : document.activeCellId;
-  return touchDocument({ ...document, cells, activeCellId }, clock());
+  pages.splice(targetIndex, 0, page);
+  return touchDocument({ ...document, pages }, clock());
+}
+
+function remapAnchor(
+  anchor: ConnectionAnchor | undefined,
+  nodeIds: ReadonlyMap<string, string>,
+): ConnectionAnchor | undefined {
+  if (!anchor) {
+    return undefined;
+  }
+  return {
+    deviceId: nodeIds.get(anchor.deviceId) ?? anchor.deviceId,
+    pinId: anchor.pinId,
+  };
+}
+
+export function duplicatePage(
+  document: DrawicDocument,
+  pageId: string,
+  options?: {
+    idFactory?: (prefix: string) => string;
+    pageId?: string;
+    name?: string;
+    clock?: DocumentClock;
+  },
+): DrawicDocument {
+  const source = pageById(document, pageId);
+  const makeId = options?.idFactory ?? createIdentifier;
+  const nodeIds = new Map(source.nodes.map((node) => [node.id, makeId("node")]));
+  const page: DrawingPage = {
+    id: options?.pageId ?? makeId("page"),
+    name: options?.name ?? `${source.name} copy`,
+    nodes: source.nodes.map((node) => ({
+      ...node,
+      id: nodeIds.get(node.id)!,
+    })),
+    wires: source.wires.map((wire) => {
+      const startAnchor = remapAnchor(wire.startAnchor, nodeIds);
+      const endAnchor = remapAnchor(wire.endAnchor, nodeIds);
+      return {
+        id: makeId("wire"),
+        points: wire.points.map((point) => ({ ...point })),
+        ...(startAnchor ? { startAnchor } : {}),
+        ...(endAnchor ? { endAnchor } : {}),
+      };
+    }),
+    junctions: source.junctions.map((point) => ({ ...point })),
+    annotations: source.annotations.map((annotation) => ({
+      ...annotation,
+      id: makeId("annotation"),
+    })),
+    shapes: source.shapes.map((shape) => ({
+      ...shape,
+      id: makeId("shape"),
+    })),
+  };
+  return addPage(document, page, options?.clock ?? nowIso);
 }
 
 export function addJunction(
   document: DrawicDocument,
+  pageId: string,
   point: Point,
   clock: DocumentClock = nowIso,
 ): DrawicDocument {
-  return mutateActiveCell(
+  return mutatePage(
     document,
-    (cell) => {
-      if (cell.junctions.some((junction) => junction.x === point.x && junction.y === point.y)) {
-        return cell;
+    pageId,
+    (page) => {
+      if (page.junctions.some((junction) => junction.x === point.x && junction.y === point.y)) {
+        return page;
       }
-      return { ...cell, junctions: [...cell.junctions, point] };
+      return { ...page, junctions: [...page.junctions, point] };
     },
     clock,
   );

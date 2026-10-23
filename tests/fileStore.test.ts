@@ -18,7 +18,7 @@ describe("atomic local project files", () => {
     const directory = await mkdtemp(join(tmpdir(), "drawic-file-test-"));
     directories.push(directory);
     const file = join(directory, "roundtrip.drawic.json");
-    const content = '{"schemaVersion":1,"kind":"drawic-schematic"}\n';
+    const content = '{"schemaVersion":2,"kind":"drawic-drawing","pages":[]}\n';
     await atomicWriteFile(file, content);
     expect(await readFile(file, "utf8")).toBe(content);
     expect(await readdir(directory)).toEqual(["roundtrip.drawic.json"]);

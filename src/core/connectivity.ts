@@ -8,8 +8,8 @@ import {
 import type {
   Annotation,
   ComponentNode,
+  DrawingPage,
   Point,
-  SchematicCell,
   SelectionRef,
   SymbolDefinition,
 } from "./model";
@@ -96,7 +96,7 @@ function endpointMatch(point: Point, segment: Segment): boolean {
 }
 
 export function buildConnectivity(
-  cell: SchematicCell,
+  page: DrawingPage,
   library: readonly SymbolDefinition[],
 ): ConnectivityResult {
   const graph = new DisjointSet();
@@ -104,14 +104,14 @@ export function buildConnectivity(
   const segments: Segment[] = [];
   const pinTerminals: PinTerminal[] = [];
 
-  for (const wire of cell.wires) {
+  for (const wire of page.wires) {
     graph.add(wireGraphKey(wire.id));
     for (let index = 0; index < wire.points.length - 1; index += 1) {
       const start = wire.points[index]!;
       const end = wire.points[index + 1]!;
       segments.push({
         wireId: wire.id,
-        wireIndex: cell.wires.indexOf(wire),
+        wireIndex: page.wires.indexOf(wire),
         segmentIndex: index,
         start,
         end,
@@ -119,7 +119,7 @@ export function buildConnectivity(
     }
   }
 
-  for (const node of cell.nodes) {
+  for (const node of page.nodes) {
     const symbol = bySymbol.get(node.symbolId);
     if (!symbol) {
       continue;
@@ -135,6 +135,20 @@ export function buildConnectivity(
         }
       }
     });
+  }
+
+  for (const wire of page.wires) {
+    for (const anchor of [wire.startAnchor, wire.endAnchor]) {
+      if (!anchor) {
+        continue;
+      }
+      const node = page.nodes.find((candidate) => candidate.id === anchor.deviceId);
+      const symbol = node ? bySymbol.get(node.symbolId) : undefined;
+      const pinIndex = symbol?.pins.findIndex((pin) => pin.key === anchor.pinId) ?? -1;
+      if (node && pinIndex >= 0) {
+        graph.union(wireGraphKey(wire.id), pinGraphKey(node.id, pinIndex));
+      }
+    }
   }
 
   for (let left = 0; left < segments.length; left += 1) {
@@ -153,7 +167,7 @@ export function buildConnectivity(
         pointOnSegment(b.end, a.start, a.end, 0.7);
       const explicitJunction =
         intersection !== null &&
-        cell.junctions.some((junction) => pointsEqual(junction, intersection, 0.5));
+        page.junctions.some((junction) => pointsEqual(junction, intersection, 0.5));
       if (
         intersection &&
         (aEndpointOnB || bEndpointOnA || explicitJunction)
@@ -164,7 +178,7 @@ export function buildConnectivity(
   }
 
   const labelsByText = new Map<string, string[]>();
-  for (const annotation of cell.annotations) {
+  for (const annotation of page.annotations) {
     if (annotation.kind !== "net") {
       continue;
     }
@@ -212,11 +226,11 @@ export function buildConnectivity(
     networkIdByPin.set(pin.key, networkIdByKey.get(pin.key)!);
   }
   const networkIdByWire = new Map<string, string>();
-  for (const wire of cell.wires) {
+  for (const wire of page.wires) {
     networkIdByWire.set(wire.id, networkIdByKey.get(wireGraphKey(wire.id))!);
   }
   const networkIdByAnnotation = new Map<string, string>();
-  for (const annotation of cell.annotations) {
+  for (const annotation of page.annotations) {
     const networkId = networkIdByKey.get(annotationGraphKey(annotation.id));
     if (networkId) {
       networkIdByAnnotation.set(annotation.id, networkId);
@@ -226,7 +240,7 @@ export function buildConnectivity(
   const netNamesByGroup = new Map<string, string[]>();
   for (const group of groups) {
     const networkId = networkIdByKey.get(group[0]!)!;
-    const names = cell.annotations
+    const names = page.annotations
       .filter(
         (annotation) =>
           annotation.kind === "net" &&
@@ -239,7 +253,7 @@ export function buildConnectivity(
     netNamesByGroup.set(networkId, names);
   }
 
-  const explicitJunctions = cell.junctions.map((point) => ({ ...point }));
+  const explicitJunctions = page.junctions.map((point) => ({ ...point }));
   const automaticJunctions: Point[] = [];
   const endpointWires = new Map<string, Set<string>>();
   for (const segment of segments) {
