@@ -1,0 +1,175 @@
+name: Unsigned Preview Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+env:
+  CSC_IDENTITY_AUTO_DISCOVERY: "false"
+  ELECTRON_BUILDER_CACHE: "${{ github.workspace }}/.cache/electron-builder"
+
+jobs:
+  validate:
+    name: Validate source
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run verify:offline
+      - run: npm run verify:clean-room
+      - run: npm run build
+
+  package:
+    name: Package ${{ matrix.label }}
+    needs: validate
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: Linux x64
+            os: ubuntu-22.04
+            artifact: linux-x64
+            target: linux
+            arch: x64
+            command: npx electron-builder --linux AppImage deb tar.gz --x64
+          - label: Windows x64
+            os: windows-2022
+            artifact: windows-x64
+            target: windows
+            arch: x64
+            command: npx electron-builder --win nsis portable --x64
+          - label: macOS x64
+            os: macos-15-intel
+            artifact: macos-x64
+            target: macos
+            arch: x64
+            command: npx electron-builder --mac dmg zip --x64
+          - label: macOS arm64
+            os: macos-15
+            artifact: macos-arm64
+            target: macos
+            arch: arm64
+            command: npx electron-builder --mac dmg zip --arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Build installers
+        shell: bash
+        run: ${{ matrix.command }}
+      - name: Package smoke test
+        if: matrix.target == 'linux'
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb
+          npm run smoke:packaged
+      - name: Collect assets
+        shell: bash
+        run: |
+          mkdir -p artifacts
+          if [ "${{ matrix.target }}" = "linux" ]; then
+            find release -maxdepth 1 -type f \( -name '*.AppImage' -o -name '*.deb' -o -name '*.tar.gz' \) -exec cp {} artifacts/ \;
+          elif [ "${{ matrix.target }}" = "windows" ]; then
+            find release -maxdepth 1 -type f -name '*.exe' -exec cp {} artifacts/ \;
+          else
+            find release -maxdepth 1 -type f \( -name '*.dmg' -o -name '*.zip' \) -exec cp {} artifacts/ \;
+          fi
+          test "$(find artifacts -maxdepth 1 -type f | wc -l)" -gt 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: artifacts/*
+          if-no-files-found: error
+
+  source-package:
+    name: Source archive
+    needs: validate
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Archive source
+        run: |
+          mkdir -p artifacts
+          version="${GITHUB_REF_NAME#v}"
+          git archive --format=zip --prefix="drawic-${version}/" \
+            -o "artifacts/Drawic-${version}-source.zip" HEAD
+          (cd artifacts && sha256sum "Drawic-${version}-source.zip" > "Drawic-${version}-source.zip.sha256")
+      - uses: actions/upload-artifact@v4
+        with:
+          name: source
+          path: artifacts/Drawic-*-source.zip*
+          if-no-files-found: error
+
+  release:
+    name: Upload verified release
+    needs: [package, source-package]
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: downloads
+      - name: Assemble release files
+        run: |
+          mkdir -p release
+          find downloads -type f \( -name '*.exe' -o -name '*.dmg' -o -name '*.AppImage' -o -name '*.deb' -o -name '*.tar.gz' \) -exec cp {} release/ \;
+          cp downloads/source/Drawic-*-source.zip release/
+          cat > release/UNSIGNED-PREVIEW.txt <<'EOF'
+          Drawic v0.1.0 is an UNSIGNED PREVIEW.
+
+          Windows SmartScreen and macOS Gatekeeper publication warnings are expected.
+          These packages have no code-signing or notarization certificate.
+          Verify every downloaded file against SHA256SUMS.txt before running it.
+          EOF
+          node scripts/generate-checksums.mjs
+          node scripts/verify-release-assets.mjs
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" release/* --clobber
+            gh release edit "$tag" \
+              --title "Drawic ${tag} — Unsigned Preview" \
+              --notes-file docs/release-notes-v0.1.0.md
+          else
+            gh release create "$tag" release/* \
+              --title "Drawic ${tag} — Unsigned Preview" \
+              --notes-file docs/release-notes-v0.1.0.md
+          fi
+      - name: Verify downloaded checksum and uploaded state
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          mkdir -p verify
+          appimage="$(ls release/Drawic-*-Unsigned-Preview-linux-x64.AppImage | head -1)"
+          name="$(basename "$appimage")"
+          gh release download "$tag" --pattern "$name" --dir verify
+          expected="$(grep "  ${name}$" release/SHA256SUMS.txt | cut -d' ' -f1)"
+          actual="$(sha256sum "verify/${name}" | cut -d' ' -f1)"
+          test "$expected" = "$actual"
+          gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${tag}" \
+            --jq '.assets[] | "\(.name)\t\(.state)"' > asset-states.txt
+          grep -q "	uploaded$" asset-states.txt
+          test "$(wc -l < asset-states.txt)" -ge 12
+          cat asset-states.txt
