@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 const requiredPatterns = [
   /-.+-Unsigned-Preview-windows-x64-setup\.exe$/,
   /-.+-Unsigned-Preview-windows-x64-portable\.exe$/,
+  /-.+-Unsigned-Preview-windows-x64\.zip$/,
   /-.+-Unsigned-Preview-macos-x64\.dmg$/,
   /-.+-Unsigned-Preview-macos-x64\.zip$/,
   /-.+-Unsigned-Preview-macos-arm64\.dmg$/,

@@ -10,7 +10,7 @@ dependency lineage.
 
 ## Preview status
 
-Version 0.1.0 is an **Unsigned Preview**. The editor closes the core schematic
+Version 0.1.1 is an **Unsigned Preview**. The editor closes the core schematic
 editing loop and can produce project, SPICE, SVG, PNG, and PDF files. Hierarchical
 block instances, custom libraries, Spectre/SCS, and local MCP are explicitly not
 implemented.
@@ -123,6 +123,11 @@ service, sync, account, telemetry, or update-check request.
   omitted on SPICE export.
 - Cross-cell electrical connectivity is not inferred.
 - All 0.1 packages are unsigned.
+
+The Windows release includes an unpacked application ZIP alongside NSIS and
+portable EXE files. A ZIP avoids a direct EXE download and can reduce browser
+download blocking, but the unsigned executable inside still triggers Windows
+SmartScreen on first launch.
 
 ## License
 

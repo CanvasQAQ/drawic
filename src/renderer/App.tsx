@@ -842,7 +842,7 @@ export function App() {
             Run ERC
           </button>
           <span>{dirty ? "Modified" : "Local file synced"}</span>
-          <span>Preview 0.1.0</span>
+          <span>Preview 0.1.1</span>
         </div>
       </footer>
 

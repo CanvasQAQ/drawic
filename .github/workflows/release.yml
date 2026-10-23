@@ -47,7 +47,7 @@ jobs:
             artifact: windows-x64
             target: windows
             arch: x64
-            command: npx electron-builder --win nsis portable --x64 --publish never
+            command: npx electron-builder --win nsis portable zip --x64 --publish never
           - label: macOS x64
             os: macos-15-intel
             artifact: macos-x64
@@ -86,7 +86,7 @@ jobs:
           if [ "${{ matrix.target }}" = "linux" ]; then
             find release -maxdepth 1 -type f \( -name '*.AppImage' -o -name '*.deb' -o -name '*.tar.gz' \) -exec cp {} artifacts/ \;
           elif [ "${{ matrix.target }}" = "windows" ]; then
-            find release -maxdepth 1 -type f -name '*.exe' -exec cp {} artifacts/ \;
+            find release -maxdepth 1 -type f \( -name '*.exe' -o -name '*.zip' \) -exec cp {} artifacts/ \;
           else
             find release -maxdepth 1 -type f \( -name '*.dmg' -o -name '*.zip' \) -exec cp {} artifacts/ \;
           fi
@@ -132,8 +132,9 @@ jobs:
           mkdir -p release
           find downloads -type f \( -name '*.exe' -o -name '*.dmg' -o -name '*.zip' -o -name '*.AppImage' -o -name '*.deb' -o -name '*.tar.gz' \) -exec cp {} release/ \;
           cp downloads/source/Drawic-*-source.zip release/
-          cat > release/UNSIGNED-PREVIEW.txt <<'EOF'
-          Drawic v0.1.0 is an UNSIGNED PREVIEW.
+          version="${GITHUB_REF_NAME#v}"
+          cat > release/UNSIGNED-PREVIEW.txt <<EOF
+          Drawic v${version} is an UNSIGNED PREVIEW.
 
           Windows SmartScreen and macOS Gatekeeper publication warnings are expected.
           These packages have no code-signing or notarization certificate.
@@ -151,12 +152,12 @@ jobs:
             gh release edit "$tag" \
               --title "Drawic ${tag} — Unsigned Preview" \
               --prerelease \
-              --notes-file docs/release-notes-v0.1.0.md
+              --notes-file docs/release-notes-v0.1.1.md
           else
             gh release create "$tag" release/* \
               --title "Drawic ${tag} — Unsigned Preview" \
               --prerelease \
-              --notes-file docs/release-notes-v0.1.0.md
+              --notes-file docs/release-notes-v0.1.1.md
           fi
       - name: Verify downloaded checksum and uploaded state
         env:
@@ -173,5 +174,5 @@ jobs:
           gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${tag}" \
             --jq '.assets[] | "\(.name)\t\(.state)"' > asset-states.txt
           grep -q "	uploaded$" asset-states.txt
-          test "$(wc -l < asset-states.txt)" -ge 12
+          test "$(wc -l < asset-states.txt)" -ge 13
           cat asset-states.txt
