@@ -41,25 +41,25 @@ jobs:
             artifact: linux-x64
             target: linux
             arch: x64
-            command: npx electron-builder --linux AppImage deb tar.gz --x64
+            command: npx electron-builder --linux AppImage deb tar.gz --x64 --publish never
           - label: Windows x64
             os: windows-2022
             artifact: windows-x64
             target: windows
             arch: x64
-            command: npx electron-builder --win nsis portable --x64
+            command: npx electron-builder --win nsis portable --x64 --publish never
           - label: macOS x64
             os: macos-15-intel
             artifact: macos-x64
             target: macos
             arch: x64
-            command: npx electron-builder --mac dmg zip --x64
+            command: npx electron-builder --mac dmg zip --x64 --publish never
           - label: macOS arm64
             os: macos-15
             artifact: macos-arm64
             target: macos
             arch: arm64
-            command: npx electron-builder --mac dmg zip --arm64
+            command: npx electron-builder --mac dmg zip --arm64 --publish never
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4

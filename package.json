@@ -3,7 +3,16 @@
   "version": "0.1.0",
   "description": "A local-first analog and mixed-signal schematic editor.",
   "main": "dist/main/main.js",
-  "author": "CanvasQAQ",
+  "author": {
+    "name": "CanvasQAQ",
+    "email": "CanvasQAQ@users.noreply.github.com"
+  },
+  "homepage": "https://github.com/CanvasQAQ/drawic",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/CanvasQAQ/drawic.git"
+  },
+  "desktopName": "drawic.desktop",
   "license": "MIT",
   "private": true,
   "scripts": {
@@ -110,6 +119,7 @@
     },
     "linux": {
       "icon": "build/icon.png",
+      "syncDesktopName": true,
       "target": [
         {
           "target": "AppImage",
