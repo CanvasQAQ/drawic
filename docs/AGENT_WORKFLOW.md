@@ -266,15 +266,16 @@ npm run verify:docs
 npm run build
 ```
 
-Desktop smoke on headless Linux:
+Desktop directory-package smoke on headless Linux:
 
 ```bash
 npm run dist:dir
 xvfb-run -a npm run smoke:packaged
 ```
 
-Native packages should be produced on native CI runners. Linux cross-building
-cannot be used as proof that Windows NSIS packaging succeeds.
+Tagged distribution packages are currently produced only on a native Windows
+runner as the Windows x64 ZIP. The Windows package smoke test runs in CI before
+publishing.
 
 Release assembly:
 
@@ -283,8 +284,8 @@ npm run checksums
 npm run verify:release
 ```
 
-`verify:release` expects a fully assembled `release/` directory and is intended
-for CI after all platform artifacts are collected.
+`verify:release` expects a fully assembled `release/` directory containing
+exactly one Windows x64 ZIP plus `SHA256SUMS.txt` and `UNSIGNED-RELEASE.txt`.
 
 ## 8. Test placement
 
@@ -299,7 +300,8 @@ for CI after all platform artifacts are collected.
 - canvas interactions: `tests/canvasInteraction.test.tsx`
 - desktop close protection and files: `tests/closeGuard.test.ts`,
   `tests/fileStore.test.ts`
-- packaging expectations: `tests/packaging.test.ts`
+- packaging and release-retention expectations: `tests/packaging.test.ts`,
+  `tests/releaseRetention.test.mjs`
 
 Prefer behavior tests over implementation-detail snapshots. Tests must not
 depend on the current clock, filesystem outside a temporary directory, network,
@@ -324,23 +326,29 @@ Run the provided audits before committing security-sensitive changes.
 
 1. Complete all code and documentation changes.
 2. Update the version in `package.json` and `package-lock.json`.
-3. Add `docs/release-notes-vX.Y.Z.md` matching the exact tag.
+3. Add release notes matching the exact tag: use
+   `docs/release-notes-vX.Y.Z-preview.md` for a preview and
+   `docs/release-notes-vX.Y.Z.md` for a formal release.
 4. Update README capability and limitation statements.
 5. Run all source, audit, build, and packaging gates.
 6. Commit the release preparation.
-7. Create and push an annotated tag named `vX.Y.Z`.
+7. Create and push an annotated tag: `vX.Y.Z-preview` for previews and
+   `vX.Y.Z` for formal releases.
 8. Wait for the tag-driven GitHub Actions workflow to succeed.
-9. Confirm every Windows, macOS x64/arm64, Linux, source, checksum, and unsigned
-   notice asset is uploaded.
+9. Confirm the Windows x64 ZIP, checksum file, and unsigned notice are uploaded.
 10. Download at least one final asset and verify its SHA-256 against the
     published checksum file.
 
-Never publish a release when any platform build, test, packaged smoke test, or
-audit has failed. Do not describe unsigned preview artifacts as signed.
+Never publish a release when any build, test, packaged smoke test, or audit has
+failed. Do not describe unsigned artifacts as signed.
 
-Windows releases include NSIS, portable EXE, and an application ZIP. A ZIP can
+The temporary Windows release profile contains one application ZIP. A ZIP can
 avoid direct-binary download friction but does not remove SmartScreen warnings
 for the unsigned executable inside.
+
+After a successful publish, CI retains only the newest Preview release and the
+newest formal release. Older Release entries and their tags are removed
+automatically. Draft releases are never pruned.
 
 ## 11. Clean-room and provenance
 

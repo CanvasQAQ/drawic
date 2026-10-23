@@ -18,9 +18,13 @@ pages and a single-file device library, and can produce project, SPICE, SVG, PNG
 and PDF files. User-editable libraries, Spectre/SCS, and local MCP are explicitly
 not implemented.
 
-All release installers use names containing `Unsigned-Preview`. Windows
-SmartScreen and macOS Gatekeeper warnings are expected because no signing
-certificate is configured.
+Tagged Preview releases currently publish one Windows x64 ZIP named
+`Unsigned-Preview`. Windows SmartScreen warnings are expected because no signing
+certificate is configured. macOS and Linux release packages remain paused until
+the Windows preview workflow is stable.
+
+Use tags such as `v0.2.1-preview` for Preview releases. A plain semantic version
+tag such as `v1.0.0` is treated as a formal release.
 
 ## Implemented in 0.2
 
@@ -78,9 +82,10 @@ npm run dist:dir
 npm run smoke:packaged
 ```
 
-Linux packaging smoke uses `xvfb-run`. Release packaging is performed by the
-tag-driven GitHub Actions workflow, which builds Windows, macOS x64, macOS
-arm64, and Linux artifacts on native runners.
+Linux directory-package smoke uses `xvfb-run`. Tagged releases are built on a
+native Windows runner and publish only the Windows x64 ZIP. The workflow keeps
+the newest Preview and newest formal release, then removes superseded Release
+entries and tags.
 
 ## Project files and local data
 
@@ -148,10 +153,10 @@ service, sync, account, telemetry, or update-check request.
   between pages.
 - All 0.2 packages are unsigned.
 
-The Windows release includes an unpacked application ZIP alongside NSIS and
-portable EXE files. A ZIP avoids a direct EXE download and can reduce browser
-download blocking, but the unsigned executable inside still triggers Windows
-SmartScreen on first launch.
+The temporary Windows release profile publishes only an unpacked application
+ZIP. The unsigned executable inside still triggers Windows SmartScreen on first
+launch. Installer and other-platform packaging can return after the preview
+workflow is stable.
 
 ## License
 

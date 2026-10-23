@@ -31,6 +31,7 @@
     "verify:clean-room": "node scripts/verify-clean-room.mjs",
     "verify:docs": "node scripts/verify-docs.mjs",
     "verify:release": "node scripts/verify-release-assets.mjs",
+    "prune:releases": "node scripts/prune-github-releases.mjs",
     "checksums": "node scripts/generate-checksums.mjs",
     "smoke:packaged": "node scripts/smoke-packaged.mjs"
   },
@@ -82,18 +83,6 @@
       "icon": "build/icon.png",
       "target": [
         {
-          "target": "nsis",
-          "arch": [
-            "x64"
-          ]
-        },
-        {
-          "target": "portable",
-          "arch": [
-            "x64"
-          ]
-        },
-        {
           "target": "zip",
           "arch": [
             "x64"
@@ -101,61 +90,6 @@
         }
       ],
       "artifactName": "Drawic-${version}-Unsigned-Preview-windows-${arch}.${ext}"
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "artifactName": "Drawic-${version}-Unsigned-Preview-windows-${arch}-setup.${ext}"
-    },
-    "portable": {
-      "artifactName": "Drawic-${version}-Unsigned-Preview-windows-${arch}-portable.${ext}"
-    },
-    "mac": {
-      "icon": "build/icon.png",
-      "category": "public.app-category.developer-tools",
-      "target": [
-        "dmg",
-        "zip"
-      ],
-      "artifactName": "Drawic-${version}-Unsigned-Preview-macos-${arch}.${ext}",
-      "identity": null,
-      "hardenedRuntime": false
-    },
-    "dmg": {
-      "artifactName": "Drawic-${version}-Unsigned-Preview-macos-${arch}.${ext}"
-    },
-    "linux": {
-      "icon": "build/icon.png",
-      "syncDesktopName": true,
-      "target": [
-        {
-          "target": "AppImage",
-          "arch": [
-            "x64"
-          ]
-        },
-        {
-          "target": "deb",
-          "arch": [
-            "x64"
-          ]
-        },
-        {
-          "target": "tar.gz",
-          "arch": [
-            "x64"
-          ]
-        }
-      ],
-      "category": "Development",
-      "artifactName": "Drawic-${version}-Unsigned-Preview-linux-${arch}.${ext}"
-    },
-    "appImage": {
-      "artifactName": "Drawic-${version}-Unsigned-Preview-linux-x64.AppImage"
-    },
-    "deb": {
-      "artifactName": "Drawic-${version}-Unsigned-Preview-linux-x64.deb"
     }
   }
 }

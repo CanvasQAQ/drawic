@@ -10,7 +10,8 @@ const files = (await readdir(releaseDirectory, { withFileTypes: true }))
       entry.isFile() &&
       !entry.name.startsWith("builder-") &&
       entry.name !== "SHA256SUMS.txt" &&
-      entry.name !== "UNSIGNED-PREVIEW.txt",
+      entry.name !== "UNSIGNED-PREVIEW.txt" &&
+      entry.name !== "UNSIGNED-RELEASE.txt",
   )
   .map((entry) => entry.name)
   .sort();
