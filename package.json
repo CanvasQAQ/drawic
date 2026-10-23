@@ -2,7 +2,7 @@
   "name": "drawic",
   "version": "0.1.0",
   "description": "A local-first analog and mixed-signal schematic editor.",
-  "main": "dist/main/main/index.js",
+  "main": "dist/main/main.js",
   "author": "CanvasQAQ",
   "license": "MIT",
   "private": true,
@@ -19,6 +19,8 @@
     "dist:dir": "npm run build && electron-builder --dir",
     "verify:offline": "node scripts/verify-offline.mjs",
     "verify:clean-room": "node scripts/verify-clean-room.mjs",
+    "verify:release": "node scripts/verify-release-assets.mjs",
+    "checksums": "node scripts/generate-checksums.mjs",
     "smoke:packaged": "node scripts/smoke-packaged.mjs"
   },
   "dependencies": {
@@ -66,6 +68,7 @@
       }
     ],
     "win": {
+      "icon": "build/icon.png",
       "target": [
         {
           "target": "nsis",
@@ -92,22 +95,11 @@
       "artifactName": "Drawic-${version}-Unsigned-Preview-windows-${arch}-portable.${ext}"
     },
     "mac": {
+      "icon": "build/icon.png",
       "category": "public.app-category.developer-tools",
       "target": [
-        {
-          "target": "dmg",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        },
-        {
-          "target": "zip",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        }
+        "dmg",
+        "zip"
       ],
       "artifactName": "Drawic-${version}-Unsigned-Preview-macos-${arch}.${ext}",
       "identity": null,
@@ -117,6 +109,7 @@
       "artifactName": "Drawic-${version}-Unsigned-Preview-macos-${arch}.${ext}"
     },
     "linux": {
+      "icon": "build/icon.png",
       "target": [
         {
           "target": "AppImage",

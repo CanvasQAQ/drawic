@@ -5,6 +5,7 @@ export type AppCommand =
   | "open-project"
   | "save-project"
   | "save-project-as"
+  | "save-project-before-close"
   | "undo"
   | "redo"
   | "delete-selection"
@@ -71,10 +72,12 @@ export interface DrawicBridge {
   checkpoint: (request: { projectId: string; content: string }) => Promise<void>;
   clearRecovery: (projectId: string) => Promise<void>;
   getRecovery: () => Promise<RecoveryPayload | null>;
+  getLaunchProject: () => Promise<OpenProjectPayload | null>;
   setDocumentDirty: (dirty: boolean) => void;
   finishClose: () => void;
   onCommand: (listener: (command: AppCommand) => void) => () => void;
-  platform: NodeJS.Platform;
+  onProjectOpen: (listener: (payload: OpenProjectPayload) => void) => () => void;
+  platform: string;
   version: string;
 }
 
