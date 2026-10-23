@@ -294,6 +294,14 @@ export function SchematicCanvas({
     setView((current) => zoomViewport(current, center, factor));
   }
 
+  function zoomAtCanvasCenter(factor: number): void {
+    const rect = svgRef.current?.getBoundingClientRect();
+    if (!rect) {
+      return;
+    }
+    zoomAt(rect.left + rect.width / 2, rect.top + rect.height / 2, factor);
+  }
+
   function snapWirePoint(point: Point): SnapResult {
     const svg = svgRef.current;
     const rect = svg?.getBoundingClientRect();
@@ -388,17 +396,18 @@ export function SchematicCanvas({
     if (event.button !== 0 || spacePressed) {
       return;
     }
-    event.stopPropagation();
     const symbol = symbols.get(node.symbolId);
     if (!symbol) {
       return;
     }
     const point = nodePinPosition(node, symbol, pinIndex);
     if (placementSymbol) {
+      event.stopPropagation();
       onPlace(point);
       return;
     }
     if (tool === "wire") {
+      event.stopPropagation();
       const anchor = { deviceId: node.id, pinId: symbol.pins[pinIndex]!.key };
       if (wireDraft) {
         finishWire(point, anchor);
@@ -1078,13 +1087,13 @@ export function SchematicCanvas({
         ) : null}
       </svg>
       <div className="canvas-controls" aria-label="Canvas view controls">
-        <button type="button" onClick={() => zoomAt(window.innerWidth / 2, window.innerHeight / 2, 1.2)}>
+        <button type="button" onClick={() => zoomAtCanvasCenter(1.2)}>
           Zoom in
         </button>
         <button type="button" onClick={() => setView({ x: 0, y: 0, width: BASE_WIDTH, height: BASE_HEIGHT })}>
           {zoomPercent}%
         </button>
-        <button type="button" onClick={() => zoomAt(window.innerWidth / 2, window.innerHeight / 2, 1 / 1.2)}>
+        <button type="button" onClick={() => zoomAtCanvasCenter(1 / 1.2)}>
           Zoom out
         </button>
       </div>
