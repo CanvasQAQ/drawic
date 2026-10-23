@@ -1,9 +1,96 @@
 import type { SymbolDefinition, SymbolSide } from "./model";
 
-export interface RawSymbolManifest {
+export const DEVICE_LIBRARY_FORMAT = "drawic-device-library" as const;
+export const DEVICE_LIBRARY_SCHEMA_VERSION = 1 as const;
+
+export interface DeviceLibraryLabelAnchor {
+  x: number;
+  y: number;
+  anchor: "start" | "middle" | "end";
+}
+
+export interface DeviceLibraryPin {
+  id: string;
+  key: string;
+  name: string;
+  role: string;
+  direction: SymbolSide;
+  side: SymbolSide;
+  x: number;
+  y: number;
+}
+
+export interface DeviceLibrarySpice {
+  prefix: string;
+  defaultValue: string;
+  supported: boolean;
+}
+
+export interface DeviceLibraryRecord {
+  id: string;
+  title: string;
+  category: string;
+  keywords: string[];
+  electrical: boolean;
+  palette: boolean;
+  frame: { x: number; y: number; width: number; height: number };
+  artwork: {
+    type: "svg";
+    viewBox: string;
+    body: string;
+    source: string;
+    sourceSha256: string;
+  };
+  pins: DeviceLibraryPin[];
+  labelAnchors: {
+    reference: DeviceLibraryLabelAnchor;
+    value: DeviceLibraryLabelAnchor;
+  };
+  spice: DeviceLibrarySpice;
+  metadata: {
+    sourceCollection: string;
+    sourceRevision: string | null;
+  };
+}
+
+export interface DeviceLibraryFile {
+  format: typeof DEVICE_LIBRARY_FORMAT;
+  schemaVersion: typeof DEVICE_LIBRARY_SCHEMA_VERSION;
+  id: string;
+  title: string;
+  revision: string;
+  source: {
+    collection: string;
+    manifestVersion: number;
+    entryCount: number;
+  };
+  devices: DeviceLibraryRecord[];
+}
+
+export interface DeviceSymbol extends SymbolDefinition {
+  pins: DeviceLibraryPin[];
+  viewBox: string;
+  labelAnchors: DeviceLibraryRecord["labelAnchors"];
+  keywords: string[];
+  spice: DeviceLibrarySpice;
+  libraryId: string;
+}
+
+export interface LoadedDeviceLibrary {
+  id: string;
+  title: string;
+  revision: string;
+  symbols: DeviceSymbol[];
+  byId: ReadonlyMap<string, DeviceSymbol>;
+}
+
+/**
+ * Temporary adapter for the renderer migration in progress. New code must load
+ * the single-file library through parseDeviceLibrary/loadDeviceLibrary.
+ */
+export interface LegacySymbolManifest {
   manifestVersion: number;
   collection: string;
-  categories: string[];
   entries: Array<{
     id: string;
     label: string;
@@ -16,32 +103,282 @@ export interface RawSymbolManifest {
   }>;
 }
 
-export function extractSvgBody(markup: string): string {
-  const withoutHeader = markup
-    .replace(/^\uFEFF/, "")
-    .replace(/<\?xml[\s\S]*?\?>/i, "")
-    .replace(/<!--[\s\S]*?-->/g, "");
-  const match = withoutHeader.match(/<svg\b[^>]*>([\s\S]*?)<\/svg>/i);
-  if (!match?.[1]) {
-    throw new Error("A bundled symbol is not a valid SVG document.");
+/** @deprecated Use DeviceLibraryFile from parseDeviceLibrary. */
+export type RawSymbolManifest = LegacySymbolManifest;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function expectString(value: unknown, field: string): string {
+  if (typeof value !== "string") {
+    throw new Error(`${field} must be a string.`);
   }
-  return match[1].replace(/<title\b[\s\S]*?<\/title>/gi, "").replace(/<desc\b[\s\S]*?<\/desc>/gi, "");
+  return value;
+}
+
+function expectNumber(value: unknown, field: string): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    throw new Error(`${field} must be a finite number.`);
+  }
+  return value;
+}
+
+function expectBoolean(value: unknown, field: string): boolean {
+  if (typeof value !== "boolean") {
+    throw new Error(`${field} must be boolean.`);
+  }
+  return value;
+}
+
+function parseAnchor(value: unknown, field: string): DeviceLibraryLabelAnchor {
+  if (
+    !isRecord(value) ||
+    (value.anchor !== "start" && value.anchor !== "middle" && value.anchor !== "end")
+  ) {
+    throw new Error(`${field} must be a valid label anchor.`);
+  }
+  return {
+    x: expectNumber(value.x, `${field}.x`),
+    y: expectNumber(value.y, `${field}.y`),
+    anchor: value.anchor,
+  };
+}
+
+function parsePin(value: unknown, field: string): DeviceLibraryPin {
+  if (!isRecord(value)) {
+    throw new Error(`${field} must be an object.`);
+  }
+  const direction = value.direction;
+  if (
+    direction !== "north" &&
+    direction !== "east" &&
+    direction !== "south" &&
+    direction !== "west"
+  ) {
+    throw new Error(`${field}.direction is invalid.`);
+  }
+  return {
+    id: expectString(value.id, `${field}.id`),
+    key: expectString(value.key, `${field}.key`),
+    name: expectString(value.name, `${field}.name`),
+    role: expectString(value.role, `${field}.role`),
+    direction,
+    side: direction,
+    x: expectNumber(value.x, `${field}.x`),
+    y: expectNumber(value.y, `${field}.y`),
+  };
+}
+
+function parseDevice(value: unknown, index: number): DeviceLibraryRecord {
+  const field = `devices[${index}]`;
+  if (
+    !isRecord(value) ||
+    !isRecord(value.frame) ||
+    !isRecord(value.artwork) ||
+    !isRecord(value.spice) ||
+    !isRecord(value.labelAnchors)
+  ) {
+    throw new Error(`${field} has an invalid shape.`);
+  }
+  if (!Array.isArray(value.pins) || !Array.isArray(value.keywords)) {
+    throw new Error(`${field} must contain pins and keywords arrays.`);
+  }
+  if (value.artwork.type !== "svg") {
+    throw new Error(`${field}.artwork.type is unsupported.`);
+  }
+  const body = expectString(value.artwork.body, `${field}.artwork.body`);
+  if (/<script\b|\son[a-z]+\s*=|javascript:/i.test(body)) {
+    throw new Error(`${field}.artwork.body contains executable content.`);
+  }
+  return {
+    id: expectString(value.id, `${field}.id`),
+    title: expectString(value.title, `${field}.title`),
+    category: expectString(value.category, `${field}.category`),
+    keywords: value.keywords.map((term, termIndex) =>
+      expectString(term, `${field}.keywords[${termIndex}]`),
+    ),
+    electrical: expectBoolean(value.electrical, `${field}.electrical`),
+    palette: expectBoolean(value.palette, `${field}.palette`),
+    frame: {
+      x: expectNumber(value.frame.x, `${field}.frame.x`),
+      y: expectNumber(value.frame.y, `${field}.frame.y`),
+      width: expectNumber(value.frame.width, `${field}.frame.width`),
+      height: expectNumber(value.frame.height, `${field}.frame.height`),
+    },
+    artwork: {
+      type: "svg",
+      viewBox: expectString(value.artwork.viewBox, `${field}.artwork.viewBox`),
+      body,
+      source: expectString(value.artwork.source, `${field}.artwork.source`),
+      sourceSha256: expectString(value.artwork.sourceSha256, `${field}.artwork.sourceSha256`),
+    },
+    pins: value.pins.map((pin, pinIndex) =>
+      parsePin(pin, `${field}.pins[${pinIndex}]`),
+    ),
+    labelAnchors: {
+      reference: parseAnchor(
+        value.labelAnchors.reference,
+        `${field}.labelAnchors.reference`,
+      ),
+      value: parseAnchor(value.labelAnchors.value, `${field}.labelAnchors.value`),
+    },
+    spice: {
+      prefix: expectString(value.spice.prefix, `${field}.spice.prefix`),
+      defaultValue: expectString(value.spice.defaultValue, `${field}.spice.defaultValue`),
+      supported: expectBoolean(value.spice.supported, `${field}.spice.supported`),
+    },
+    metadata: {
+      sourceCollection: expectString(
+        isRecord(value.metadata) ? value.metadata.sourceCollection : undefined,
+        `${field}.metadata.sourceCollection`,
+      ),
+      sourceRevision:
+        isRecord(value.metadata) && typeof value.metadata.sourceRevision === "string"
+          ? value.metadata.sourceRevision
+          : null,
+    },
+  };
+}
+
+export function parseDeviceLibrary(value: unknown): DeviceLibraryFile {
+  if (!isRecord(value)) {
+    throw new Error("Device library root must be an object.");
+  }
+  if (value.format !== DEVICE_LIBRARY_FORMAT) {
+    throw new Error("This file is not a Drawic device library.");
+  }
+  if (value.schemaVersion !== DEVICE_LIBRARY_SCHEMA_VERSION) {
+    throw new Error("This Drawic device library version is not supported.");
+  }
+  if (!Array.isArray(value.devices)) {
+    throw new Error("Device library must contain a devices array.");
+  }
+  const devices = value.devices.map(parseDevice);
+  const ids = new Set<string>();
+  for (const device of devices) {
+    if (ids.has(device.id)) {
+      throw new Error(`Duplicate device id ${device.id}.`);
+    }
+    ids.add(device.id);
+  }
+  return {
+    format: DEVICE_LIBRARY_FORMAT,
+    schemaVersion: DEVICE_LIBRARY_SCHEMA_VERSION,
+    id: expectString(value.id, "id"),
+    title: expectString(value.title, "title"),
+    revision: expectString(value.revision, "revision"),
+    source: {
+      collection: expectString(
+        isRecord(value.source) ? value.source.collection : undefined,
+        "source.collection",
+      ),
+      manifestVersion: expectNumber(
+        isRecord(value.source) ? value.source.manifestVersion : undefined,
+        "source.manifestVersion",
+      ),
+      entryCount: expectNumber(
+        isRecord(value.source) ? value.source.entryCount : undefined,
+        "source.entryCount",
+      ),
+    },
+    devices,
+  };
+}
+
+const libraryCache = new WeakMap<DeviceLibraryFile, LoadedDeviceLibrary>();
+
+export function loadDeviceLibrary(value: DeviceLibraryFile): LoadedDeviceLibrary {
+  const cached = libraryCache.get(value);
+  if (cached) {
+    return cached;
+  }
+  const symbols = value.devices
+    .map(
+      (device): DeviceSymbol => ({
+        id: device.id,
+        label: device.title,
+        category: device.category,
+        electrical: device.electrical,
+        palette: device.palette,
+        frame: device.frame,
+        pins: device.pins,
+        file: device.artwork.source,
+        svgBody: device.artwork.body,
+        viewBox: device.artwork.viewBox,
+        labelAnchors: device.labelAnchors,
+        keywords: device.keywords,
+        spice: device.spice,
+        libraryId: value.id,
+      }),
+    )
+    .sort((a, b) => a.label.localeCompare(b.label));
+  const loaded = {
+    id: value.id,
+    title: value.title,
+    revision: value.revision,
+    symbols,
+    byId: new Map(symbols.map((symbol) => [symbol.id, symbol])),
+  };
+  libraryCache.set(value, loaded);
+  return loaded;
 }
 
 export function buildSymbolLibrary(
-  manifest: RawSymbolManifest,
+  manifest: LegacySymbolManifest,
   files: Record<string, string>,
-): SymbolDefinition[] {
+): DeviceSymbol[] {
   if (manifest.manifestVersion !== 1) {
     throw new Error(`Unsupported symbol manifest version ${manifest.manifestVersion}.`);
   }
   return manifest.entries
     .map((entry) => {
-      const markup = files[`./assets/device-symbols/svg/${entry.file}`] ??
+      const markup =
+        files[`./assets/device-symbols/svg/${entry.file}`] ??
         files[`./assets/device-symbols/${entry.file}`];
       if (!markup) {
         throw new Error(`Missing bundled SVG for ${entry.id}.`);
       }
+      const body = markup
+        .replace(/<\?xml[\s\S]*?\?>/gi, "")
+        .replace(/<\/?svg\b[^>]*>/gi, "")
+        .replace(/<title\b[\s\S]*?<\/title>/gi, "")
+        .replace(/<desc\b[\s\S]*?<\/desc>/gi, "")
+        .replace(/(fill|stroke)=["'](?:#000000|#000|black)["']/gi, '$1="currentColor"');
+      const centerX = entry.frame.x + entry.frame.width / 2;
+      const centerY = entry.frame.y + entry.frame.height / 2;
+      const pins: DeviceLibraryPin[] = entry.pins.map((pin, index) => {
+        const sameSide = entry.pins
+          .map((candidate, candidateIndex) => ({ candidate, candidateIndex }))
+          .filter((candidate) => candidate.candidate.side === pin.side);
+        const order = Math.max(
+          0,
+          sameSide.findIndex((candidate) => candidate.candidateIndex === index),
+        );
+        const fraction = (order + 1) / (sameSide.length + 1);
+        const x =
+          pin.side === "east"
+            ? entry.frame.x + entry.frame.width
+            : pin.side === "west"
+              ? entry.frame.x
+              : entry.frame.x + entry.frame.width * fraction;
+        const y =
+          pin.side === "south"
+            ? entry.frame.y + entry.frame.height
+            : pin.side === "north"
+              ? entry.frame.y
+              : entry.frame.y + entry.frame.height * fraction;
+        return {
+          id: pin.key,
+          key: pin.key,
+          name: pin.key,
+          role: pin.role,
+          direction: pin.side,
+          side: pin.side,
+          x: x - centerX,
+          y: y - centerY,
+        };
+      });
       return {
         id: entry.id,
         label: entry.label,
@@ -49,9 +386,31 @@ export function buildSymbolLibrary(
         electrical: entry.electrical,
         palette: entry.palette,
         frame: entry.frame,
-        pins: entry.pins,
+        pins,
         file: entry.file,
-        svgBody: extractSvgBody(markup),
+        svgBody: body,
+        viewBox: `${entry.frame.x} ${entry.frame.y} ${entry.frame.width} ${entry.frame.height}`,
+        labelAnchors: {
+          reference: {
+            x: entry.frame.width / 2 + 6,
+            y: -3,
+            anchor: "start" as const,
+          },
+          value: {
+            x: entry.frame.width / 2 + 6,
+            y: 12,
+            anchor: "start" as const,
+          },
+        },
+        keywords: [entry.id, entry.label, entry.category].map((term) =>
+          term.toLowerCase(),
+        ),
+        spice: {
+          prefix: entry.id.slice(0, 2).toUpperCase(),
+          defaultValue: "",
+          supported: entry.electrical,
+        },
+        libraryId: "legacy-renderer-migration",
       };
     })
     .sort((a, b) => a.label.localeCompare(b.label));
@@ -65,7 +424,7 @@ export function symbolById(
 }
 
 export function suggestedReference(
-  symbol: SymbolDefinition,
+  symbol: SymbolDefinition & { spice?: DeviceLibrarySpice },
   existingReferences: readonly string[],
 ): string {
   const prefixes: Record<string, string> = {
@@ -86,7 +445,10 @@ export function suggestedReference(
     pnp: "Q",
     ground: "GND",
   };
-  const prefix = prefixes[symbol.id] ?? symbol.id.replace(/[^a-z0-9]/gi, "").slice(0, 2).toUpperCase();
+  const prefix =
+    symbol.spice?.prefix ??
+    prefixes[symbol.id] ??
+    symbol.id.replace(/[^a-z0-9]/gi, "").slice(0, 2).toUpperCase();
   let number = 1;
   while (existingReferences.includes(`${prefix}${number}`)) {
     number += 1;
@@ -94,7 +456,13 @@ export function suggestedReference(
   return `${prefix}${number}`;
 }
 
-export function defaultDeviceValue(symbolId: string): string {
+export function defaultDeviceValue(
+  symbolId: string,
+  symbol?: SymbolDefinition & { spice?: DeviceLibrarySpice },
+): string {
+  if (symbol?.spice?.defaultValue) {
+    return symbol.spice.defaultValue;
+  }
   switch (symbolId) {
     case "resistor":
     case "variable-resistor":
@@ -124,4 +492,67 @@ export function defaultDeviceValue(symbolId: string): string {
     default:
       return "";
   }
+}
+
+export interface MxLibraryDevice {
+  xml: string;
+  w: number;
+  h: number;
+  title: string;
+  aspect?: string;
+}
+
+function escapeXmlAttribute(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
+function encodeBase64Utf8(value: string): string {
+  const bytes = new TextEncoder().encode(value);
+  let binary = "";
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte);
+  }
+  return btoa(binary);
+}
+
+export function deviceToMxLibraryEntry(device: DeviceLibraryRecord): MxLibraryDevice {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${device.artwork.viewBox}">${device.artwork.body}</svg>`;
+  const image = `data:image/svg+xml;base64,${encodeBase64Utf8(svg)}`;
+  const title = escapeXmlAttribute(device.title);
+  const xml = [
+    `<mxGraphModel><root><mxCell id="0"/><mxCell id="1" parent="0"/>`,
+    `<mxCell id="${escapeXmlAttribute(device.id)}" value="${title}" `,
+    `style="shape=image;verticalLabelPosition=bottom;verticalAlign=top;`,
+    `imageAspect=0;aspect=fixed;image=${image};" vertex="1" parent="1">`,
+    `<mxGeometry width="${device.frame.width}" height="${device.frame.height}" as="geometry"/>`,
+    `</mxCell></root></mxGraphModel>`,
+  ].join("");
+  return {
+    xml,
+    w: device.frame.width,
+    h: device.frame.height,
+    title: device.title,
+    aspect: "fixed",
+  };
+}
+
+export function deviceLibraryToMxLibrary(library: DeviceLibraryFile): string {
+  return `${JSON.stringify(library.devices.map(deviceToMxLibraryEntry), null, 2)}\n`;
+}
+
+export function parseMxLibraryTitles(text: string): string[] {
+  const parsed: unknown = JSON.parse(text);
+  if (!Array.isArray(parsed)) {
+    throw new Error("An mxlibrary file must contain a JSON array.");
+  }
+  return parsed.map((entry, index) => {
+    if (!isRecord(entry) || typeof entry.title !== "string" || typeof entry.xml !== "string") {
+      throw new Error(`mxlibrary entry ${index} is invalid.`);
+    }
+    return entry.title;
+  });
 }

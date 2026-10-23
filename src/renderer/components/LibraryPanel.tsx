@@ -1,20 +1,21 @@
 import { useMemo, useState } from "react";
-import type { SymbolDefinition } from "../../core/model";
+import type { DeviceSymbol } from "../../core/library";
 import { Icon } from "./Icons";
 
 interface LibraryPanelProps {
-  symbols: readonly SymbolDefinition[];
+  symbols: readonly DeviceSymbol[];
   selectedSymbolId: string | null;
-  onSelect: (symbol: SymbolDefinition) => void;
+  onSelect: (symbol: DeviceSymbol) => void;
   onCollapse: () => void;
 }
 
-function SymbolPreview({ symbol }: { symbol: SymbolDefinition }) {
+function SymbolPreview({ symbol }: { symbol: DeviceSymbol }) {
   const frame = symbol.frame;
   return (
     <svg
       className="symbol-preview"
-      viewBox={`${frame.x} ${frame.y} ${frame.width} ${frame.height}`}
+      viewBox={symbol.viewBox || `${frame.x} ${frame.y} ${frame.width} ${frame.height}`}
+      style={{ color: "var(--symbol-ink, #dbe5e3)" }}
       aria-hidden="true"
     >
       <g dangerouslySetInnerHTML={{ __html: symbol.svgBody }} />
@@ -43,7 +44,8 @@ export function LibraryPanel({
           (category === "all" || symbol.category === category) &&
           (!normalized ||
             symbol.label.toLowerCase().includes(normalized) ||
-            symbol.id.toLowerCase().includes(normalized)),
+            symbol.id.toLowerCase().includes(normalized) ||
+            symbol.keywords.some((keyword) => keyword.includes(normalized))),
       )
       .sort((a, b) => a.label.localeCompare(b.label));
   }, [symbols, query, category]);

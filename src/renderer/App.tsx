@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  buildSymbolLibrary,
   defaultDeviceValue,
+  loadDeviceLibrary,
+  parseDeviceLibrary,
   suggestedReference,
-  type RawSymbolManifest,
 } from "../core/library";
 import {
   addComponent,
@@ -48,7 +48,7 @@ import {
 } from "../core/project";
 import { exportSpice, importSpice } from "../core/spice";
 import type { AppCommand, OpenProjectPayload } from "../shared/bridge";
-import rawManifest from "./assets/device-symbols/manifest.json";
+import builtInDeviceLibraryJson from "./assets/device-libraries/drawic-built-in.drawiclib.json";
 import { CellBar } from "./components/CellBar";
 import { ExportDialog, NameDialog, UnsavedDialog } from "./components/Dialogs";
 import { ErcPanel } from "./components/ErcPanel";
@@ -58,13 +58,7 @@ import { PropertiesPanel } from "./components/PropertiesPanel";
 import { SchematicCanvas } from "./components/SchematicCanvas";
 import { Toolbar, type EditorTool } from "./components/Toolbar";
 
-const svgFiles = import.meta.glob("./assets/device-symbols/svg/*.svg", {
-  eager: true,
-  query: "?raw",
-  import: "default",
-}) as Record<string, string>;
-
-const library = buildSymbolLibrary(rawManifest as RawSymbolManifest, svgFiles);
+const library = loadDeviceLibrary(parseDeviceLibrary(builtInDeviceLibraryJson)).symbols;
 
 type NameDialogState =
   | { kind: "new-cell"; initial: string }
@@ -358,7 +352,7 @@ export function App() {
         addComponent(current, {
           symbol: placementSymbol,
           reference,
-          value: defaultDeviceValue(placementSymbol.id),
+          value: defaultDeviceValue(placementSymbol.id, placementSymbol),
           point,
           id,
         }),
