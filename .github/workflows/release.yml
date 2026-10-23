@@ -150,10 +150,12 @@ jobs:
             gh release upload "$tag" release/* --clobber
             gh release edit "$tag" \
               --title "Drawic ${tag} — Unsigned Preview" \
+              --prerelease \
               --notes-file docs/release-notes-v0.1.0.md
           else
             gh release create "$tag" release/* \
               --title "Drawic ${tag} — Unsigned Preview" \
+              --prerelease \
               --notes-file docs/release-notes-v0.1.0.md
           fi
       - name: Verify downloaded checksum and uploaded state
