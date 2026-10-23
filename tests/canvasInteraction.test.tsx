@@ -67,6 +67,7 @@ interface RenderOptions {
   tool?: "select" | "wire";
   placementSymbol?: typeof twoPinSymbol | null;
   selection?: Array<{ kind: "node" | "wire" | "annotation" | "shape"; id: string }>;
+  onSelectionChange?: (selection: Array<{ kind: "node" | "wire" | "annotation" | "shape"; id: string }>) => void;
   onAddWire?: (points: Point[], anchors?: unknown) => void;
   onUpdateWire?: (wireId: string, points: Point[]) => void;
 }
@@ -88,7 +89,7 @@ function renderCanvas(options: RenderOptions = {}): {
         tool={options.tool ?? "select"}
         placementSymbol={options.placementSymbol ?? null}
         selection={options.selection ?? []}
-        onSelectionChange={vi.fn()}
+        onSelectionChange={options.onSelectionChange ?? vi.fn()}
         onPlace={vi.fn()}
         onAddWire={options.onAddWire ?? vi.fn()}
         onUpdateWire={options.onUpdateWire ?? vi.fn()}
@@ -154,6 +155,21 @@ describe("canvas interactions", () => {
       startAnchor: { deviceId: "r1", pinId: "2" },
       endAnchor: { deviceId: "r2", pinId: "1" },
     });
+    root.unmount();
+  });
+
+  it("lets port clicks select their component when the wire tool is inactive", () => {
+    const onSelectionChange = vi.fn();
+    const page = createEmptyPage("Select ports");
+    addResistor(page, "r1", 100, 100);
+    const { container, root } = renderCanvas({ page, onSelectionChange });
+    const pin = container.querySelector<SVGElement>(
+      '[data-node-id="r1"] [data-pin-id="1"]',
+    )!;
+
+    flushSync(() => pin.dispatchEvent(pointerEvent("pointerdown", 10, 10)));
+
+    expect(onSelectionChange).toHaveBeenCalledWith([{ kind: "node", id: "r1" }]);
     root.unmount();
   });
 
