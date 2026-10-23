@@ -24,6 +24,16 @@
 - Integrity ledger: `src/renderer/assets/device-symbols/asset-lock.json`.
 - Per-file hashes: see the ledger. The ledger hashes every copied SVG and removes
   source paths and generator details from the runtime manifest.
+- Runtime packaging: `scripts/build-device-library.mjs` converts the approved
+  manifest and SVG artwork into the single generated file
+  `src/renderer/assets/device-libraries/drawic-built-in.drawiclib.json`. Each
+  device record retains its source filename and source-file SHA-256.
+- Generated library SHA-256:
+  `77c28a55e88cb9642973d279c3692ac70c98c873d2093ef660d5378816f519dd`.
+- Runtime library size: 346,626 bytes, containing 109 self-contained device
+  records. The transform sanitizes active content and external references,
+  normalizes fixed black paint to the renderer theme color, and derives exact
+  visual pin coordinates and label anchors.
 
 The supplied package reports source commit
 `a239991de3d765ad68729a2fc59b87483c7d401c` in its manifest. That value is retained
@@ -40,5 +50,5 @@ packaged application at runtime. License notices are summarized in
 ## Generated files
 
 Exported `.drawic.json`, SVG, PNG, PDF, and SPICE files are generated entirely
-from local document data and the bundled symbol collection. Drawic does not add
+from local document data and the single-file bundled device library. Drawic does not add
 remote images, fonts, scripts, or service links to exported documents.

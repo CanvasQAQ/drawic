@@ -9,6 +9,7 @@ const requiredFiles = [
   "LICENSE",
   "src/renderer/assets/device-symbols/manifest.json",
   "src/renderer/assets/device-symbols/asset-lock.json",
+  "src/renderer/assets/device-libraries/drawic-built-in.drawiclib.json",
 ];
 for (const file of requiredFiles) {
   await access(resolve(file));
@@ -65,6 +66,27 @@ if (lock.files.length !== 109) {
   failures.push(`Expected 109 locked SVG files, found ${lock.files.length}.`);
 }
 
+const runtimeLibrary = JSON.parse(
+  await readFile(
+    resolve("src/renderer/assets/device-libraries/drawic-built-in.drawiclib.json"),
+    "utf8",
+  ),
+);
+if (runtimeLibrary.format !== "drawic-device-library" || runtimeLibrary.schemaVersion !== 1) {
+  failures.push("Generated device library has an unexpected format or schema.");
+}
+if (!Array.isArray(runtimeLibrary.devices) || runtimeLibrary.devices.length !== 109) {
+  failures.push("Generated device library must contain 109 device records.");
+}
+if (
+  runtimeLibrary.devices?.some(
+    (device) =>
+      /<script\b|foreignObject|\son[a-z]+\s*=|https?:\/\//i.test(device.artwork?.body ?? ""),
+  )
+) {
+  failures.push("Generated device library contains active or external SVG content.");
+}
+
 if (failures.length > 0) {
   console.error("Clean-room audit failed:");
   for (const failure of failures) {
@@ -74,5 +96,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  `Clean-room audit passed: ${lock.files.length} approved SVG hashes verified and no excluded source markers found.`,
+  `Clean-room audit passed: ${lock.files.length} approved SVG hashes, one 109-device library, and no excluded source markers found.`,
 );

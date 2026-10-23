@@ -41,6 +41,9 @@ errors, visual design, and module structure were designed independently.
 
 - `PROVENANCE.md` and `src/renderer/assets/device-symbols/asset-lock.json` record
   the source, license basis, and per-file SHA-256 values for imported art.
+- `src/renderer/assets/device-libraries/drawic-built-in.drawiclib.json` is a
+  generated, self-contained runtime library. Its records contain sanitized
+  artwork and metadata derived only from the approved static input above.
 - `scripts/verify-clean-room.mjs` scans source for excluded identifiers and
   unexpected external asset references.
 - `scripts/verify-offline.mjs` scans production source for network clients and

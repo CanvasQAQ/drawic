@@ -11,7 +11,9 @@ CanvasQAQ on 2026-10-23 and is used under the repository owner's explicit
 authorization for Drawic. It is distributed as SVG artwork and pin metadata,
 not as source code. File-level SHA-256 values and the exact supplied revision
 identifier are recorded in `PROVENANCE.md` and
-`src/renderer/assets/device-symbols/asset-lock.json`.
+`src/renderer/assets/device-symbols/asset-lock.json`. The runtime representation
+is generated into the single self-contained file
+`src/renderer/assets/device-libraries/drawic-built-in.drawiclib.json`.
 
 The supplied package contained no standalone license file. The release owner's
 written authorization in the product brief is the documented distribution

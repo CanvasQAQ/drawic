@@ -10,27 +10,36 @@ dependency lineage.
 
 ## Preview status
 
-Version 0.1.1 is an **Unsigned Preview**. The editor closes the core schematic
-editing loop and can produce project, SPICE, SVG, PNG, and PDF files. Hierarchical
-block instances, custom libraries, Spectre/SCS, and local MCP are explicitly not
-implemented.
+Version 0.2.0 is an **Unsigned Preview**. The editor uses independent drawing
+pages and a single-file device library, and can produce project, SPICE, SVG, PNG,
+and PDF files. User-editable libraries, Spectre/SCS, and local MCP are explicitly
+not implemented.
 
 All release installers use names containing `Unsigned-Preview`. Windows
 SmartScreen and macOS Gatekeeper warnings are expected because no signing
 certificate is configured.
 
-## Implemented in 0.1
+## Implemented in 0.2
 
 - Searchable, category-filtered symbol library with 109 bundled symbols and
-  continuous placement mode.
+  continuous placement mode. All device records are stored in one
+  `.drawiclib.json` file, with sanitized themeable artwork, exact pin positions,
+  label anchors, search terms, and SPICE metadata.
 - Selection, Shift multi-selection, marquee selection, grid movement, deletion,
   rotation, and mirroring.
-- Orthogonal wire drawing with pin and wire snapping.
+- Ctrl+wheel zoom centered on the pointer, Ctrl+0 reset, Space-drag panning, and
+  visible placement previews.
+- Point-to-point wiring by clicking one device port and then another, with exact
+  port snapping and anchor-backed connectivity.
+- Orthogonal wire segment handles that adjust routing without changing the
+  electrical endpoint.
 - Distinct crossing, endpoint, and explicit junction semantics, with connected
-  network highlighting.
+  network highlighting. Junctions do not mask the wire.
 - Component reference/value fields, free text, named net labels, and properties.
-- Multiple cells, cell creation, renaming, switching, Top designation, and
-  hierarchy breadcrumbs.
+- Independent drawing pages with creation, rename, duplicate, delete, reorder,
+  and tab switching. Page switching is view state and does not mark a document
+  dirty.
+- Basic rectangle and ellipse drawing tools.
 - New/open/save/save-as, recent projects, dirty-state tracking, and debounced
   unsaved-work recovery.
 - Save/discard/cancel protection when replacing a dirty document or closing an
@@ -70,10 +79,11 @@ arm64, and Linux artifacts on native runners.
 
 ## Project files and local data
 
-Projects use the `.drawic.json` extension. Schema version 1 is strict: a document
-with an unknown future version is rejected rather than guessed at. IDs are stable
-UUIDs. Project saves write a temporary sibling file, flush it, and atomically
-rename it over the destination.
+Projects use the `.drawic.json` extension. Schema version 2 is strict: a document
+with an unknown future version is rejected rather than guessed at. The retired
+Cell-oriented preview format is explicitly rejected and is not migrated. IDs are
+stable UUIDs. Project saves write a temporary sibling file, flush it, and
+atomically rename it over the destination.
 
 Electron stores mutable desktop data under its platform-specific `userData`
 directory:
@@ -95,7 +105,11 @@ service, sync, account, telemetry, or update-check request.
 
 - Choose a symbol in the library, then click the canvas repeatedly to place
   copies. Press Escape to leave placement mode.
-- The Wire tool drags from a pin or paper point to a snapped destination.
+- The Wire tool supports click-start, move preview, and click-finish. Clicking a
+  device port before and after creates a wire bound to both ports.
+- Ctrl+wheel zooms around the pointer. Ctrl+0 resets the view. Hold Space and
+  drag to pan.
+- Select a wire to reveal routing handles at movable orthogonal segments.
 - A wire endpoint touching another wire connects them. Interior crossings do not
   connect until the Junction tool adds an explicit junction.
 - Net labels with identical text merge their networks.
@@ -121,8 +135,9 @@ service, sync, account, telemetry, or update-check request.
 - Electrical simulation is not embedded; Drawic exports text netlists.
 - Devices outside the basic SPICE mapping are visually editable but explicitly
   omitted on SPICE export.
-- Cross-cell electrical connectivity is not inferred.
-- All 0.1 packages are unsigned.
+- Page artwork is independent; electrical connectivity is never inferred
+  between pages.
+- All 0.2 packages are unsigned.
 
 The Windows release includes an unpacked application ZIP alongside NSIS and
 portable EXE files. A ZIP avoids a direct EXE download and can reduce browser

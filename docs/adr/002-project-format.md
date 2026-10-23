@@ -1,6 +1,6 @@
 # ADR 002: Versioned Drawic project document
 
-Status: accepted, 2026-10-23
+Status: superseded by ADR 005 for Drawic 0.2, 2026-10-23
 
 ## Decision
 

@@ -1,6 +1,6 @@
 {
   "name": "drawic",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "A local-first analog and mixed-signal schematic editor.",
   "main": "dist/main/main.js",
   "author": {
@@ -22,6 +22,7 @@
     "test:watch": "vitest",
     "build:node": "tsc -p tsconfig.node.json",
     "build:renderer": "vite build",
+    "build:devices": "node scripts/build-device-library.mjs",
     "build": "npm run clean && npm run build:node && npm run build:renderer",
     "start": "npm run build && electron .",
     "dist": "npm run build && electron-builder",
