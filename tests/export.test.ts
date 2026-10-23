@@ -1,0 +1,48 @@
+import { describe, expect, it } from "vitest";
+import { buildSchematicSvg } from "../src/core/export/svg";
+import { buildBitmapPdf } from "../src/core/export/pdf";
+import { createEmptyCell } from "../src/core/model";
+import { testLibrary, twoPinSymbol } from "./fixtures";
+
+describe("export formats", () => {
+  it("produces deterministic standalone SVG", () => {
+    const cell = createEmptyCell("Export & Test");
+    cell.nodes.push({
+      id: "r1",
+      symbolId: twoPinSymbol.id,
+      reference: "R1",
+      value: "1k",
+      x: 100,
+      y: 100,
+      rotation: 0,
+      mirrored: false,
+    });
+    cell.wires.push({
+      id: "wire",
+      points: [
+        { x: 100, y: 80 },
+        { x: 180, y: 80 },
+      ],
+    });
+    const first = buildSchematicSvg(cell, testLibrary);
+    const second = buildSchematicSvg(cell, testLibrary);
+    expect(first).toBe(second);
+    expect(first).toContain("<svg");
+    expect(first).toContain("Export &amp; Test");
+    expect(first).not.toMatch(/(?:src|href)="https?:|url\(https?:/);
+  });
+
+  it("constructs a deterministic, non-empty bitmap PDF", () => {
+    const bitmap = {
+      width: 2,
+      height: 1,
+      rgba: new Uint8Array([255, 0, 0, 255, 0, 0, 255, 255]),
+    };
+    const first = buildBitmapPdf(bitmap);
+    const second = buildBitmapPdf(bitmap);
+    expect(first.byteLength).toBeGreaterThan(100);
+    expect(new TextDecoder().decode(first.slice(0, 8))).toBe("%PDF-1.4");
+    expect(new TextDecoder().decode(first.slice(-6))).toBe("%%EOF\n");
+    expect(first).toEqual(second);
+  });
+});

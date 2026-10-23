@@ -1,0 +1,30 @@
+# Build and packaging output
+node_modules/
+dist/
+release/
+coverage/
+*.tsbuildinfo
+
+# Local editor and OS files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.log
+
+# Drawic local project and recovery files
+*.drawic.json.local
+.drawic-recovery/
+
+# Test output and environment secrets
+test-results/
+playwright-report/
+.env
+.env.*
+!.env.example
+*.pem
+*.p12
+*.pfx
+
+# Device-asset importer staging
+.asset-staging/
