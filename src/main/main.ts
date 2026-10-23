@@ -657,6 +657,14 @@ async function runSmokeCheck(window: BrowserWindow): Promise<void> {
         const editState = (await window.webContents.executeJavaScript(
           `(async () => {
             const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+            const waitFor = async (predicate, timeout = 2500) => {
+              const started = Date.now();
+              while (Date.now() - started < timeout) {
+                if (predicate()) return true;
+                await wait(40);
+              }
+              return predicate();
+            };
             const tile = Array.from(document.querySelectorAll('.symbol-tile')).find(
               (node) => node.textContent.includes('Resistor')
             );
@@ -673,14 +681,18 @@ async function runSmokeCheck(window: BrowserWindow): Promise<void> {
             canvas.dispatchEvent(new PointerEvent('pointerup', {
               bubbles: true, clientX: x, clientY: y, pointerId: 9, pointerType: 'mouse', button: 0
             }));
-            await wait(180);
+            await waitFor(
+              () =>
+                document.querySelectorAll('.component-node').length === 1 &&
+                document.body.innerText.includes('Unsaved changes')
+            );
             const placed = document.querySelectorAll('.component-node').length;
             const dirty = document.body.innerText.includes('Unsaved changes');
             document.querySelector('button[aria-label="Undo"]')?.click();
-            await wait(120);
+            await waitFor(() => document.querySelectorAll('.component-node').length === 0);
             const undone = document.querySelectorAll('.component-node').length;
             document.querySelector('button[aria-label="Redo"]')?.click();
-            await wait(120);
+            await waitFor(() => document.querySelectorAll('.component-node').length === 1);
             const redone = document.querySelectorAll('.component-node').length;
             return { placed, dirty, undone, redone };
           })()`,
