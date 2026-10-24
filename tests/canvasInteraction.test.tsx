@@ -2,11 +2,17 @@ import React from "react";
 import { flushSync } from "react-dom";
 import { createRoot, type Root } from "react-dom/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createEmptyPage, type DrawingPage, type Point } from "../src/core/model";
+import {
+  createEmptyPage,
+  junctionSelectionId,
+  type DrawingPage,
+  type Point,
+} from "../src/core/model";
 import {
   SchematicCanvas,
   dragSegment,
   fitViewportToBounds,
+  focusViewportToMarquee,
   zoomViewport,
 } from "../src/renderer/components/SchematicCanvas";
 import { testLibrary, twoPinSymbol } from "./fixtures";
@@ -65,10 +71,10 @@ function pointerEvent(type: string, clientX: number, clientY: number, extra = {}
 
 interface RenderOptions {
   page?: DrawingPage;
-  tool?: "select" | "wire";
+  tool?: "select" | "wire" | "net-label";
   placementSymbol?: typeof twoPinSymbol | null;
-  selection?: Array<{ kind: "node" | "node-label" | "wire" | "annotation" | "shape"; id: string }>;
-  onSelectionChange?: (selection: Array<{ kind: "node" | "node-label" | "wire" | "annotation" | "shape"; id: string }>) => void;
+  selection?: Array<{ kind: "node" | "node-label" | "wire" | "junction" | "annotation" | "shape"; id: string }>;
+  onSelectionChange?: (selection: Array<{ kind: "node" | "node-label" | "wire" | "junction" | "annotation" | "shape"; id: string }>) => void;
   onAddWire?: (points: Point[], anchors?: unknown) => void;
   onUpdateWire?: (wireId: string, points: Point[]) => void;
   onMoveNodeLabel?: (
@@ -77,6 +83,8 @@ interface RenderOptions {
     delta: Point,
   ) => void;
   onUpdateShape?: (shapeId: string, patch: Record<string, unknown>) => void;
+  onMoveSelected?: (delta: Point) => void;
+  onAddAnnotation?: (kind: "text" | "net", point: Point, wireId?: string) => void;
 }
 
 function renderCanvas(options: RenderOptions = {}): {
@@ -103,11 +111,11 @@ function renderCanvas(options: RenderOptions = {}): {
         onUpdateNode={vi.fn()}
         onMoveNodeLabel={options.onMoveNodeLabel ?? vi.fn()}
         onAddJunction={vi.fn()}
-        onAddAnnotation={vi.fn()}
+        onAddAnnotation={options.onAddAnnotation ?? vi.fn()}
         onUpdateAnnotation={vi.fn()}
         onAddShape={vi.fn()}
         onUpdateShape={options.onUpdateShape ?? vi.fn()}
-        onMoveSelected={vi.fn()}
+        onMoveSelected={options.onMoveSelected ?? vi.fn()}
       />,
     ),
   );
@@ -177,6 +185,86 @@ describe("canvas interactions", () => {
     root.unmount();
   });
 
+  it("includes distant wires and junctions in fit-to-content bounds", async () => {
+    const page = createEmptyPage("Wire bounds");
+    addResistor(page, "r1", 100, 100);
+    page.wires.push({
+      id: "wire_far",
+      points: [
+        { x: -1200, y: -800 },
+        { x: 12600, y: -800 },
+        { x: 12600, y: 1600 },
+      ],
+    });
+    page.junctions.push({ x: -1200, y: -800 });
+    const { container, root } = renderCanvas({ page });
+    const svg = container.querySelector("svg.schematic-canvas")!;
+
+    flushSync(() =>
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "f", bubbles: true })),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const [x, y, width, height] = svg
+      .getAttribute("viewBox")!
+      .split(" ")
+      .map(Number);
+    expect(x).toBeLessThanOrEqual(-1200);
+    expect(y).toBeLessThanOrEqual(-800);
+    expect(x! + width!).toBeGreaterThanOrEqual(12600);
+    expect(y! + height!).toBeGreaterThanOrEqual(1600);
+    root.unmount();
+  });
+
+  it("focuses the viewport to a right-drag marquee", () => {
+    const focused = focusViewportToMarquee(
+      { x: 120, y: 100 },
+      { x: 420, y: 300 },
+      1.6,
+    );
+    expect(focused.x).toBeLessThanOrEqual(120);
+    expect(focused.y).toBeLessThanOrEqual(100);
+    expect(focused.x + focused.width).toBeGreaterThanOrEqual(420);
+    expect(focused.y + focused.height).toBeGreaterThanOrEqual(300);
+    expect(focused.width).toBeLessThan(1600);
+  });
+
+  it("applies right-drag focus from canvas pointer gestures", async () => {
+    const page = createEmptyPage("Right drag gesture");
+    addResistor(page, "r1", 800, 500);
+    const { container, root } = renderCanvas({ page });
+    const svg = container.querySelector("svg.schematic-canvas")!;
+    const initialViewBox = svg.getAttribute("viewBox");
+
+    flushSync(() =>
+      svg.dispatchEvent(
+        pointerEvent("pointerdown", 120, 100, { button: 2 }),
+      ),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    flushSync(() =>
+      svg.dispatchEvent(
+        pointerEvent("contextmenu", 120, 100, { button: 2 }),
+      ),
+    );
+    flushSync(() =>
+      svg.dispatchEvent(
+        pointerEvent("mousemove", 420, 300, { buttons: 2 }),
+      ),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(
+      container.querySelector(".viewport-marquee")?.getAttribute("width"),
+    ).toBe("300");
+    flushSync(() =>
+      svg.dispatchEvent(pointerEvent("pointerup", 420, 300, { button: 2 })),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(svg.getAttribute("viewBox")).not.toBe(initialViewBox);
+    expect(container.querySelector(".viewport-marquee")).toBeNull();
+    root.unmount();
+  });
+
   it("starts a wire on one exact port and finishes on another", () => {
     const onAddWire = vi.fn();
     const page = createEmptyPage("Ports");
@@ -199,6 +287,142 @@ describe("canvas interactions", () => {
       startAnchor: { deviceId: "r1", pinId: "2" },
       endAnchor: { deviceId: "r2", pinId: "1" },
     });
+    root.unmount();
+  });
+
+  it("creates an explicit junction when a new wire starts on an existing wire", async () => {
+    const onAddWire = vi.fn();
+    const page = createEmptyPage("Wire branch");
+    page.wires.push({
+      id: "wire_existing",
+      points: [
+        { x: 0, y: 100 },
+        { x: 200, y: 100 },
+      ],
+    });
+    const { container, root } = renderCanvas({
+      page,
+      tool: "wire",
+      onAddWire,
+    });
+    const existing = container.querySelector(".wire-hit")!;
+    const svg = container.querySelector("svg.schematic-canvas")!;
+
+    flushSync(() =>
+      existing.dispatchEvent(pointerEvent("pointerdown", 83, 100)),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    flushSync(() =>
+      svg.dispatchEvent(pointerEvent("pointerdown", 320, 260)),
+    );
+
+    expect(onAddWire).toHaveBeenCalledOnce();
+    expect(onAddWire.mock.calls[0]?.[2]).toEqual([{ x: 80, y: 100 }]);
+    root.unmount();
+  });
+
+  it("keeps port affordances small without placing a junction on a device endpoint", () => {
+    const page = createEmptyPage("Subtle ports");
+    addResistor(page, "r1", 100, 100);
+    page.wires.push({
+      id: "wire_to_pin",
+      points: [
+        { x: 100, y: 80 },
+        { x: 200, y: 80 },
+      ],
+      startAnchor: { deviceId: "r1", pinId: "1" },
+    });
+    const { container, root } = renderCanvas({ page, tool: "wire" });
+    const pin = container.querySelector('[data-node-id="r1"] [data-pin-id="1"]')!;
+
+    expect(pin.querySelector(".port-pin-hit-area")?.getAttribute("r")).toBe("6");
+    expect(pin.querySelector(".port-pin-indicator")?.getAttribute("r")).toBe("3");
+    expect(container.querySelector(".junction-auto")).toBeNull();
+    root.unmount();
+  });
+
+  it("attaches a net label to the clicked wire", () => {
+    const onAddAnnotation = vi.fn();
+    const page = createEmptyPage("Net label target");
+    page.wires.push({
+      id: "wire_label",
+      name: "N007",
+      points: [
+        { x: 120, y: 100 },
+        { x: 260, y: 100 },
+      ],
+    });
+    const { container, root } = renderCanvas({
+      page,
+      tool: "net-label",
+      onAddAnnotation,
+    });
+    const wire = container.querySelector(".wire-hit")!;
+
+    flushSync(() =>
+      wire.dispatchEvent(pointerEvent("pointerdown", 160, 100)),
+    );
+    expect(onAddAnnotation).toHaveBeenCalledWith(
+      "net",
+      { x: 160, y: 100 },
+      "wire_label",
+    );
+    root.unmount();
+  });
+
+  it("keeps a highlighted straight wire rendered after selecting its device", () => {
+    const page = createEmptyPage("Highlighted straight wire");
+    addResistor(page, "r1", 100, 100);
+    page.wires.push({
+      id: "wire_straight",
+      points: [
+        { x: 100, y: 80 },
+        { x: 240, y: 80 },
+      ],
+      startAnchor: { deviceId: "r1", pinId: "1" },
+    });
+    const { container, root } = renderCanvas({
+      page,
+      selection: [{ kind: "node", id: "r1" }],
+    });
+
+    expect(container.querySelector(".wire-visible")).not.toBeNull();
+    expect(container.querySelector(".wire-group")?.getAttribute("class")).toContain(
+      "is-net-highlighted",
+    );
+    expect(container.querySelector("#net-glow")).toBeNull();
+    root.unmount();
+  });
+
+  it("selects an explicit junction from its hit target", () => {
+    const onSelectionChange = vi.fn();
+    const page = createEmptyPage("Junction selection");
+    page.junctions.push({ x: 100, y: 100 });
+    const { container, root } = renderCanvas({
+      page,
+      onSelectionChange,
+    });
+    const hit = container.querySelector(".junction-hit")!;
+
+    flushSync(() =>
+      hit.dispatchEvent(pointerEvent("pointerdown", 100, 100)),
+    );
+    expect(onSelectionChange).toHaveBeenCalledWith([
+      { kind: "junction", id: junctionSelectionId({ x: 100, y: 100 }) },
+    ]);
+    root.unmount();
+  });
+
+  it("keeps the component hit target inside the symbol frame", () => {
+    const page = createEmptyPage("Tight hit target");
+    addResistor(page, "r1", 100, 100);
+    const { container, root } = renderCanvas({ page });
+    const hit = container.querySelector('[data-node-id="r1"] .component-hit')!;
+
+    expect(hit.getAttribute("x")).toBe("90");
+    expect(hit.getAttribute("y")).toBe("80");
+    expect(hit.getAttribute("width")).toBe("20");
+    expect(hit.getAttribute("height")).toBe("40");
     root.unmount();
   });
 
@@ -326,6 +550,45 @@ describe("canvas interactions", () => {
     ).not.toBe(initialHitX);
     const previewPath = container.querySelector(".wire-visible")?.getAttribute("d");
     expect(previewPath).not.toBe(initialPath);
+    expect(onMoveSelected).not.toHaveBeenCalled();
+    root.unmount();
+  });
+
+  it("discards a wire movement preview when the gesture is cancelled", async () => {
+    const onMoveSelected = vi.fn();
+    const page = createEmptyPage("Cancelled drag");
+    addResistor(page, "r1", 100, 100);
+    page.wires.push({
+      id: "wire_cancel",
+      points: [
+        { x: 100, y: 120 },
+        { x: 240, y: 120 },
+      ],
+      startAnchor: { deviceId: "r1", pinId: "2" },
+    });
+    const { container, root } = renderCanvas({
+      page,
+      selection: [{ kind: "node", id: "r1" }],
+      onMoveSelected,
+    });
+    const node = container.querySelector<SVGElement>('[data-node-id="r1"]')!;
+    const initialPath = container.querySelector(".wire-visible")?.getAttribute("d");
+
+    flushSync(() => node.dispatchEvent(pointerEvent("pointerdown", 100, 100)));
+    flushSync(() => node.dispatchEvent(pointerEvent("pointermove", 160, 140)));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(container.querySelector(".wire-visible")?.getAttribute("d")).not.toBe(
+      initialPath,
+    );
+
+    flushSync(() =>
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })),
+    );
+    flushSync(() => node.dispatchEvent(pointerEvent("pointerup", 160, 140)));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(container.querySelector(".wire-visible")?.getAttribute("d")).toBe(
+      initialPath,
+    );
     expect(onMoveSelected).not.toHaveBeenCalled();
     root.unmount();
   });

@@ -126,6 +126,7 @@ export function duplicatePage(
   const source = pageById(document, pageId);
   const makeId = options?.idFactory ?? createIdentifier;
   const nodeIds = new Map(source.nodes.map((node) => [node.id, makeId("node")]));
+  const wireIds = new Map(source.wires.map((wire) => [wire.id, makeId("wire")]));
   const page: DrawingPage = {
     id: options?.pageId ?? makeId("page"),
     name: options?.name ?? `${source.name} copy`,
@@ -137,17 +138,26 @@ export function duplicatePage(
       const startAnchor = remapAnchor(wire.startAnchor, nodeIds);
       const endAnchor = remapAnchor(wire.endAnchor, nodeIds);
       return {
-        id: makeId("wire"),
+        id: wireIds.get(wire.id)!,
         points: wire.points.map((point) => ({ ...point })),
+        ...(wire.name ? { name: wire.name } : {}),
         ...(startAnchor ? { startAnchor } : {}),
         ...(endAnchor ? { endAnchor } : {}),
       };
     }),
     junctions: source.junctions.map((point) => ({ ...point })),
-    annotations: source.annotations.map((annotation) => ({
-      ...annotation,
-      id: makeId("annotation"),
-    })),
+    annotations: source.annotations.map((annotation) => {
+      const next = { ...annotation, id: makeId("annotation") };
+      if (annotation.wireId) {
+        const mappedWireId = wireIds.get(annotation.wireId);
+        if (mappedWireId) {
+          next.wireId = mappedWireId;
+        } else {
+          delete next.wireId;
+        }
+      }
+      return next;
+    }),
     shapes: source.shapes.map((shape) => ({
       ...shape,
       id: makeId("shape"),

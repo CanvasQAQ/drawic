@@ -758,17 +758,31 @@ button:not(:disabled) {
 }
 
 .port-pin {
-  fill: transparent;
-  stroke: transparent;
-  stroke-width: 1.5;
   cursor: crosshair;
+}
+
+.port-pin-hit-area {
+  fill: transparent;
+  stroke: none;
   pointer-events: all;
 }
 
-.schematic-canvas.tool-wire .port-pin,
-.port-pin.is-snapping {
-  fill: rgb(99 201 186 / 18%);
+.port-pin-indicator {
+  fill: rgb(99 201 186 / 10%);
+  stroke: rgb(33 142 131 / 68%);
+  stroke-width: 1;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.schematic-canvas.tool-wire .port-pin-indicator {
+  opacity: 1;
+}
+
+.port-pin-indicator.is-snapping {
+  fill: rgb(99 201 186 / 24%);
   stroke: #218e83;
+  stroke-width: 1.4;
 }
 
 .missing-symbol rect {
@@ -788,8 +802,8 @@ button:not(:disabled) {
 }
 
 .wire-group.is-net-highlighted .wire-visible {
+  /* Object-bounding-box filters collapse on straight wire paths. */
   stroke: #218e83;
-  filter: url(#net-glow);
 }
 
 .wire-selection-outline {
@@ -802,19 +816,32 @@ button:not(:disabled) {
   stroke: #274e60;
 }
 
-.junction-explicit,
-.junction-auto {
-  fill: #15262f;
-  stroke: none;
-}
-
 .junction-explicit {
+  fill: #15262f;
   stroke: #1d3945;
   stroke-width: 1;
 }
 
+.junction-hit {
+  fill: transparent;
+  stroke: none;
+  pointer-events: all;
+  cursor: pointer;
+}
+
+.junction.is-selected .junction-ring {
+  stroke: #b57931;
+  stroke-width: 2;
+}
+
+.junction.is-selected .junction-explicit {
+  fill: #c18438;
+}
+
 .junction-auto {
-  fill: #49606a;
+  fill: #38535e;
+  stroke: #f5f3ec;
+  stroke-width: 0.8;
 }
 
 .junction-ring {
@@ -924,7 +951,7 @@ button:not(:disabled) {
 .net-pin {
   fill: #208d82;
   stroke: #f8f7f2;
-  stroke-width: 1.4;
+  stroke-width: 1;
   pointer-events: none;
 }
 
@@ -979,6 +1006,13 @@ button:not(:disabled) {
   stroke: #398f86;
   stroke-width: 1.4;
   stroke-dasharray: 5 3;
+}
+
+.viewport-marquee {
+  fill: rgb(229 164 85 / 8%);
+  stroke: #b57931;
+  stroke-width: 1.4;
+  stroke-dasharray: 7 4;
 }
 
 .canvas-controls {

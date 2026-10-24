@@ -1,10 +1,12 @@
 import {
+  AUTO_ROUTE_ESCAPE,
   GRID_SIZE,
   distance,
   isOrthogonalPath,
   nodeBounds,
   nodePinPosition,
   orthogonalPath,
+  simplifyOrthogonalPath,
 } from "./geometry";
 import type {
   ComponentNode,
@@ -12,8 +14,19 @@ import type {
   DrawingPage,
   Point,
   SymbolDefinition,
-  Wire,
 } from "./model";
+import { pinOutwardDirection, planNodeMove } from "./wireMotion";
+
+export { AUTO_ROUTE_ESCAPE, simplifyOrthogonalPath };
+
+export function previewMoveNodes(
+  page: DrawingPage,
+  library: readonly SymbolDefinition[],
+  nodeIds: ReadonlySet<string>,
+  delta: Point,
+): DrawingPage {
+  return planNodeMove(page, library, nodeIds, delta);
+}
 
 export interface RouteBounds {
   minX: number;
@@ -124,31 +137,6 @@ export function pathAvoidsObstacles(
     const start = points[index - 1]!;
     return obstacles.every((obstacle) => !segmentHitsObstacle(start, point, obstacle));
   });
-}
-
-export function simplifyOrthogonalPath(points: readonly Point[]): Point[] {
-  const compact: Point[] = [];
-  for (const point of points) {
-    const previous = compact.at(-1);
-    if (!previous || distance(previous, point) > EPSILON) {
-      compact.push({ ...point });
-    }
-  }
-  const simplified: Point[] = [];
-  for (const point of compact) {
-    while (simplified.length >= 2) {
-      const first = simplified[simplified.length - 2]!;
-      const second = simplified[simplified.length - 1]!;
-      const sameX = first.x === second.x && second.x === point.x;
-      const sameY = first.y === second.y && second.y === point.y;
-      if (!sameX && !sameY) {
-        break;
-      }
-      simplified.pop();
-    }
-    simplified.push(point);
-  }
-  return simplified;
 }
 
 function queuePush(queue: QueueEntry[], entry: QueueEntry): void {
@@ -377,77 +365,31 @@ export function routeWireGeometry(
   startAnchor?: ConnectionAnchor,
   endAnchor?: ConnectionAnchor,
 ): Point[] {
-  const excluded = new Set<string>();
-  if (startAnchor) {
-    excluded.add(startAnchor.deviceId);
-  }
-  if (endAnchor) {
-    excluded.add(endAnchor.deviceId);
-  }
-  return routeOrthogonal(start, end, routingObstacles(page, library, excluded));
-}
-
-function rerouteWire(
-  page: DrawingPage,
-  library: readonly SymbolDefinition[],
-  wire: Wire,
-): Wire {
-  const first = wire.points[0];
-  const last = wire.points.at(-1);
-  if (!first || !last) {
-    return wire;
-  }
-  const start =
-    (wire.startAnchor && pinPointForAnchor(page, library, wire.startAnchor)) || first;
-  const end = (wire.endAnchor && pinPointForAnchor(page, library, wire.endAnchor)) || last;
-  return {
-    ...wire,
-    points: routeWireGeometry(
-      page,
-      library,
-      start,
-      end,
-      wire.startAnchor,
-      wire.endAnchor,
+  const startDirection = startAnchor
+    ? pinOutwardDirection(page, library, startAnchor)
+    : undefined;
+  const endDirection = endAnchor
+    ? pinOutwardDirection(page, library, endAnchor)
+    : undefined;
+  const routeStart = startDirection
+    ? {
+        x: start.x + startDirection.x * AUTO_ROUTE_ESCAPE,
+        y: start.y + startDirection.y * AUTO_ROUTE_ESCAPE,
+      }
+    : start;
+  const routeEnd = endDirection
+    ? {
+        x: end.x + endDirection.x * AUTO_ROUTE_ESCAPE,
+        y: end.y + endDirection.y * AUTO_ROUTE_ESCAPE,
+      }
+    : end;
+  return simplifyOrthogonalPath([
+    start,
+    ...routeOrthogonal(
+      routeStart,
+      routeEnd,
+      routingObstacles(page, library),
     ),
-  };
-}
-
-export function rerouteConnectedWires(
-  page: DrawingPage,
-  library: readonly SymbolDefinition[],
-  nodeIds: ReadonlySet<string>,
-): DrawingPage {
-  if (nodeIds.size === 0) {
-    return page;
-  }
-  return {
-    ...page,
-    wires: page.wires.map((wire) => {
-      const connected =
-        (wire.startAnchor && nodeIds.has(wire.startAnchor.deviceId)) ||
-        (wire.endAnchor && nodeIds.has(wire.endAnchor.deviceId));
-      return connected ? rerouteWire(page, library, wire) : wire;
-    }),
-  };
-}
-
-export function previewMoveNodes(
-  page: DrawingPage,
-  library: readonly SymbolDefinition[],
-  nodeIds: ReadonlySet<string>,
-  delta: Point,
-): DrawingPage {
-  if (nodeIds.size === 0 || (delta.x === 0 && delta.y === 0)) {
-    return page;
-  }
-  const moved: DrawingPage = {
-    ...page,
-    nodes: page.nodes.map((node) =>
-      nodeIds.has(node.id)
-        ? { ...node, x: node.x + delta.x, y: node.y + delta.y }
-        : node,
-    ),
-  };
-  return rerouteConnectedWires(moved, library, nodeIds);
+    end,
+  ]);
 }

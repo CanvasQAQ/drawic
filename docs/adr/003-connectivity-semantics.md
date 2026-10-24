@@ -1,6 +1,6 @@
 # ADR 003: Crossing and junction semantics
 
-Status: accepted, 2026-10-23
+Status: superseded by ADR 008 for wire-to-wire contact, 2026-10-24
 
 ## Decision
 

@@ -19,7 +19,13 @@ import {
   symbolLabelPosition,
   symbolTransform,
 } from "../../core/geometry";
-import { previewMoveNodes, routeWireGeometry } from "../../core/routing";
+import { routeWireGeometry } from "../../core/routing";
+import {
+  pathInkBounds,
+  planNodeMove,
+  resolveWirePoints,
+} from "../../core/wireMotion";
+import { wireHops, wireOverlaps, wirePathData } from "../../core/wireHops";
 import type {
   Annotation,
   ComponentNode,
@@ -33,6 +39,7 @@ import type {
   SymbolDefinition,
   Wire,
 } from "../../core/model";
+import { junctionSelectionId } from "../../core/model";
 import type { EditorTool } from "./Toolbar";
 
 const BASE_WIDTH = 1600;
@@ -62,6 +69,7 @@ interface SchematicCanvasProps {
       startAnchor?: ConnectionAnchor;
       endAnchor?: ConnectionAnchor;
     },
+    junctionPoints?: Point[],
   ) => void;
   onUpdateWire: (wireId: string, points: Point[]) => void;
   onUpdateNode: (
@@ -70,7 +78,11 @@ interface SchematicCanvasProps {
   ) => void;
   onMoveNodeLabel: (nodeId: string, label: NodeLabelKind, delta: Point) => void;
   onAddJunction: (point: Point) => void;
-  onAddAnnotation: (kind: Annotation["kind"], point: Point) => void;
+  onAddAnnotation: (
+    kind: Annotation["kind"],
+    point: Point,
+    wireId?: string,
+  ) => void;
   onUpdateAnnotation: (
     annotationId: string,
     patch: Partial<Pick<Annotation, "text" | "x" | "y" | "size">>,
@@ -96,11 +108,17 @@ interface MarqueeState {
   base: SelectionRef[];
 }
 
+interface ViewportMarqueeState {
+  start: Point;
+  current: Point;
+}
+
 interface WireDraft {
   start: Point;
   current: Point;
   startAnchor?: ConnectionAnchor;
   endAnchor?: ConnectionAnchor;
+  startWireId?: string;
 }
 
 interface SegmentDrag {
@@ -158,6 +176,7 @@ interface PanState {
 interface SnapResult {
   point: Point;
   anchor?: ConnectionAnchor;
+  wireId?: string;
 }
 
 function isSelected(
@@ -274,7 +293,7 @@ export function fitViewportToBounds(
     height = contentHeight;
     width = height * aspectRatio;
   }
-  width = clamp(width, MIN_VIEW_WIDTH, MAX_VIEW_WIDTH);
+  width = Math.max(MIN_VIEW_WIDTH, width);
   height = width / Math.max(0.1, aspectRatio);
   const centerX = (bounds.minX + bounds.maxX) / 2;
   const centerY = (bounds.minY + bounds.maxY) / 2;
@@ -286,17 +305,50 @@ export function fitViewportToBounds(
   };
 }
 
-function pageBounds(page: DrawingPage, symbols: ReadonlyMap<string, SymbolDefinition>) {
+export function focusViewportToMarquee(
+  start: Point,
+  current: Point,
+  aspectRatio: number,
+): Viewport {
+  return fitViewportToBounds(
+    {
+      minX: Math.min(start.x, current.x),
+      minY: Math.min(start.y, current.y),
+      maxX: Math.max(start.x, current.x),
+      maxY: Math.max(start.y, current.y),
+    },
+    aspectRatio,
+    8,
+  );
+}
+
+function pageBounds(
+  page: DrawingPage,
+  library: readonly SymbolDefinition[],
+) {
+  const symbols = new Map(library.map((symbol) => [symbol.id, symbol]));
   const nodeBoxes = page.nodes.flatMap((node) => {
     const symbol = symbols.get(node.symbolId);
     return symbol ? [nodeBounds(node, symbol)] : [];
   });
   const shapeBoxes = page.shapes.map(rotatedShapeBounds);
+  const wireBoxes = page.wires.flatMap((wire) => {
+    const points = resolveWirePoints(page, library, wire);
+    const bounds = points ? pathInkBounds(points) : null;
+    return bounds ? [bounds] : [];
+  });
   const points = [
-    ...page.wires.flatMap((wire) => wire.points),
+    ...page.junctions,
     ...page.annotations.map((annotation) => ({ x: annotation.x, y: annotation.y })),
+    ...page.annotations.flatMap((annotation) => [
+      { x: annotation.x - annotation.size, y: annotation.y - annotation.size },
+      {
+        x: annotation.x + Math.max(8, annotation.text.length * annotation.size * 0.65),
+        y: annotation.y + annotation.size * 0.35,
+      },
+    ]),
   ];
-  const boxes = [...nodeBoxes, ...shapeBoxes];
+  const boxes = [...nodeBoxes, ...shapeBoxes, ...wireBoxes];
   if (boxes.length === 0 && points.length === 0) {
     return { minX: 0, minY: 0, maxX: BASE_WIDTH, maxY: BASE_HEIGHT };
   }
@@ -476,6 +528,8 @@ export function SchematicCanvas({
   onMoveSelected,
 }: SchematicCanvasProps) {
   const svgRef = useRef<SVGSVGElement>(null);
+  const viewportMarqueeRef = useRef<ViewportMarqueeState | null>(null);
+  const viewportMoveCleanupRef = useRef<(() => void) | null>(null);
   const [view, setView] = useState<Viewport>({
     x: 0,
     y: 0,
@@ -485,6 +539,8 @@ export function SchematicCanvas({
   const [pointer, setPointer] = useState<Point>({ x: 0, y: 0 });
   const [drag, setDrag] = useState<DragState | null>(null);
   const [marquee, setMarquee] = useState<MarqueeState | null>(null);
+  const [viewportMarquee, setViewportMarquee] =
+    useState<ViewportMarqueeState | null>(null);
   const [wireDraft, setWireDraft] = useState<WireDraft | null>(null);
   const [segmentDrag, setSegmentDrag] = useState<SegmentDrag | null>(null);
   const [shapeDraft, setShapeDraft] = useState<ShapeDraft | null>(null);
@@ -501,7 +557,7 @@ export function SchematicCanvas({
   const displayPage = useMemo(
     () =>
       drag
-        ? previewMoveNodes(page, library, movingNodeIds, drag.delta)
+        ? planNodeMove(page, library, movingNodeIds, drag.delta)
         : page,
     [drag, library, movingNodeIds, page],
   );
@@ -509,6 +565,8 @@ export function SchematicCanvas({
     () => buildConnectivity(displayPage, library),
     [displayPage, library],
   );
+  const hopPositions = useMemo(() => wireHops(connectivity), [connectivity]);
+  const overlapRanges = useMemo(() => wireOverlaps(connectivity), [connectivity]);
 
   const highlightedNetworks = useMemo(() => {
     const networks = selectedNetworkIds(connectivity, selection);
@@ -547,7 +605,22 @@ export function SchematicCanvas({
         setSpacePressed(true);
         event.preventDefault();
       }
-      if ((event.ctrlKey || event.metaKey) && event.key === "0") {
+      if (event.key === "Escape") {
+        setDrag(null);
+        setMarquee(null);
+        setViewportMarquee(null);
+        viewportMarqueeRef.current = null;
+        stopViewportMoveTracking();
+        setWireDraft(null);
+        setSegmentDrag(null);
+        setShapeDraft(null);
+        setLabelDrag(null);
+        setAnnotationDrag(null);
+        setShapeDrag(null);
+        setShapeResize(null);
+        setInlineEditor(null);
+        setPan(null);
+      } else if ((event.ctrlKey || event.metaKey) && event.key === "0") {
         event.preventDefault();
         setView({ x: 0, y: 0, width: BASE_WIDTH, height: BASE_HEIGHT });
       } else if (event.key.toLowerCase() === "f") {
@@ -578,7 +651,12 @@ export function SchematicCanvas({
     setShapeResize(null);
     setInlineEditor(null);
     setMarquee(null);
+    setViewportMarquee(null);
+    viewportMarqueeRef.current = null;
+    stopViewportMoveTracking();
   }, [page.id]);
+
+  useEffect(() => stopViewportMoveTracking, []);
 
   function clientToSvg(event: { clientX: number; clientY: number }): Point {
     const svg = svgRef.current;
@@ -612,7 +690,7 @@ export function SchematicCanvas({
   function fitPageToContent(): void {
     const rect = svgRef.current?.getBoundingClientRect();
     const aspectRatio = rect?.width && rect.height ? rect.width / rect.height : BASE_WIDTH / BASE_HEIGHT;
-    setView(fitViewportToBounds(pageBounds(page, symbols), aspectRatio));
+    setView(fitViewportToBounds(pageBounds(page, library), aspectRatio));
   }
 
   function snapWirePoint(point: Point): SnapResult {
@@ -647,35 +725,57 @@ export function SchematicCanvas({
       return { point: closestPin.point, anchor: closestPin.anchor };
     }
 
-    let closest: { point: Point; distance: number } | null = null;
+    let closest: { point: Point; distance: number; wireId: string } | null = null;
     for (const segment of connectivity.segments) {
       const dx = segment.end.x - segment.start.x;
       const dy = segment.end.y - segment.start.y;
       let candidate: Point | null = null;
       if (Math.abs(dx) < 0.001) {
         if (Math.abs(point.x - segment.start.x) <= tolerance) {
+          const minimumY = Math.min(segment.start.y, segment.end.y);
+          const maximumY = Math.max(segment.start.y, segment.end.y);
           candidate = {
             x: segment.start.x,
-            y: clamp(point.y, Math.min(segment.start.y, segment.end.y), Math.max(segment.start.y, segment.end.y)),
+            y: clamp(
+              roundToGrid(clamp(point.y, minimumY, maximumY)),
+              minimumY,
+              maximumY,
+            ),
           };
         }
       } else if (Math.abs(dy) < 0.001 && Math.abs(point.y - segment.start.y) <= tolerance) {
+        const minimumX = Math.min(segment.start.x, segment.end.x);
+        const maximumX = Math.max(segment.start.x, segment.end.x);
         candidate = {
-          x: clamp(point.x, Math.min(segment.start.x, segment.end.x), Math.max(segment.start.x, segment.end.x)),
+          x: clamp(
+            roundToGrid(clamp(point.x, minimumX, maximumX)),
+            minimumX,
+            maximumX,
+          ),
           y: segment.start.y,
         };
       }
       if (candidate) {
         const candidateDistance = distance(point, candidate);
         if (candidateDistance <= tolerance && (!closest || candidateDistance < closest.distance)) {
-          closest = { point: candidate, distance: candidateDistance };
+          closest = {
+            point: candidate,
+            distance: candidateDistance,
+            wireId: segment.wireId,
+          };
         }
       }
     }
-    return { point: closest ? { ...closest.point } : snapPoint(point) };
+    return closest
+      ? { point: { ...closest.point }, wireId: closest.wireId }
+      : { point: snapPoint(point) };
   }
 
-  function finishWire(current: Point, endAnchor?: ConnectionAnchor): void {
+  function finishWire(
+    current: Point,
+    endAnchor?: ConnectionAnchor,
+    endWireId?: string,
+  ): void {
     if (!wireDraft) {
       return;
     }
@@ -690,9 +790,13 @@ export function SchematicCanvas({
           endAnchor,
         ),
         {
-        ...(wireDraft.startAnchor ? { startAnchor: wireDraft.startAnchor } : {}),
-        ...(endAnchor ? { endAnchor } : {}),
+          ...(wireDraft.startAnchor ? { startAnchor: wireDraft.startAnchor } : {}),
+          ...(endAnchor ? { endAnchor } : {}),
         },
+        [
+          ...(wireDraft.startWireId ? [wireDraft.start] : []),
+          ...(endWireId ? [current] : []),
+        ],
       );
     }
     setWireDraft(null);
@@ -701,18 +805,19 @@ export function SchematicCanvas({
   function beginWireAt(point: Point): void {
     const snapped = snapWirePoint(point);
     if (wireDraft) {
-      finishWire(snapped.point, snapped.anchor);
+      finishWire(snapped.point, snapped.anchor, snapped.wireId);
       return;
     }
     setWireDraft({
       start: snapped.point,
       current: snapped.point,
       ...(snapped.anchor ? { startAnchor: snapped.anchor } : {}),
+      ...(snapped.wireId ? { startWireId: snapped.wireId } : {}),
     });
   }
 
   function beginPinPointer(
-    event: ReactPointerEvent<SVGCircleElement>,
+    event: ReactPointerEvent<SVGGElement>,
     node: ComponentNode,
     pinIndex: number,
   ): void {
@@ -759,7 +864,10 @@ export function SchematicCanvas({
       return;
     }
     if (tool === "net-label") {
-      onAddAnnotation("net", snapWirePoint(point).point);
+      const snapped = snapWirePoint(point);
+      if (snapped.wireId) {
+        onAddAnnotation("net", snapped.point, snapped.wireId);
+      }
       return;
     }
     if (tool === "text") {
@@ -891,6 +999,21 @@ export function SchematicCanvas({
     });
   }
 
+  function beginJunctionPointer(
+    event: ReactPointerEvent<SVGGElement>,
+    point: Point,
+  ): void {
+    if (event.button !== 0 || spacePressed || tool !== "select") {
+      return;
+    }
+    event.stopPropagation();
+    const item: SelectionRef = {
+      kind: "junction",
+      id: junctionSelectionId(point),
+    };
+    onSelectionChange(selectionWith(selection, item, event.shiftKey));
+  }
+
   function beginCanvasPointer(event: ReactPointerEvent<SVGSVGElement>): void {
     if ((event.target as Element).closest?.(".canvas-inline-editor-object")) {
       return;
@@ -905,6 +1028,27 @@ export function SchematicCanvas({
         clientY: event.clientY,
         view,
       });
+      return;
+    }
+    if (event.button === 2) {
+      event.preventDefault();
+      event.currentTarget.setPointerCapture(event.pointerId);
+      const next = { start: point, current: point };
+      viewportMarqueeRef.current = next;
+      setViewportMarquee(next);
+      stopViewportMoveTracking();
+      const handleMouseMove = (moveEvent: MouseEvent): void => {
+        updateViewportMarquee(clientToSvg(moveEvent));
+      };
+      const handlePointerMove = (moveEvent: PointerEvent): void => {
+        updateViewportMarquee(clientToSvg(moveEvent));
+      };
+      window.addEventListener("mousemove", handleMouseMove);
+      window.addEventListener("pointermove", handlePointerMove);
+      viewportMoveCleanupRef.current = () => {
+        window.removeEventListener("mousemove", handleMouseMove);
+        window.removeEventListener("pointermove", handlePointerMove);
+      };
       return;
     }
     if (event.button !== 0) {
@@ -923,7 +1067,10 @@ export function SchematicCanvas({
       return;
     }
     if (tool === "net-label") {
-      onAddAnnotation("net", snapWirePoint(point).point);
+      const snapped = snapWirePoint(point);
+      if (snapped.wireId) {
+        onAddAnnotation("net", snapped.point, snapped.wireId);
+      }
       return;
     }
     if (tool === "text") {
@@ -978,11 +1125,16 @@ export function SchematicCanvas({
     }
     if (wireDraft) {
       const snapped = snapWirePoint(point);
-      setWireDraft({
+      const nextDraft: WireDraft = {
         ...wireDraft,
         current: snapped.point,
-        ...(snapped.anchor ? { endAnchor: snapped.anchor } : {}),
-      });
+      };
+      if (snapped.anchor) {
+        nextDraft.endAnchor = snapped.anchor;
+      } else {
+        delete nextDraft.endAnchor;
+      }
+      setWireDraft(nextDraft);
       return;
     }
     if (segmentDrag) {
@@ -1044,9 +1196,51 @@ export function SchematicCanvas({
     }
   }
 
+  function updateViewportMarquee(point: Point): void {
+    if (!viewportMarqueeRef.current) {
+      return;
+    }
+    if (pointsEqual(viewportMarqueeRef.current.current, point, 0.1)) {
+      return;
+    }
+    const next = { ...viewportMarqueeRef.current, current: point };
+    viewportMarqueeRef.current = next;
+    setViewportMarquee(next);
+  }
+
+  function stopViewportMoveTracking(): void {
+    viewportMoveCleanupRef.current?.();
+    viewportMoveCleanupRef.current = null;
+  }
+
   function endPointer(): void {
     if (pan) {
       setPan(null);
+      return;
+    }
+    if (viewportMarqueeRef.current) {
+      const activeMarquee = viewportMarqueeRef.current;
+      const minX = Math.min(activeMarquee.start.x, activeMarquee.current.x);
+      const minY = Math.min(activeMarquee.start.y, activeMarquee.current.y);
+      const maxX = Math.max(activeMarquee.start.x, activeMarquee.current.x);
+      const maxY = Math.max(activeMarquee.start.y, activeMarquee.current.y);
+      if (maxX - minX >= 6 && maxY - minY >= 6) {
+        const rect = svgRef.current?.getBoundingClientRect();
+        const aspectRatio =
+          rect?.width && rect.height
+            ? rect.width / rect.height
+            : BASE_WIDTH / BASE_HEIGHT;
+        setView(
+          focusViewportToMarquee(
+            activeMarquee.start,
+            activeMarquee.current,
+            aspectRatio,
+          ),
+        );
+      }
+      viewportMarqueeRef.current = null;
+      stopViewportMoveTracking();
+      setViewportMarquee(null);
       return;
     }
     if (drag) {
@@ -1120,6 +1314,22 @@ export function SchematicCanvas({
     }
   }
 
+  function cancelPointer(): void {
+    setDrag(null);
+    setMarquee(null);
+    setViewportMarquee(null);
+    viewportMarqueeRef.current = null;
+    stopViewportMoveTracking();
+    setWireDraft(null);
+    setSegmentDrag(null);
+    setShapeDraft(null);
+    setLabelDrag(null);
+    setAnnotationDrag(null);
+    setShapeDrag(null);
+    setShapeResize(null);
+    setPan(null);
+  }
+
   function finishMarquee(box: MarqueeState): void {
     const minX = Math.min(box.start.x, box.current.x);
     const maxX = Math.max(box.start.x, box.current.x);
@@ -1145,12 +1355,23 @@ export function SchematicCanvas({
       }
     }
     for (const wire of page.wires) {
+      const points = resolveWirePoints(page, library, wire);
       if (
-        wire.points.some(
+        points?.some(
           (point) => point.x >= minX && point.x <= maxX && point.y >= minY && point.y <= maxY,
         )
       ) {
         add({ kind: "wire", id: wire.id });
+      }
+    }
+    for (const junction of page.junctions) {
+      if (
+        junction.x >= minX &&
+        junction.x <= maxX &&
+        junction.y >= minY &&
+        junction.y <= maxY
+      ) {
+        add({ kind: "junction", id: junctionSelectionId(junction) });
       }
     }
     for (const annotation of page.annotations) {
@@ -1187,15 +1408,21 @@ export function SchematicCanvas({
         onPointerDown={beginCanvasPointer}
         onPointerMove={movePointer}
         onPointerUp={endPointer}
-        onPointerCancel={endPointer}
+        onPointerCancel={cancelPointer}
         onWheel={(event: ReactWheelEvent<SVGSVGElement>) => {
           event.preventDefault();
           zoomAt(event.clientX, event.clientY, Math.exp(event.deltaY * 0.0015));
         }}
         onContextMenu={(event) => {
           event.preventDefault();
+          if (viewportMarqueeRef.current) {
+            return;
+          }
           setWireDraft(null);
           setMarquee(null);
+          setViewportMarquee(null);
+          viewportMarqueeRef.current = null;
+          stopViewportMoveTracking();
           setShapeDraft(null);
           setLabelDrag(null);
           setAnnotationDrag(null);
@@ -1212,13 +1439,6 @@ export function SchematicCanvas({
             <rect width="100" height="100" fill="url(#grid-small)" />
             <path d="M 100 0 L 0 0 0 100" fill="none" stroke="#c6d0d2" strokeWidth="1" />
           </pattern>
-          <filter id="net-glow" x="-20%" y="-20%" width="140%" height="140%">
-            <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="blur" />
-            <feMerge>
-              <feMergeNode in="blur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
         </defs>
         <rect
           x={view.x}
@@ -1366,13 +1586,21 @@ export function SchematicCanvas({
 
         <g className="wire-layer">
           {displayPage.wires.map((wire) => {
+            const points = resolveWirePoints(displayPage, library, wire);
+            if (!points) {
+              return null;
+            }
             const networkId = connectivity.networkIdByWire.get(wire.id);
             const highlighted = networkId ? highlightedNetworks.has(networkId) : false;
             const selected = isSelected(selection, "wire", wire.id);
             const previewPoints =
               segmentDrag?.wire.id === wire.id
-                ? dragSegment(segmentDrag.wire, segmentDrag.segmentIndex, segmentDrag.delta)
-                : wire.points;
+                ? dragSegment(
+                    { ...segmentDrag.wire, points },
+                    segmentDrag.segmentIndex,
+                    segmentDrag.delta,
+                  )
+                : points;
             return (
               <g
                 key={wire.id}
@@ -1389,7 +1617,8 @@ export function SchematicCanvas({
                   } else if (tool === "junction") {
                     onAddJunction(snapPoint(clientToSvg(event)));
                   } else if (tool === "net-label") {
-                    onAddAnnotation("net", snapWirePoint(clientToSvg(event)).point);
+                    const snapped = snapWirePoint(clientToSvg(event));
+                    onAddAnnotation("net", snapped.point, wire.id);
                   } else if (tool === "text") {
                     onAddAnnotation("text", snapPoint(clientToSvg(event)));
                   } else if (tool === "select") {
@@ -1401,17 +1630,35 @@ export function SchematicCanvas({
                 onPointerEnter={() => setHovered({ kind: "wire", id: wire.id })}
                 onPointerLeave={() => setHovered(null)}
               >
-                <path className="wire-hit" d={pathData(previewPoints)} fill="none" stroke="transparent" strokeWidth="16" />
+                <path
+                  className="wire-hit"
+                  d={wirePathData(
+                    previewPoints,
+                    hopPositions.get(wire.id) ?? [],
+                    overlapRanges.get(wire.id) ?? [],
+                  )}
+                  fill="none"
+                  stroke="transparent"
+                  strokeWidth="16"
+                />
                 <path
                   className="wire-visible"
-                  d={pathData(previewPoints)}
+                  d={wirePathData(
+                    previewPoints,
+                    hopPositions.get(wire.id) ?? [],
+                    overlapRanges.get(wire.id) ?? [],
+                  )}
                   fill="none"
                   strokeWidth={highlighted ? 3.4 : 2.2}
                 />
                 {selected ? (
                   <path
                     className="wire-selection-outline"
-                    d={pathData(previewPoints)}
+                    d={wirePathData(
+                      previewPoints,
+                      hopPositions.get(wire.id) ?? [],
+                      overlapRanges.get(wire.id) ?? [],
+                    )}
                     fill="none"
                     strokeWidth="7"
                   />
@@ -1426,7 +1673,13 @@ export function SchematicCanvas({
                         cx={(start.x + end.x) / 2}
                         cy={(start.y + end.y) / 2}
                         r="5"
-                        onPointerDown={(event) => beginSegmentDrag(event, wire, index)}
+                        onPointerDown={(event) =>
+                          beginSegmentDrag(
+                            event,
+                            { ...wire, points },
+                            index,
+                          )
+                        }
                       />
                     );
                   })
@@ -1489,10 +1742,10 @@ export function SchematicCanvas({
               >
                 <rect
                   className="component-hit"
-                  x={bounds.minX - 5}
-                  y={bounds.minY - 5}
-                  width={bounds.maxX - bounds.minX + 10}
-                  height={bounds.maxY - bounds.minY + 10}
+                  x={bounds.minX}
+                  y={bounds.minY}
+                  width={bounds.maxX - bounds.minX}
+                  height={bounds.maxY - bounds.minY}
                 />
                 <g
                   className="component-art"
@@ -1585,22 +1838,39 @@ export function SchematicCanvas({
                 ) : null}
                 {symbol.pins.map((pin, pinIndex) => {
                   const point = nodePinPosition(node, symbol, pinIndex);
+                  const snapping =
+                    wireDraft?.endAnchor?.deviceId === node.id &&
+                    wireDraft.endAnchor.pinId === pin.key;
                   return (
-                    <circle
+                    <g
                       key={pin.key}
-                      className={`port-pin${wireDraft ? " is-snapping" : ""}`}
-                      cx={point.x}
-                      cy={point.y}
-                      r="6"
+                      className="port-pin"
                       data-pin-id={pin.key}
                       onPointerDown={(event) => beginPinPointer(event, node, pinIndex)}
-                    />
+                    >
+                      <circle
+                        className="port-pin-hit-area"
+                        cx={point.x}
+                        cy={point.y}
+                        r="6"
+                      />
+                      <circle
+                        className={`port-pin-indicator${snapping ? " is-snapping" : ""}`}
+                        cx={point.x}
+                        cy={point.y}
+                        r="3"
+                      />
+                    </g>
                   );
                 })}
                 {tool === "wire" && networkHighlighted
                   ? symbol.pins.map((pin, pinIndex) => {
                     const point = nodePinPosition(node, symbol, pinIndex);
-                    return <circle key={`net-${pin.key}`} className="net-pin" cx={point.x} cy={point.y} r="4" />;
+                    const network = connectivity.networkIdByPin.get(`pin:${node.id}:${pinIndex}`);
+                    if (!network || !highlightedNetworks.has(network)) {
+                      return null;
+                    }
+                    return <circle key={`net-${pin.key}`} className="net-pin" cx={point.x} cy={point.y} r="3.2" />;
                   })
                   : null}
               </g>
@@ -1610,18 +1880,53 @@ export function SchematicCanvas({
 
         <g className="junction-layer">
           {connectivity.junctionPoints.map((point, index) => {
-            const explicit = page.junctions.some((junction) => pointsEqual(junction, point, 0.5));
+            const explicit = displayPage.junctions.some((junction) =>
+              pointsEqual(junction, point, 0.5),
+            );
+            const selected =
+              explicit &&
+              isSelected(
+                selection,
+                "junction",
+                junctionSelectionId(point),
+              );
             return (
-              <g key={`${point.x}_${point.y}_${index}`} className="junction">
+              <g
+                key={`${point.x}_${point.y}_${index}`}
+                className={`junction${selected ? " is-selected" : ""}`}
+                data-junction-id={
+                  explicit ? junctionSelectionId(point) : undefined
+                }
+                onPointerDown={
+                  explicit
+                    ? (event) => beginJunctionPointer(event, point)
+                    : undefined
+                }
+              >
                 {explicit ? (
-                  <circle className="junction-ring" cx={point.x} cy={point.y} r="7" />
-                ) : null}
-                <circle
-                  cx={point.x}
-                  cy={point.y}
-                  r="4.4"
-                  className={explicit ? "junction-explicit" : "junction-auto"}
-                />
+                  <>
+                    <circle
+                      className="junction-hit"
+                      cx={point.x}
+                      cy={point.y}
+                      r="9"
+                    />
+                    <circle className="junction-ring" cx={point.x} cy={point.y} r="5.5" />
+                    <circle
+                      cx={point.x}
+                      cy={point.y}
+                      r="3.2"
+                      className="junction-explicit"
+                    />
+                  </>
+                ) : (
+                  <circle
+                    cx={point.x}
+                    cy={point.y}
+                    r="2.6"
+                    className="junction-auto"
+                  />
+                )}
               </g>
             );
           })}
@@ -1792,6 +2097,17 @@ export function SchematicCanvas({
             pointerEvents="none"
           />
         ) : null}
+
+        {viewportMarquee ? (
+          <rect
+            className="viewport-marquee"
+            x={Math.min(viewportMarquee.start.x, viewportMarquee.current.x)}
+            y={Math.min(viewportMarquee.start.y, viewportMarquee.current.y)}
+            width={Math.abs(viewportMarquee.current.x - viewportMarquee.start.x)}
+            height={Math.abs(viewportMarquee.current.y - viewportMarquee.start.y)}
+            pointerEvents="none"
+          />
+        ) : null}
       </svg>
       <div className="canvas-controls" aria-label="Canvas view controls">
         <button type="button" onClick={() => zoomAtCanvasCenter(1.2)}>
@@ -1807,7 +2123,7 @@ export function SchematicCanvas({
           Fit
         </button>
       </div>
-      <div className="canvas-axis-label">Grid 10 · Wheel zoom · F fit · Space drag</div>
+      <div className="canvas-axis-label">Grid {GRID_SIZE} · Wheel zoom · F fit · Space drag</div>
     </div>
   );
 }

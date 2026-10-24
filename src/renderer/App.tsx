@@ -13,7 +13,7 @@ import {
   mirrorSelection,
   moveNodes,
   removeSelection,
-  replacePageContent,
+  renameNet,
   rotateSelection,
   updateAnnotation,
   updateNode,
@@ -21,6 +21,7 @@ import {
   updateShape,
   updateWirePoints,
 } from "../core/editor";
+import { buildConnectivity } from "../core/connectivity";
 import { runElectricalRules } from "../core/erc";
 import { buildSchematicSvg } from "../core/export/svg";
 import {
@@ -34,6 +35,8 @@ import {
   createDocument,
   createEmptyPage,
   createIdentifier,
+  defaultNetName,
+  junctionSelectionId,
   pageById,
   parseProjectText,
   serializeProject,
@@ -53,8 +56,8 @@ import {
   movePage,
   renamePage,
 } from "../core/project";
-import { rerouteConnectedWires } from "../core/routing";
 import { exportSpice, importSpice } from "../core/spice";
+import { normalizeDocumentWireOverlaps } from "../core/wireMerge";
 import type { AppCommand, OpenProjectPayload } from "../shared/bridge";
 import builtInDeviceLibraryJson from "./assets/device-libraries/drawic-built-in.drawiclib.json";
 import { PageBar } from "./components/PageBar";
@@ -133,6 +136,10 @@ export function App() {
     [activePageId, document],
   );
   const serialized = useMemo(() => serializeProject(document), [document]);
+  const pageConnectivity = useMemo(
+    () => buildConnectivity(page, library),
+    [page],
+  );
   const dirty = serialized !== savedText;
   const visiblePathName = filePath ?? `${document.title}.drawic.json`;
   const hasSelection = selection.length > 0;
@@ -197,7 +204,8 @@ export function App() {
     (payload: OpenProjectPayload) => {
       try {
         const parsed = parseProjectText(payload.content);
-        replaceDocument(parsed, serializeProject(parsed), payload.path);
+        const normalized = normalizeDocumentWireOverlaps(parsed);
+        replaceDocument(normalized, serializeProject(parsed), payload.path);
         setNotice(`Opened ${projectNameFromPath(payload.path)}.drawic.json`);
       } catch (error) {
         setNotice(`Could not open project: ${errorMessage(error)}`);
@@ -347,28 +355,16 @@ export function App() {
   }, [activePageId, commitMutation, selection]);
 
   const rotateSelected = useCallback(() => {
-    const nodeIds = new Set(
-      selection.filter((item) => item.kind === "node").map((item) => item.id),
+    commitMutation((current) =>
+      rotateSelection(current, activePageId, selection, library),
     );
-    commitMutation((current) => {
-      const rotated = rotateSelection(current, activePageId, selection);
-      return replacePageContent(rotated, activePageId, (currentPage) =>
-        rerouteConnectedWires(currentPage, library, nodeIds),
-      );
-    });
     setDiagnostics(null);
   }, [activePageId, commitMutation, selection]);
 
   const mirrorSelected = useCallback(() => {
-    const nodeIds = new Set(
-      selection.filter((item) => item.kind === "node").map((item) => item.id),
+    commitMutation((current) =>
+      mirrorSelection(current, activePageId, selection, library),
     );
-    commitMutation((current) => {
-      const mirrored = mirrorSelection(current, activePageId, selection);
-      return replacePageContent(mirrored, activePageId, (currentPage) =>
-        rerouteConnectedWires(currentPage, library, nodeIds),
-      );
-    });
     setDiagnostics(null);
   }, [activePageId, commitMutation, selection]);
 
@@ -405,10 +401,18 @@ export function App() {
         startAnchor?: { deviceId: string; pinId: string };
         endAnchor?: { deviceId: string; pinId: string };
       },
+      junctionPoints?: Point[],
     ) => {
       const id = createIdentifier("wire");
       commitMutation((current) =>
-        addWireOperation(current, activePageId, { points, id, ...anchors }),
+        addWireOperation(current, activePageId, {
+          points,
+          id,
+          ...(junctionPoints && junctionPoints.length > 0
+            ? { junctionPoints }
+            : {}),
+          ...anchors,
+        }),
       );
       setSelection([{ kind: "wire", id }]);
       setDiagnostics(null);
@@ -451,44 +455,83 @@ export function App() {
   );
 
   const addLabel = useCallback(
-    (kind: Annotation["kind"], point: Point) => {
+    (kind: Annotation["kind"], point: Point, wireId?: string) => {
       const active = pageById(history.present, activePageId);
       let text = "Text";
       if (kind === "net") {
-        let index = 1;
-        const used = new Set(
-          active.annotations.filter((annotation) => annotation.kind === "net").map((a) => a.text),
-        );
-        while (used.has(`NET_${index}`)) {
-          index += 1;
-        }
-        text = `NET_${index}`;
+        text =
+          (wireId && pageConnectivity.netNameByWire.get(wireId)) ??
+          defaultNetName(
+            Math.max(0, active.wires.findIndex((wire) => wire.id === wireId)),
+          );
       }
       const id = createIdentifier("annotation");
       commitMutation((current) =>
-        addAnnotationOperation(current, activePageId, { kind, text, point, id }),
+        addAnnotationOperation(current, activePageId, {
+          kind,
+          text,
+          point,
+          id,
+          ...(wireId ? { wireId } : {}),
+        }),
       );
       setSelection([{ kind: "annotation", id }]);
       setDiagnostics(null);
       setNotice(
         kind === "net"
-          ? "Network label added. Edit its name in Properties."
+          ? "Net label added to the wire. Edit its name in Properties."
           : "Text added. Edit it in Properties.",
       );
     },
-    [activePageId, commitMutation, history.present],
+    [activePageId, commitMutation, history.present, pageConnectivity],
+  );
+
+  const updateWireName = useCallback(
+    (wireId: string, name: string) => {
+      const active = pageById(history.present, activePageId);
+      const networkId = pageConnectivity.networkIdByWire.get(wireId);
+      if (!networkId) {
+        return;
+      }
+      const wireIds = active.wires
+        .filter(
+          (wire) =>
+            pageConnectivity.networkIdByWire.get(wire.id) === networkId,
+        )
+        .map((wire) => wire.id);
+      const annotationIds = active.annotations
+        .filter(
+          (annotation) =>
+            pageConnectivity.networkIdByAnnotation.get(annotation.id) ===
+            networkId,
+        )
+        .map((annotation) => annotation.id);
+      commitMutation((current) =>
+        renameNet(
+          current,
+          activePageId,
+          wireIds,
+          annotationIds,
+          name,
+        ),
+      );
+      setDiagnostics(null);
+    },
+    [
+      activePageId,
+      commitMutation,
+      history.present,
+      pageConnectivity,
+    ],
   );
 
   const moveSelected = useCallback(
     (delta: Point) => {
       const ids = selection.filter((item) => item.kind === "node").map((item) => item.id);
       if (ids.length > 0) {
-        commitMutation((current) => {
-          const moved = moveNodes(current, activePageId, ids, delta);
-          return replacePageContent(moved, activePageId, (currentPage) =>
-            rerouteConnectedWires(currentPage, library, new Set(ids)),
-          );
-        });
+        commitMutation((current) =>
+          moveNodes(current, activePageId, ids, delta, library),
+        );
         setDiagnostics(null);
       }
     },
@@ -499,6 +542,11 @@ export function App() {
     setTool(nextTool);
     if (nextTool !== "place") {
       setPlacementSymbol(null);
+    }
+    if (nextTool === "net-label") {
+      setNotice("Net Label: click a wire to attach a visible network name.");
+    } else if (nextTool === "junction") {
+      setNotice("Junction: click where wires should become one network.");
     }
   }, []);
 
@@ -625,6 +673,11 @@ export function App() {
         }
         if (item.kind === "wire") {
           return active.wires.some((wire) => wire.id === item.id);
+        }
+        if (item.kind === "junction") {
+          return active.junctions.some(
+            (junction) => junctionSelectionId(junction) === item.id,
+          );
         }
         if (item.kind === "annotation") {
           return active.annotations.some((annotation) => annotation.id === item.id);
@@ -899,7 +952,9 @@ export function App() {
             onAddWire={addWire}
             onUpdateWire={updateWire}
             onUpdateNode={(nodeId, patch) =>
-              commitMutation((current) => updateNode(current, page.id, nodeId, patch))
+              commitMutation((current) =>
+                updateNode(current, page.id, nodeId, patch, library),
+              )
             }
             onMoveNodeLabel={(nodeId, label, delta) =>
               commitMutation((current) => {
@@ -933,8 +988,11 @@ export function App() {
           <PropertiesPanel
             page={page}
             selection={selection}
+            netNameByWire={pageConnectivity.netNameByWire}
             onUpdateNode={(nodeId, patch) =>
-              commitMutation((current) => updateNode(current, page.id, nodeId, patch))
+              commitMutation((current) =>
+                updateNode(current, page.id, nodeId, patch, library),
+              )
             }
             onUpdateNodeLabel={(nodeId, label, patch) =>
               commitMutation((current) =>
@@ -949,6 +1007,7 @@ export function App() {
             onUpdateShape={(shapeId, patch) =>
               commitMutation((current) => updateShape(current, page.id, shapeId, patch))
             }
+            onUpdateWireName={updateWireName}
             onRotate={rotateSelected}
             onMirror={mirrorSelected}
             onDelete={deleteSelection}
@@ -979,7 +1038,14 @@ export function App() {
           <span>{page.annotations.length} labels</span>
         </div>
         <div>
-          <span>Tool: {placementSymbol ? `Place ${placementSymbol.label}` : tool}</span>
+          <span>
+            Tool:{" "}
+            {placementSymbol
+              ? `Place ${placementSymbol.label}`
+              : tool === "net-label"
+                ? "Net Label"
+                : tool}
+          </span>
           <button type="button" onClick={runErc}>
             Run ERC
           </button>

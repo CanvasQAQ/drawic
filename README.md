@@ -38,10 +38,26 @@ tag such as `v1.0.0` is treated as a formal release.
   Space-drag panning, and visible placement previews.
 - Point-to-point wiring by clicking one device port and then another, with exact
   port snapping and anchor-backed connectivity.
-- Obstacle-aware orthogonal routing with handles on every segment, live wire
-  previews while devices move, and fixed electrical endpoints.
-- Distinct crossing, endpoint, and explicit junction semantics, with connected
-  network highlighting. Junctions do not mask the wire.
+- Shared wire endpoint resolution and movement planning, with rigid internal
+  paths, locally stretched boundary wires, live previews, one undo entry per
+  gesture, and fixed electrical endpoints.
+- Obstacle-aware orthogonal routing when creating new wires, plus handles on
+  every wire segment. Automatic routes keep a two-grid-step pin escape and
+  preserve endpoint devices as obstacles.
+- Distinct crossing and explicit-junction semantics, with connected-network
+  highlighting and arc hops over electrically separate crossings.
+- Hidden editable wire names such as `N001`, plus visible wire-attached Net
+  Labels. Connected wires share one canonical net name, and renaming it updates
+  the entire net.
+- Explicit junctions are selectable and deletable. Same-net T/crossing points
+  use one merged connection indicator, and duplicate collinear wire sections
+  are rendered once.
+- Wire snapping uses a 10-unit grid. Starting a new wire along an
+  existing wire merges the shared conductor without a redundant junction or
+  hop.
+- Overlapping wires are normalized to their real split points: branch
+  divergence gets one junction, while collinear continuation becomes one
+  continuous wire object.
 - Independently movable and hideable component labels, plus in-place editing and
   dragging for free text, named net labels, rectangles, and ellipses.
 - Independent drawing pages with creation, rename, duplicate, delete, reorder,
@@ -71,6 +87,17 @@ npm test
 npm run build
 npm start
 ```
+
+On Linux, when running the Electron GUI as root, restore the Chromium sandbox
+helper after `npm ci`, `npm install`, or deleting and rebuilding `node_modules`:
+
+```bash
+chown root:root node_modules/electron/dist/chrome-sandbox
+chmod 4755 node_modules/electron/dist/chrome-sandbox
+```
+
+`npm run build` does not require this step and uses the default permissions for
+`dist/`.
 
 The production application loads a local Vite build. Drawic never starts an HTTP
 development server in normal application execution.
@@ -124,9 +151,12 @@ service, sync, account, telemetry, or update-check request.
   electrical endpoint.
 - Double-click text, a net label, a shape label, or a component reference/value
   to edit it in place. Labels and shapes can be dragged directly.
-- A wire endpoint touching another wire connects them. Interior crossings do not
-  connect until the Junction tool adds an explicit junction.
+- A new wire endpoint deliberately snapped onto another wire creates an explicit
+  junction. Passive crossing or endpoint overlap stays separate and renders as a
+  hop.
 - Net labels with identical text merge their networks.
+- Drag with the right mouse button to draw a focus rectangle and fit the view to
+  that region.
 - Drag a component to move selected components. Hold Shift while dragging to
   constrain movement to one axis.
 - Hold Shift while selecting to add or remove an item.

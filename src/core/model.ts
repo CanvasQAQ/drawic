@@ -68,6 +68,7 @@ export interface ConnectionAnchor {
 export interface Wire {
   id: string;
   points: Point[];
+  name?: string;
   startAnchor?: ConnectionAnchor;
   endAnchor?: ConnectionAnchor;
 }
@@ -79,6 +80,7 @@ export interface Annotation {
   x: number;
   y: number;
   size: number;
+  wireId?: string;
 }
 
 export type ShapeKind = "rectangle" | "ellipse";
@@ -116,12 +118,31 @@ export interface DrawicDocument {
   pages: DrawingPage[];
 }
 
-export type SelectionKind = "node" | "node-label" | "wire" | "annotation" | "shape";
+export type SelectionKind =
+  | "node"
+  | "node-label"
+  | "wire"
+  | "junction"
+  | "annotation"
+  | "shape";
 
 export interface SelectionRef {
   kind: SelectionKind;
   id: string;
   label?: NodeLabelKind;
+}
+
+export function junctionSelectionId(point: Point): string {
+  return `junction:${point.x.toFixed(3)}:${point.y.toFixed(3)}`;
+}
+
+export function junctionPointFromSelectionId(id: string): Point | null {
+  const [kind, x, y] = id.split(":");
+  if (kind !== "junction" || x === undefined || y === undefined) {
+    return null;
+  }
+  const point = { x: Number(x), y: Number(y) };
+  return Number.isFinite(point.x) && Number.isFinite(point.y) ? point : null;
 }
 
 export type DiagnosticSeverity = "error" | "warning";
@@ -150,6 +171,21 @@ export class ProjectFormatError extends Error {
 
 export function createIdentifier(prefix: string): string {
   return `${prefix}_${globalThis.crypto.randomUUID()}`;
+}
+
+export function defaultWireName(index: number): string {
+  return `N${String(Math.max(1, index + 1)).padStart(3, "0")}`;
+}
+
+export function defaultNetName(index: number): string {
+  return defaultWireName(index);
+}
+
+export function wireDisplayName(
+  wire: Pick<Wire, "name">,
+  index: number,
+): string {
+  return wire.name?.trim() || defaultWireName(index);
 }
 
 export function createEmptyPage(
@@ -338,11 +374,16 @@ function parseWire(value: unknown, index: number): Wire {
   }
   const startAnchor = parseAnchor(value.startAnchor, `${field}.startAnchor`);
   const endAnchor = parseAnchor(value.endAnchor, `${field}.endAnchor`);
+  const name =
+    value.name === undefined
+      ? undefined
+      : expectString(value.name, `${field}.name`);
   return {
     id: expectString(value.id, `${field}.id`),
     points: value.points.map((point, pointIndex) =>
       parsePoint(point, `${field}.points[${pointIndex}]`),
     ),
+    ...(name ? { name } : {}),
     ...(startAnchor ? { startAnchor } : {}),
     ...(endAnchor ? { endAnchor } : {}),
   };
@@ -363,6 +404,9 @@ function parseAnnotation(value: unknown, index: number): Annotation {
     x: expectFinite(value.x, `${field}.x`),
     y: expectFinite(value.y, `${field}.y`),
     size: expectFinite(value.size, `${field}.size`),
+    ...(value.wireId === undefined
+      ? {}
+      : { wireId: expectString(value.wireId, `${field}.wireId`) }),
   };
 }
 

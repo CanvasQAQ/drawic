@@ -20,8 +20,12 @@ Implemented:
   rotation, and mirroring;
 - pointer-centered zoom, panning, placement previews, exact port selection, and
   port-to-port wiring;
-- obstacle-aware orthogonal wire routing, segment handles, live connected-wire
-  previews during component drags, network highlighting, junctions, and labels;
+- shared endpoint resolution and movement plans for connected wires, including
+  rigid internal paths, local boundary stretching, segment handles, drag
+  previews, network highlighting, explicit junctions, named nets, attached
+  labels, and arc hops for electrically separate crossings;
+- obstacle-aware orthogonal routing for newly created wires, including a
+  minimum pin escape that is reapplied on every automatic routing pass;
 - independently movable/hideable device labels plus directly editable text,
   rectangle, and ellipse objects with resize handles;
 - pointer-centered wheel zoom and `F` fit-to-content;
@@ -34,6 +38,8 @@ Not yet implemented in the UI:
 - importing/exporting full draw.io multi-page documents;
 - multi-object shape group editing and advanced connector routing parity with
   format-specific drawing tools;
+- stable per-segment wire identities, direction-mode editing, and an explicit
+  disconnection-move gesture;
 - user-editable device libraries;
 - Spectre/SCS, simulation, local MCP, and cloud services.
 
@@ -158,12 +164,20 @@ Important invariants:
 - page switching is view state and does not modify the document;
 - wire endpoints may bind to `{ deviceId, pinId }`;
 - a crossing does not connect without an explicit junction;
-- endpoint contact connects;
+- wire-to-wire endpoint overlap connects only through an explicit junction;
+- a device pin touching a wire is an electrical contact;
+- wire names and Net Labels merge networks by matching text;
+- every connected network exposes one canonical name to all member wires;
 - future schema versions are rejected;
 - retired preview formats are rejected without migration.
 
 Changing these invariants requires an ADR and updates to parser, editor,
 connectivity, ERC, exports, renderer state, and tests.
+
+Wire endpoint resolution, movement classification, local stretching, and
+preview/commit behavior are defined in
+[`WIRE_INTERACTION_MODEL.md`](WIRE_INTERACTION_MODEL.md), ADR 007, and ADR 008.
+ADR 008 defines explicit junction, crossing-hop, and net-name semantics.
 
 ## 4. Device library rules
 
@@ -273,6 +287,19 @@ npm run dist:dir
 xvfb-run -a npm run smoke:packaged
 ```
 
+On Linux, when launching the Electron GUI or packaged smoke test as root,
+restore the Chromium sandbox helper after `npm ci`, `npm install`, or deleting
+and rebuilding `node_modules`:
+
+```bash
+chown root:root node_modules/electron/dist/chrome-sandbox
+chmod 4755 node_modules/electron/dist/chrome-sandbox
+```
+
+Run this once after dependency installation or a `node_modules` rebuild. It is
+not needed after `npm run build`, which uses the default permissions for
+`dist/`.
+
 Tagged distribution packages are currently produced only on a native Windows
 runner as the Windows x64 ZIP. The Windows package smoke test runs in CI before
 publishing.
@@ -298,6 +325,9 @@ exactly one Windows x64 ZIP plus `SHA256SUMS.txt` and `UNSIGNED-RELEASE.txt`.
 - device catalog and conversion: `tests/deviceLibrary.test.ts`
 - page UI: `tests/pageBar.test.tsx`
 - canvas interactions: `tests/canvasInteraction.test.tsx`
+- wire endpoint resolution and movement plans: `tests/wireMotion.test.ts`
+- wire crossing hops: `tests/wireHops.test.ts`
+- collinear overlap normalization: `tests/wireMerge.test.ts`
 - desktop close protection and files: `tests/closeGuard.test.ts`,
   `tests/fileStore.test.ts`
 - packaging and release-retention expectations: `tests/packaging.test.ts`,

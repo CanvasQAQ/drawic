@@ -8,6 +8,10 @@ import type {
   NodeLabelKind,
   SelectionRef,
 } from "../../core/model";
+import {
+  junctionPointFromSelectionId,
+  wireDisplayName,
+} from "../../core/model";
 import { Icon } from "./Icons";
 
 function CommitField({
@@ -57,6 +61,7 @@ function CommitField({
 interface PropertiesPanelProps {
   page: DrawingPage;
   selection: readonly SelectionRef[];
+  netNameByWire: ReadonlyMap<string, string>;
   onUpdateNode: (
     nodeId: string,
     patch: Partial<Pick<ComponentNode, "reference" | "value">>,
@@ -74,6 +79,7 @@ interface PropertiesPanelProps {
     shapeId: string,
     patch: Partial<Pick<DrawingShape, "x" | "y" | "width" | "height" | "text">>,
   ) => void;
+  onUpdateWireName: (wireId: string, name: string) => void;
   onRotate: () => void;
   onMirror: () => void;
   onDelete: () => void;
@@ -99,10 +105,12 @@ function PropertiesSection({
 export function PropertiesPanel({
   page,
   selection,
+  netNameByWire,
   onUpdateNode,
   onUpdateNodeLabel,
   onUpdateAnnotation,
   onUpdateShape,
+  onUpdateWireName,
   onRotate,
   onMirror,
   onDelete,
@@ -117,6 +125,13 @@ export function PropertiesPanel({
     selection.length === 1 && selection[0]?.kind === "wire"
       ? page.wires.find((wire) => wire.id === selection[0]?.id)
       : undefined;
+  const selectedWireIndex = selectedWire
+    ? page.wires.findIndex((wire) => wire.id === selectedWire.id)
+    : -1;
+  const selectedWireNetName = selectedWire
+    ? netNameByWire.get(selectedWire.id) ??
+      wireDisplayName(selectedWire, Math.max(0, selectedWireIndex))
+    : "";
   const selectedNodeLabel =
     selection.length === 1 && selection[0]?.kind === "node-label"
       ? page.nodes.find((node) => node.id === selection[0]?.id)
@@ -125,10 +140,18 @@ export function PropertiesPanel({
     selection.length === 1 && selection[0]?.kind === "annotation"
       ? page.annotations.find((annotation) => annotation.id === selection[0]?.id)
       : undefined;
+  const selectedAnnotationWire =
+    selectedAnnotation?.wireId
+      ? page.wires.find((wire) => wire.id === selectedAnnotation.wireId)
+      : undefined;
   const selectedShape: DrawingShape | undefined =
     selection.length === 1 && selection[0]?.kind === "shape"
       ? page.shapes.find((shape) => shape.id === selection[0]?.id)
       : undefined;
+  const selectedJunction =
+    selection.length === 1 && selection[0]?.kind === "junction"
+      ? junctionPointFromSelectionId(selection[0].id)
+      : null;
 
   return (
     <aside className="properties-panel" aria-label="Properties">
@@ -245,8 +268,13 @@ export function PropertiesPanel({
         <PropertiesSection title="Wire">
           <div className="selection-kind">
             <span className="kind-swatch kind-wire" />
-            Orthogonal wire
+            {selectedWireNetName} · orthogonal wire
           </div>
+          <CommitField
+            label="Net name"
+            value={selectedWireNetName}
+            onCommit={(name) => onUpdateWireName(selectedWire.id, name)}
+          />
           <dl className="property-grid">
             <div>
               <dt>Vertices</dt>
@@ -266,8 +294,8 @@ export function PropertiesPanel({
             </div>
           </dl>
           <p className="property-hint">
-            Crossing wires stay separate unless a junction is placed. A wire endpoint touching
-            another wire joins automatically.
+            The default name is hidden on the canvas. Use the Net Label tool to
+            show a name, or place a junction to join crossing wires.
           </p>
         </PropertiesSection>
       ) : null}
@@ -284,6 +312,23 @@ export function PropertiesPanel({
             multiline={selectedAnnotation.kind === "text"}
             onCommit={(text) => onUpdateAnnotation(selectedAnnotation.id, { text })}
           />
+          {selectedAnnotation.kind === "net" ? (
+            <p className="property-hint">
+              {selectedAnnotationWire
+                ? `Attached to ${
+                    netNameByWire.get(selectedAnnotationWire.id) ??
+                    wireDisplayName(
+                      selectedAnnotationWire,
+                      page.wires.findIndex(
+                        (wire) => wire.id === selectedAnnotationWire.id,
+                      ),
+                    )
+                  }.`
+                : selectedAnnotation.wireId
+                  ? "Attached wire is missing."
+                  : "Legacy label attached by canvas position."}
+            </p>
+          ) : null}
           <CommitField
             label="Font size"
             value={String(selectedAnnotation.size)}
@@ -345,6 +390,26 @@ export function PropertiesPanel({
               <Icon name="rotate" /> Rotate
             </button>
           </div>
+        </PropertiesSection>
+      ) : null}
+
+      {selectedJunction ? (
+        <PropertiesSection title="Junction">
+          <div className="selection-kind">
+            <span className="kind-swatch kind-wire" />
+            Explicit junction
+          </div>
+          <dl className="property-grid">
+            <div>
+              <dt>Position</dt>
+              <dd>
+                {selectedJunction.x}, {selectedJunction.y}
+              </dd>
+            </div>
+          </dl>
+          <p className="property-hint">
+            A junction joins wires at this point. Press Delete to remove it.
+          </p>
         </PropertiesSection>
       ) : null}
 

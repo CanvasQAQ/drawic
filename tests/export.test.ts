@@ -32,6 +32,28 @@ describe("export formats", () => {
     expect(first).not.toMatch(/(?:src|href)="https?:|url\(https?:/);
   });
 
+  it("exports arc hops for electrically separate wire crossings", () => {
+    const page = createEmptyPage("Crossing export");
+    page.wires.push(
+      {
+        id: "horizontal",
+        points: [
+          { x: 20, y: 100 },
+          { x: 220, y: 100 },
+        ],
+      },
+      {
+        id: "vertical",
+        points: [
+          { x: 120, y: 20 },
+          { x: 120, y: 180 },
+        ],
+      },
+    );
+    const svg = buildSchematicSvg(page, testLibrary);
+    expect(svg).toContain("Q 120 90");
+  });
+
   it("constructs a deterministic, non-empty bitmap PDF", () => {
     const bitmap = {
       width: 2,

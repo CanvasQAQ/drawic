@@ -43,6 +43,18 @@ npm run typecheck
 npm test
 ```
 
+On Linux, when running Drawic's Electron GUI or smoke test as root, restore the
+Chromium sandbox helper after `npm ci`, `npm install`, or deleting and rebuilding
+`node_modules`:
+
+```bash
+chown root:root node_modules/electron/dist/chrome-sandbox
+chmod 4755 node_modules/electron/dist/chrome-sandbox
+```
+
+This is not needed after `npm run build`; the build uses the default permissions
+for `dist/`.
+
 Read the relevant ADR under `docs/adr/` before changing document structure,
 connectivity, security boundaries, the visual language, or the device library.
 

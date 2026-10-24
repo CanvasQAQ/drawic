@@ -61,6 +61,48 @@ describe("Drawic drawing format", () => {
     expect(parsed).toEqual(document);
   });
 
+  it("round-trips wire names and attached net labels", () => {
+    const document = createDocument({ pageId: "page_wire_mode" });
+    document.pages[0]!.wires.push({
+      id: "wire_auto",
+      name: "VOUT",
+      points: [
+        { x: 0, y: 0 },
+        { x: 20, y: 0 },
+      ],
+    });
+    document.pages[0]!.wires.push({
+      id: "wire_manual",
+      name: "GND",
+      points: [
+        { x: 0, y: 20 },
+        { x: 20, y: 20 },
+      ],
+    });
+    document.pages[0]!.annotations.push({
+      id: "label_vout",
+      kind: "net",
+      text: "VOUT",
+      x: 10,
+      y: 0,
+      size: 14,
+      wireId: "wire_auto",
+    });
+
+    const parsed = parseProjectText(serializeProject(document));
+    expect(parsed).toEqual(document);
+    let copyIndex = 0;
+    const duplicated = duplicatePage(parsed, "page_wire_mode", {
+      pageId: "page_wire_mode_copy",
+      idFactory: (prefix) => `${prefix}_copy_${++copyIndex}`,
+    });
+    expect(duplicated.pages[1]?.wires.map((wire) => wire.name)).toEqual([
+      "VOUT",
+      "GND",
+    ]);
+    expect(duplicated.pages[1]?.annotations[0]?.wireId).toBe("wire_copy_1");
+  });
+
   it("rejects future schema versions instead of guessing", () => {
     const source = JSON.stringify({
       ...createDocument(),

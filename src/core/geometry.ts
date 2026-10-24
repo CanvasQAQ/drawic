@@ -9,6 +9,7 @@ import type {
 
 export const GRID_SIZE = 10;
 export const SNAP_DISTANCE = 12;
+export const AUTO_ROUTE_ESCAPE = GRID_SIZE * 2;
 
 export function roundToGrid(value: number, grid = GRID_SIZE): number {
   return Math.round(value / grid) * grid;
@@ -196,6 +197,31 @@ export function isOrthogonalPath(points: Point[]): boolean {
       (point.x === previous.x && point.y === previous.y)
     );
   });
+}
+
+export function simplifyOrthogonalPath(points: readonly Point[]): Point[] {
+  const compact: Point[] = [];
+  for (const point of points) {
+    const previous = compact.at(-1);
+    if (!previous || distance(previous, point) > 0.001) {
+      compact.push({ ...point });
+    }
+  }
+  const simplified: Point[] = [];
+  for (const point of compact) {
+    while (simplified.length >= 2) {
+      const first = simplified[simplified.length - 2]!;
+      const second = simplified[simplified.length - 1]!;
+      const sameX = first.x === second.x && second.x === point.x;
+      const sameY = first.y === second.y && second.y === point.y;
+      if (!sameX && !sameY) {
+        break;
+      }
+      simplified.pop();
+    }
+    simplified.push(point);
+  }
+  return simplified;
 }
 
 export function pointOnSegment(point: Point, start: Point, end: Point, tolerance = 0.5): boolean {

@@ -56,13 +56,13 @@ function uniqueNetNames(
 
   for (const group of connectivity.groups) {
     const networkId = connectivity.networkIdByKey.get(group[0]!)!;
-    const labels = connectivity.netNamesByGroup.get(networkId) ?? [];
+    const canonicalName = connectivity.netNameByGroup.get(networkId);
     if (groundNetworks.has(networkId)) {
       names.set(networkId, "0");
       continue;
     }
-    if (labels.length > 0) {
-      names.set(networkId, cleanToken(labels[0]!, `N${counter++}`));
+    if (canonicalName) {
+      names.set(networkId, cleanToken(canonicalName, `N${counter++}`));
       continue;
     }
     let candidate = `N${counter++}`;

@@ -18,6 +18,7 @@ interface ToolButtonProps {
   disabled?: boolean;
   onClick: () => void;
   shortcut?: string;
+  description?: string;
 }
 
 function ToolButton({
@@ -27,14 +28,18 @@ function ToolButton({
   disabled = false,
   onClick,
   shortcut,
+  description,
 }: ToolButtonProps) {
+  const title = `${label}${shortcut ? ` (${shortcut})` : ""}${
+    description ? ` — ${description}` : ""
+  }`;
   return (
     <button
       type="button"
       className={`tool-button${active ? " is-active" : ""}`}
       aria-pressed={active}
       aria-label={label}
-      title={shortcut ? `${label} (${shortcut})` : label}
+      title={title}
       disabled={disabled}
       onClick={onClick}
     >
@@ -139,12 +144,14 @@ export function Toolbar({
             icon="junction"
             active={tool === "junction"}
             onClick={() => onTool("junction")}
+            description="Join crossing or touching wires at this point"
           />
           <ToolButton
-            label="Net"
+            label="Net Label"
             icon="net"
             active={tool === "net-label"}
             onClick={() => onTool("net-label")}
+            description="Attach a visible name to a wire"
           />
           <ToolButton
             label="Text"

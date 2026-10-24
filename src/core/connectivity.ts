@@ -13,8 +13,10 @@ import type {
   SelectionRef,
   SymbolDefinition,
 } from "./model";
+import { defaultNetName } from "./model";
+import { resolveWirePoints } from "./wireMotion";
 
-interface Segment {
+export interface WireSegment {
   wireId: string;
   wireIndex: number;
   segmentIndex: number;
@@ -37,8 +39,10 @@ export interface ConnectivityResult {
   networkIdByWire: Map<string, string>;
   networkIdByAnnotation: Map<string, string>;
   netNamesByGroup: Map<string, string[]>;
+  netNameByGroup: Map<string, string>;
+  netNameByWire: Map<string, string>;
   pinTerminals: PinTerminal[];
-  segments: Segment[];
+  segments: WireSegment[];
   junctionPoints: Point[];
 }
 
@@ -87,12 +91,37 @@ class DisjointSet {
   }
 }
 
-function annotationTouchesSegment(annotation: Annotation, segment: Segment): boolean {
+function annotationTouchesSegment(annotation: Annotation, segment: WireSegment): boolean {
   return pointOnSegment(annotation, segment.start, segment.end, 7);
 }
 
-function endpointMatch(point: Point, segment: Segment): boolean {
+function endpointMatch(point: Point, segment: WireSegment): boolean {
   return pointsEqual(point, segment.start, 0.5) || pointsEqual(point, segment.end, 0.5);
+}
+
+function collinearOverlap(
+  a: WireSegment,
+  b: WireSegment,
+): { start: Point; end: Point } | null {
+  const horizontal =
+    a.start.y === a.end.y && b.start.y === b.end.y && a.start.y === b.start.y;
+  const vertical =
+    a.start.x === a.end.x && b.start.x === b.end.x && a.start.x === b.start.x;
+  if (!horizontal && !vertical) {
+    return null;
+  }
+  const aStart = horizontal ? a.start.x : a.start.y;
+  const aEnd = horizontal ? a.end.x : a.end.y;
+  const bStart = horizontal ? b.start.x : b.start.y;
+  const bEnd = horizontal ? b.end.x : b.end.y;
+  const lower = Math.max(Math.min(aStart, aEnd), Math.min(bStart, bEnd));
+  const upper = Math.min(Math.max(aStart, aEnd), Math.max(bStart, bEnd));
+  if (upper - lower < 0.1) {
+    return null;
+  }
+  return horizontal
+    ? { start: { x: lower, y: a.start.y }, end: { x: upper, y: a.start.y } }
+    : { start: { x: a.start.x, y: lower }, end: { x: a.start.x, y: upper } };
 }
 
 export function buildConnectivity(
@@ -101,14 +130,18 @@ export function buildConnectivity(
 ): ConnectivityResult {
   const graph = new DisjointSet();
   const bySymbol = new Map(library.map((symbol) => [symbol.id, symbol]));
-  const segments: Segment[] = [];
+  const segments: WireSegment[] = [];
   const pinTerminals: PinTerminal[] = [];
 
   for (const wire of page.wires) {
     graph.add(wireGraphKey(wire.id));
-    for (let index = 0; index < wire.points.length - 1; index += 1) {
-      const start = wire.points[index]!;
-      const end = wire.points[index + 1]!;
+    const points = resolveWirePoints(page, library, wire);
+    if (!points) {
+      continue;
+    }
+    for (let index = 0; index < points.length - 1; index += 1) {
+      const start = points[index]!;
+      const end = points[index + 1]!;
       segments.push({
         wireId: wire.id,
         wireIndex: page.wires.indexOf(wire),
@@ -159,39 +192,55 @@ export function buildConnectivity(
         continue;
       }
       const intersection = segmentIntersection(a.start, a.end, b.start, b.end);
-      const aEndpointOnB =
-        pointOnSegment(a.start, b.start, b.end, 0.7) ||
-        pointOnSegment(a.end, b.start, b.end, 0.7);
-      const bEndpointOnA =
-        pointOnSegment(b.start, a.start, a.end, 0.7) ||
-        pointOnSegment(b.end, a.start, a.end, 0.7);
+      const overlap = collinearOverlap(a, b);
       const explicitJunction =
-        intersection !== null &&
-        page.junctions.some((junction) => pointsEqual(junction, intersection, 0.5));
-      if (
-        intersection &&
-        (aEndpointOnB || bEndpointOnA || explicitJunction)
-      ) {
+        (intersection !== null &&
+          page.junctions.some((junction) =>
+            pointsEqual(junction, intersection, 0.5),
+          )) ||
+        (overlap !== null &&
+          page.junctions.some((junction) =>
+            pointOnSegment(junction, overlap.start, overlap.end, 0.5),
+          ));
+      if (explicitJunction) {
         graph.union(wireGraphKey(a.wireId), wireGraphKey(b.wireId));
       }
     }
   }
 
   const labelsByText = new Map<string, string[]>();
+  for (const wire of page.wires) {
+    const text = wire.name?.trim() ?? "";
+    if (!text) {
+      continue;
+    }
+    const labels = labelsByText.get(text) ?? [];
+    labels.push(wireGraphKey(wire.id));
+    labelsByText.set(text, labels);
+  }
   for (const annotation of page.annotations) {
     if (annotation.kind !== "net") {
       continue;
     }
     const key = annotationGraphKey(annotation.id);
     graph.add(key);
-    for (const segment of segments) {
-      if (annotationTouchesSegment(annotation, segment)) {
-        graph.union(key, wireGraphKey(segment.wireId));
+    if (annotation.wireId) {
+      const attachedWire = page.wires.find(
+        (wire) => wire.id === annotation.wireId,
+      );
+      if (attachedWire) {
+        graph.union(key, wireGraphKey(attachedWire.id));
       }
-    }
-    for (const pin of pinTerminals) {
-      if (distance(annotation, pin.point) <= 8) {
-        graph.union(key, pin.key);
+    } else {
+      for (const segment of segments) {
+        if (annotationTouchesSegment(annotation, segment)) {
+          graph.union(key, wireGraphKey(segment.wireId));
+        }
+      }
+      for (const pin of pinTerminals) {
+        if (distance(annotation, pin.point) <= 8) {
+          graph.union(key, pin.key);
+        }
       }
     }
     const text = annotation.text.trim();
@@ -238,46 +287,94 @@ export function buildConnectivity(
   }
 
   const netNamesByGroup = new Map<string, string[]>();
-  for (const group of groups) {
+  const netNameByGroup = new Map<string, string>();
+  for (const [index, group] of groups.entries()) {
     const networkId = networkIdByKey.get(group[0]!)!;
-    const names = page.annotations
+    const labelNames = page.annotations
       .filter(
         (annotation) =>
           annotation.kind === "net" &&
           networkIdByAnnotation.get(annotation.id) === networkId &&
           annotation.text.trim(),
       )
-      .map((annotation) => annotation.text.trim())
+      .map((annotation) => annotation.text.trim());
+    const wireNames = page.wires
+      .filter(
+        (wire) =>
+          wire.name?.trim() &&
+          networkIdByWire.get(wire.id) === networkId,
+      )
+      .map((wire) => wire.name!.trim());
+    const names = [...wireNames, ...labelNames]
       .filter((name, index, all) => all.indexOf(name) === index)
       .sort();
     netNamesByGroup.set(networkId, names);
+    netNameByGroup.set(
+      networkId,
+      [...labelNames].sort()[0] ?? [...wireNames].sort()[0] ?? defaultNetName(index),
+    );
   }
-
-  const explicitJunctions = page.junctions.map((point) => ({ ...point }));
-  const automaticJunctions: Point[] = [];
-  const endpointWires = new Map<string, Set<string>>();
-  for (const segment of segments) {
-    for (const point of [segment.start, segment.end]) {
-      const key = `${point.x.toFixed(2)},${point.y.toFixed(2)}`;
-      const wires = endpointWires.get(key) ?? new Set<string>();
-      wires.add(segment.wireId);
-      endpointWires.set(key, wires);
+  const netNameByWire = new Map<string, string>();
+  for (const wire of page.wires) {
+    const networkId = networkIdByWire.get(wire.id);
+    if (networkId) {
+      netNameByWire.set(
+        wire.id,
+        netNameByGroup.get(networkId) ?? defaultNetName(0),
+      );
     }
   }
-  for (const segment of segments) {
-    for (const point of [segment.start, segment.end]) {
-      const others = segments.filter(
-        (other) =>
-          other.wireId !== segment.wireId &&
-          pointOnSegment(point, other.start, other.end, 0.7),
-      );
-      const pinsHere = pinTerminals.some((pin) => pointsEqual(pin.point, point, 0.7));
-      if (others.length > 0 || pinsHere) {
-        automaticJunctions.push(point);
+
+  const hiddenOverlapJunctions = new Set<string>();
+  for (let left = 0; left < segments.length; left += 1) {
+    const a = segments[left]!;
+    for (let right = left + 1; right < segments.length; right += 1) {
+      const b = segments[right]!;
+      if (a.wireId === b.wireId) {
+        continue;
+      }
+      const overlap = collinearOverlap(a, b);
+      if (!overlap) {
+        continue;
+      }
+      for (const junction of page.junctions) {
+        if (pointOnSegment(junction, overlap.start, overlap.end, 0.5)) {
+          hiddenOverlapJunctions.add(
+            `${junction.x.toFixed(3)}:${junction.y.toFixed(3)}`,
+          );
+        }
       }
     }
   }
-  const uniqueJunctions = [...explicitJunctions, ...automaticJunctions].filter(
+  const explicitJunctions = page.junctions
+    .filter(
+      (point) =>
+        !hiddenOverlapJunctions.has(
+          `${point.x.toFixed(3)}:${point.y.toFixed(3)}`,
+        ),
+    )
+    .map((point) => ({ ...point }));
+  const automaticSameNetJunctions: Point[] = [];
+  for (let left = 0; left < segments.length; left += 1) {
+    const a = segments[left]!;
+    for (let right = left + 1; right < segments.length; right += 1) {
+      const b = segments[right]!;
+      if (
+        a.wireId === b.wireId ||
+        networkIdByWire.get(a.wireId) !== networkIdByWire.get(b.wireId)
+      ) {
+        continue;
+      }
+      const intersection = segmentIntersection(a.start, a.end, b.start, b.end);
+      if (intersection) {
+        automaticSameNetJunctions.push(intersection);
+      }
+    }
+  }
+  const uniqueJunctions = [
+    ...explicitJunctions,
+    ...automaticSameNetJunctions,
+  ].filter(
     (point, index, all) => all.findIndex((other) => pointsEqual(point, other, 0.5)) === index,
   );
 
@@ -288,6 +385,8 @@ export function buildConnectivity(
     networkIdByWire,
     networkIdByAnnotation,
     netNamesByGroup,
+    netNameByGroup,
+    netNameByWire,
     pinTerminals,
     segments,
     junctionPoints: uniqueJunctions,

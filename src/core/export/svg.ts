@@ -5,6 +5,9 @@ import {
   symbolTransform,
 } from "../geometry";
 import type { DrawingPage, SymbolDefinition } from "../model";
+import { buildConnectivity } from "../connectivity";
+import { resolveWirePoints } from "../wireMotion";
+import { wireHops, wireOverlaps, wirePathData } from "../wireHops";
 
 export interface SvgExportOptions {
   includeBackground?: boolean;
@@ -23,18 +26,15 @@ function numberOf(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
 }
 
-function wirePath(points: Array<{ x: number; y: number }>): string {
-  return points
-    .map((point, index) => `${index === 0 ? "M" : "L"} ${numberOf(point.x)} ${numberOf(point.y)}`)
-    .join(" ");
-}
-
 export function buildSchematicSvg(
   page: DrawingPage,
   library: readonly SymbolDefinition[],
   options: SvgExportOptions = {},
 ): string {
   const symbols = new Map(library.map((symbol) => [symbol.id, symbol]));
+  const connectivity = buildConnectivity(page, library);
+  const hopPositions = wireHops(connectivity);
+  const overlapRanges = wireOverlaps(connectivity);
   const bounds = page.nodes
     .map((node) => {
       const symbol = symbols.get(node.symbolId);
@@ -43,7 +43,8 @@ export function buildSchematicSvg(
     .filter((value): value is { minX: number; minY: number; maxX: number; maxY: number } => value !== null);
 
   const allPoints = [
-    ...page.wires.flatMap((wire) => wire.points),
+    ...page.wires.flatMap((wire) => resolveWirePoints(page, library, wire) ?? []),
+    ...page.junctions,
     ...page.annotations.map((annotation) => ({ x: annotation.x, y: annotation.y })),
     ...page.shapes.flatMap((shape) => [
       { x: shape.x, y: shape.y },
@@ -74,11 +75,14 @@ export function buildSchematicSvg(
   const height = maxY - minY;
 
   const wireMarkup = page.wires
-    .filter((wire) => wire.points.length >= 2)
-    .map(
-      (wire) =>
-        `    <path class="wire" d="${wirePath(wire.points)}" fill="none" stroke="#1a2833" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`,
-    )
+    .flatMap((wire) => {
+      const points = resolveWirePoints(page, library, wire);
+      return points
+        ? [
+            `    <path class="wire" d="${wirePathData(points, hopPositions.get(wire.id), overlapRanges.get(wire.id))}" fill="none" stroke="#1a2833" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`,
+          ]
+        : [];
+    })
     .join("\n");
 
   const nodeMarkup = page.nodes
@@ -117,7 +121,7 @@ export function buildSchematicSvg(
     })
     .join("\n");
 
-  const junctionMarkup = page.junctions
+  const junctionMarkup = connectivity.junctionPoints
     .map(
       (junction) =>
         `    <circle cx="${numberOf(junction.x)}" cy="${numberOf(junction.y)}" r="4" fill="#1a2833"/>`,
