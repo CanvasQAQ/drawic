@@ -13,7 +13,12 @@ describe("approved device asset ledger", () => {
   });
 
   it("matches every recorded SHA-256", async () => {
-    expect(lock.files).toHaveLength(109);
+    expect(lock.entryCount).toBe(109);
+    expect(lock.svgCount).toBe(126);
+    expect(lock.files).toHaveLength(126);
+    expect(
+      lock.files.filter((file) => file.path.startsWith("svg/variants/")),
+    ).toHaveLength(17);
     for (const file of lock.files) {
       const bytes = await readFile(
         resolve("src/renderer/assets/device-symbols", file.path),

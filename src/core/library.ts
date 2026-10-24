@@ -28,12 +28,15 @@ export interface DeviceLibrarySpice {
 
 export interface DeviceLibraryRecord {
   id: string;
+  variantOf?: string;
+  variantId?: string;
   title: string;
   category: string;
   keywords: string[];
   electrical: boolean;
   palette: boolean;
   frame: { x: number; y: number; width: number; height: number };
+  selectionBox?: { x: number; y: number; width: number; height: number };
   artwork: {
     type: "svg";
     viewBox: string;
@@ -169,8 +172,37 @@ function parseDevice(value: unknown, index: number): DeviceLibraryRecord {
   if (/<script\b|\son[a-z]+\s*=|javascript:/i.test(body)) {
     throw new Error(`${field}.artwork.body contains executable content.`);
   }
+  const parsedFrame = {
+    x: expectNumber(value.frame.x, `${field}.frame.x`),
+    y: expectNumber(value.frame.y, `${field}.frame.y`),
+    width: expectNumber(value.frame.width, `${field}.frame.width`),
+    height: expectNumber(value.frame.height, `${field}.frame.height`),
+  };
+  const selectionBox =
+    value.selectionBox === undefined
+      ? undefined
+      : isRecord(value.selectionBox)
+        ? {
+            x: expectNumber(value.selectionBox.x, `${field}.selectionBox.x`),
+            y: expectNumber(value.selectionBox.y, `${field}.selectionBox.y`),
+            width: expectNumber(value.selectionBox.width, `${field}.selectionBox.width`),
+            height: expectNumber(value.selectionBox.height, `${field}.selectionBox.height`),
+          }
+        : (() => {
+            throw new Error(`${field}.selectionBox must be an object.`);
+          })();
+  const variantOf =
+    value.variantOf === undefined
+      ? undefined
+      : expectString(value.variantOf, `${field}.variantOf`);
+  const variantId =
+    value.variantId === undefined
+      ? undefined
+      : expectString(value.variantId, `${field}.variantId`);
   return {
     id: expectString(value.id, `${field}.id`),
+    ...(variantOf ? { variantOf } : {}),
+    ...(variantId ? { variantId } : {}),
     title: expectString(value.title, `${field}.title`),
     category: expectString(value.category, `${field}.category`),
     keywords: value.keywords.map((term, termIndex) =>
@@ -178,12 +210,8 @@ function parseDevice(value: unknown, index: number): DeviceLibraryRecord {
     ),
     electrical: expectBoolean(value.electrical, `${field}.electrical`),
     palette: expectBoolean(value.palette, `${field}.palette`),
-    frame: {
-      x: expectNumber(value.frame.x, `${field}.frame.x`),
-      y: expectNumber(value.frame.y, `${field}.frame.y`),
-      width: expectNumber(value.frame.width, `${field}.frame.width`),
-      height: expectNumber(value.frame.height, `${field}.frame.height`),
-    },
+    frame: parsedFrame,
+    ...(selectionBox ? { selectionBox } : {}),
     artwork: {
       type: "svg",
       viewBox: expectString(value.artwork.viewBox, `${field}.artwork.viewBox`),
@@ -275,11 +303,14 @@ export function loadDeviceLibrary(value: DeviceLibraryFile): LoadedDeviceLibrary
     .map(
       (device): DeviceSymbol => ({
         id: device.id,
+        ...(device.variantOf ? { variantOf: device.variantOf } : {}),
+        ...(device.variantId ? { variantId: device.variantId } : {}),
         label: device.title,
         category: device.category,
         electrical: device.electrical,
         palette: device.palette,
         frame: device.frame,
+        ...(device.selectionBox ? { selectionBox: device.selectionBox } : {}),
         pins: device.pins,
         file: device.artwork.source,
         svgBody: device.artwork.body,

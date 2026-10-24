@@ -9,10 +9,21 @@ import type {
   ComponentNode,
   ConnectionAnchor,
   DrawingPage,
+  Junction,
   Point,
   Rotation,
   SymbolDefinition,
   Wire,
+  WireEndpoint,
+} from "./model";
+import {
+  allJunctions,
+  allWires,
+  endpointAnchor,
+  findJunction,
+  findWire,
+  type LocatedJunction,
+  type LocatedWire,
 } from "./model";
 
 type EndpointSide = "start" | "end";
@@ -34,30 +45,39 @@ function findNode(
   return pinIndex >= 0 ? { node, symbol, pinIndex } : null;
 }
 
-function resolveAnchor(
+function resolveEndpoint(
   page: DrawingPage,
   library: readonly SymbolDefinition[],
-  anchor: ConnectionAnchor | undefined,
+  endpoint: WireEndpoint,
 ): Point | null | undefined {
-  if (!anchor) {
+  if (endpoint.kind === "open") {
     return undefined;
   }
-  const resolved = findNode(page, library, anchor);
+  if (endpoint.kind === "junction") {
+    return findJunction(page, endpoint.junctionId)?.junction.point ?? null;
+  }
+  const resolved = findNode(page, library, {
+    deviceId: endpoint.deviceId,
+    pinId: endpoint.pinId,
+  });
   if (!resolved) {
     return null;
   }
   return nodePinPosition(resolved.node, resolved.symbol, resolved.pinIndex);
 }
 
-export function pinOutwardDirection(
+function pinOutwardDirectionForEndpoint(
   page: DrawingPage,
   library: readonly SymbolDefinition[],
-  anchor: ConnectionAnchor | undefined,
+  endpoint: WireEndpoint,
 ): Point | undefined {
-  if (!anchor) {
+  if (endpoint.kind !== "pin") {
     return undefined;
   }
-  const resolved = findNode(page, library, anchor);
+  const resolved = findNode(page, library, {
+    deviceId: endpoint.deviceId,
+    pinId: endpoint.pinId,
+  });
   if (!resolved) {
     return undefined;
   }
@@ -90,6 +110,20 @@ export function pinOutwardDirection(
     case 270:
       return { x: vector.y, y: -mirroredX };
   }
+}
+
+export function pinOutwardDirection(
+  page: DrawingPage,
+  library: readonly SymbolDefinition[],
+  anchor: ConnectionAnchor | undefined,
+): Point | undefined {
+  return anchor
+    ? pinOutwardDirectionForEndpoint(page, library, {
+        kind: "pin",
+        deviceId: anchor.deviceId,
+        pinId: anchor.pinId,
+      })
+    : undefined;
 }
 
 function segmentAxis(a: Point, b: Point): "horizontal" | "vertical" | null {
@@ -242,8 +276,8 @@ export function resolveWirePoints(
     return null;
   }
   let points = wire.points.map((point) => ({ ...point }));
-  const start = resolveAnchor(page, library, wire.startAnchor);
-  const end = resolveAnchor(page, library, wire.endAnchor);
+  const start = resolveEndpoint(page, library, wire.start);
+  const end = resolveEndpoint(page, library, wire.end);
   if (start === null || end === null) {
     return null;
   }
@@ -254,7 +288,7 @@ export function resolveWirePoints(
       points,
       start,
       "start",
-      pinOutwardDirection(page, library, wire.startAnchor),
+      pinOutwardDirectionForEndpoint(page, library, wire.start),
     );
   }
   if (end && !pointsEqual(end, oldEnd)) {
@@ -262,25 +296,46 @@ export function resolveWirePoints(
       points,
       end,
       "end",
-      pinOutwardDirection(page, library, wire.endAnchor),
+      pinOutwardDirectionForEndpoint(page, library, wire.end),
     );
   }
   return simplifyOrthogonalPath(points);
 }
 
-function anchorMoves(
-  anchor: ConnectionAnchor | undefined,
+function endpointMoves(
+  endpoint: WireEndpoint,
   nodeIds: ReadonlySet<string>,
 ): boolean {
-  return Boolean(anchor && nodeIds.has(anchor.deviceId));
+  return endpoint.kind === "pin" && nodeIds.has(endpoint.deviceId);
 }
 
-function endpointForAnchor(
+function endpointMovesInTarget(
+  source: DrawingPage,
+  target: DrawingPage,
+  endpoint: WireEndpoint,
+  nodeIds: ReadonlySet<string>,
+): boolean {
+  if (endpoint.kind === "pin") {
+    return nodeIds.has(endpoint.deviceId);
+  }
+  if (endpoint.kind === "junction") {
+    const sourcePoint = findJunction(source, endpoint.junctionId)?.junction.point;
+    const targetPoint = findJunction(target, endpoint.junctionId)?.junction.point;
+    return Boolean(
+      sourcePoint &&
+        targetPoint &&
+        !pointsEqual(sourcePoint, targetPoint, 0.001),
+    );
+  }
+  return false;
+}
+
+function pointForEndpoint(
   page: DrawingPage,
   library: readonly SymbolDefinition[],
-  anchor: ConnectionAnchor | undefined,
+  endpoint: WireEndpoint,
 ): Point | undefined {
-  const resolved = resolveAnchor(page, library, anchor);
+  const resolved = resolveEndpoint(page, library, endpoint);
   return resolved ?? undefined;
 }
 
@@ -292,8 +347,8 @@ function moveWire(
   nodeIds: ReadonlySet<string>,
   delta: Point,
 ): Wire {
-  const moveStart = anchorMoves(wire.startAnchor, nodeIds);
-  const moveEnd = anchorMoves(wire.endAnchor, nodeIds);
+  const moveStart = endpointMovesInTarget(source, moved, wire.start, nodeIds);
+  const moveEnd = endpointMovesInTarget(source, moved, wire.end, nodeIds);
   if (!moveStart && !moveEnd) {
     return wire;
   }
@@ -307,24 +362,24 @@ function moveWire(
     }));
   } else {
     if (moveStart) {
-      const start = endpointForAnchor(moved, library, wire.startAnchor);
+      const start = pointForEndpoint(moved, library, wire.start);
       if (start) {
         points = alignEndpoint(
           points,
           start,
           "start",
-          pinOutwardDirection(moved, library, wire.startAnchor),
+          pinOutwardDirectionForEndpoint(moved, library, wire.start),
         );
       }
     }
     if (moveEnd) {
-      const end = endpointForAnchor(moved, library, wire.endAnchor);
+      const end = pointForEndpoint(moved, library, wire.end);
       if (end) {
         points = alignEndpoint(
           points,
           end,
           "end",
-          pinOutwardDirection(moved, library, wire.endAnchor),
+          pinOutwardDirectionForEndpoint(moved, library, wire.end),
         );
       }
     }
@@ -459,8 +514,8 @@ function moveAttachedAnnotations(
     if (!annotation.wireId) {
       return annotation;
     }
-    const sourceWire = source.wires.find((wire) => wire.id === annotation.wireId);
-    const targetWire = target.wires.find((wire) => wire.id === annotation.wireId);
+    const sourceWire = findWire(source, annotation.wireId)?.wire;
+    const targetWire = findWire(target, annotation.wireId)?.wire;
     if (!sourceWire || !targetWire) {
       return annotation;
     }
@@ -483,22 +538,39 @@ function moveInternalJunctions(
   library: readonly SymbolDefinition[],
   nodeIds: ReadonlySet<string>,
   delta: Point,
-): Point[] {
-  return source.junctions.map((junction) => {
-    const touching = source.wires.filter((wire) =>
-      wireTouchesPoint(source, library, wire, junction),
+): Map<string, Junction> {
+  const result = new Map<string, Junction>();
+  const locatedWires = allWires(source);
+  for (const { junction } of allJunctions(source)) {
+    const touching = locatedWires
+      .map((entry) => entry.wire)
+      .filter((wire) =>
+        [wire.start, wire.end].some(
+          (endpoint) =>
+            endpoint.kind === "junction" &&
+            endpoint.junctionId === junction.id,
+        ),
+      );
+    const pinEndpoints = touching.flatMap((wire) =>
+      [wire.start, wire.end].filter((endpoint) => endpoint.kind === "pin"),
     );
     const allInternal =
-      touching.length > 0 &&
-      touching.every(
-        (wire) =>
-          anchorMoves(wire.startAnchor, nodeIds) &&
-          anchorMoves(wire.endAnchor, nodeIds),
-      );
-    return allInternal
-      ? { x: junction.x + delta.x, y: junction.y + delta.y }
-      : { ...junction };
-  });
+      pinEndpoints.length > 0 &&
+      pinEndpoints.every((endpoint) => endpointMoves(endpoint, nodeIds));
+    result.set(
+      junction.id,
+      allInternal
+        ? {
+            ...junction,
+            point: {
+              x: junction.point.x + delta.x,
+              y: junction.point.y + delta.y,
+            },
+          }
+        : { ...junction },
+    );
+  }
+  return result;
 }
 
 export function planNodeMove(
@@ -511,12 +583,30 @@ export function planNodeMove(
     return page;
   }
   const moved = movedPage(page, nodeIds, delta);
-  const planned: DrawingPage = {
+  const movedJunctions = moveInternalJunctions(
+    page,
+    moved,
+    library,
+    nodeIds,
+    delta,
+  );
+  const movedWithJunctions: DrawingPage = {
     ...moved,
-    wires: page.wires.map((wire) =>
-      moveWire(page, moved, library, wire, nodeIds, delta),
-    ),
-    junctions: moveInternalJunctions(page, moved, library, nodeIds, delta),
+    nets: moved.nets.map((net) => ({
+      ...net,
+      junctions: net.junctions.map(
+        (junction) => movedJunctions.get(junction.id) ?? junction,
+      ),
+    })),
+  };
+  const planned: DrawingPage = {
+    ...movedWithJunctions,
+    nets: movedWithJunctions.nets.map((net) => ({
+      ...net,
+      wires: net.wires.map((wire) =>
+        moveWire(page, movedWithJunctions, library, wire, nodeIds, delta),
+      ),
+    })),
   };
   return {
     ...planned,
@@ -536,8 +626,18 @@ function transformInternalWire(
   nodeIds: ReadonlySet<string>,
   groupTransform: PointTransform,
 ): Wire {
-  const startSelected = anchorMoves(wire.startAnchor, nodeIds);
-  const endSelected = anchorMoves(wire.endAnchor, nodeIds);
+  const startSelected = endpointMovesInTarget(
+    source,
+    transformed,
+    wire.start,
+    nodeIds,
+  );
+  const endSelected = endpointMovesInTarget(
+    source,
+    transformed,
+    wire.end,
+    nodeIds,
+  );
   if (!startSelected && !endSelected) {
     return wire;
   }
@@ -546,8 +646,8 @@ function transformInternalWire(
     return wire;
   }
   if (startSelected && endSelected) {
-    const newStart = endpointForAnchor(transformed, library, wire.startAnchor);
-    const newEnd = endpointForAnchor(transformed, library, wire.endAnchor);
+    const newStart = pointForEndpoint(transformed, library, wire.start);
+    const newEnd = pointForEndpoint(transformed, library, wire.end);
     if (newStart && newEnd) {
       return {
         ...wire,
@@ -567,24 +667,24 @@ function transformInternalWire(
   }
   let points = oldPoints;
   if (startSelected) {
-    const start = endpointForAnchor(transformed, library, wire.startAnchor);
+    const start = pointForEndpoint(transformed, library, wire.start);
     if (start) {
       points = alignEndpoint(
         points,
         start,
         "start",
-        pinOutwardDirection(transformed, library, wire.startAnchor),
+        pinOutwardDirectionForEndpoint(transformed, library, wire.start),
       );
     }
   }
   if (endSelected) {
-    const end = endpointForAnchor(transformed, library, wire.endAnchor);
+    const end = pointForEndpoint(transformed, library, wire.end);
     if (end) {
       points = alignEndpoint(
         points,
         end,
         "end",
-        pinOutwardDirection(transformed, library, wire.endAnchor),
+        pinOutwardDirectionForEndpoint(transformed, library, wire.end),
       );
     }
   }
@@ -596,23 +696,36 @@ function transformInternalJunctions(
   library: readonly SymbolDefinition[],
   nodeIds: ReadonlySet<string>,
   groupTransform: PointTransform,
-): Point[] {
-  return source.junctions.map((junction) => {
-    const touching = source.wires.filter((wire) =>
-      wireTouchesPoint(source, library, wire, junction),
+): Map<string, Junction> {
+  const result = new Map<string, Junction>();
+  const locatedWires = allWires(source);
+  for (const { junction } of allJunctions(source)) {
+    const touching = locatedWires
+      .map((entry) => entry.wire)
+      .filter((wire) =>
+        [wire.start, wire.end].some(
+          (endpoint) =>
+            endpoint.kind === "junction" &&
+            endpoint.junctionId === junction.id,
+        ),
+      );
+    const pinEndpoints = touching.flatMap((wire) =>
+      [wire.start, wire.end].filter((endpoint) => endpoint.kind === "pin"),
     );
     const allInternal =
-      touching.length > 0 &&
-      touching.every(
-        (wire) =>
-          anchorMoves(wire.startAnchor, nodeIds) &&
-          anchorMoves(wire.endAnchor, nodeIds),
-      );
-    if (!allInternal) {
-      return { ...junction };
-    }
-    return groupTransform.apply(junction);
-  });
+      pinEndpoints.length > 0 &&
+      pinEndpoints.every((endpoint) => endpointMoves(endpoint, nodeIds));
+    result.set(
+      junction.id,
+      allInternal
+        ? {
+            ...junction,
+            point: groupTransform.apply(junction.point),
+          }
+        : { ...junction },
+    );
+  }
+  return result;
 }
 
 export function planNodeRotation(
@@ -653,24 +766,36 @@ export function planNodeRotation(
         : node,
     ),
   };
-  const planned: DrawingPage = {
+  const transformedJunctions = transformInternalJunctions(
+    page,
+    library,
+    nodeIds,
+    groupTransform,
+  );
+  const transformedWithJunctions: DrawingPage = {
     ...transformed,
-    wires: page.wires.map((wire) =>
-      transformInternalWire(
-        page,
-        transformed,
-        library,
-        wire,
-        nodeIds,
-        groupTransform,
+    nets: transformed.nets.map((net) => ({
+      ...net,
+      junctions: net.junctions.map(
+        (junction) => transformedJunctions.get(junction.id) ?? junction,
       ),
-    ),
-    junctions: transformInternalJunctions(
-      page,
-      library,
-      nodeIds,
-      groupTransform,
-    ),
+    })),
+  };
+  const planned: DrawingPage = {
+    ...transformedWithJunctions,
+    nets: transformedWithJunctions.nets.map((net) => ({
+      ...net,
+      wires: net.wires.map((wire) =>
+        transformInternalWire(
+          page,
+          transformedWithJunctions,
+          library,
+          wire,
+          nodeIds,
+          groupTransform,
+        ),
+      ),
+    })),
   };
   return {
     ...planned,
@@ -710,24 +835,36 @@ export function planNodeMirror(
         : node,
     ),
   };
-  const planned: DrawingPage = {
+  const transformedJunctions = transformInternalJunctions(
+    page,
+    library,
+    nodeIds,
+    groupTransform,
+  );
+  const transformedWithJunctions: DrawingPage = {
     ...transformed,
-    wires: page.wires.map((wire) =>
-      transformInternalWire(
-        page,
-        transformed,
-        library,
-        wire,
-        nodeIds,
-        groupTransform,
+    nets: transformed.nets.map((net) => ({
+      ...net,
+      junctions: net.junctions.map(
+        (junction) => transformedJunctions.get(junction.id) ?? junction,
       ),
-    ),
-    junctions: transformInternalJunctions(
-      page,
-      library,
-      nodeIds,
-      groupTransform,
-    ),
+    })),
+  };
+  const planned: DrawingPage = {
+    ...transformedWithJunctions,
+    nets: transformedWithJunctions.nets.map((net) => ({
+      ...net,
+      wires: net.wires.map((wire) =>
+        transformInternalWire(
+          page,
+          transformedWithJunctions,
+          library,
+          wire,
+          nodeIds,
+          groupTransform,
+        ),
+      ),
+    })),
   };
   return {
     ...planned,

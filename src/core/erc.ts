@@ -1,6 +1,12 @@
 import { buildConnectivity, pinGraphKey, wireGraphKey } from "./connectivity";
 import { isOrthogonalPath } from "./geometry";
-import type { Diagnostic, DrawingPage, SymbolDefinition } from "./model";
+import {
+  allWires,
+  type Diagnostic,
+  type DrawingPage,
+  type SymbolDefinition,
+} from "./model";
+import { findNetGraphViolations } from "./netGraph";
 
 export function runElectricalRules(
   page: DrawingPage,
@@ -70,7 +76,7 @@ export function runElectricalRules(
     }
   }
 
-  for (const wire of page.wires) {
+  for (const { wire } of allWires(page)) {
     if (wire.points.length < 2 || !isOrthogonalPath(wire.points)) {
       diagnostics.push({
         code: "invalid-wire",
@@ -80,6 +86,16 @@ export function runElectricalRules(
         itemId: wire.id,
       });
     }
+  }
+
+  for (const violation of findNetGraphViolations(page)) {
+    diagnostics.push({
+      code: `net-graph-${violation.code}`,
+      severity: "error",
+      message: violation.message,
+      pageId: page.id,
+      ...(violation.itemId ? { itemId: violation.itemId } : {}),
+    });
   }
 
   for (const [networkId, names] of connectivity.netNamesByGroup) {
@@ -109,7 +125,7 @@ export function runElectricalRules(
       pageId: page.id,
     });
   }
-  for (const wire of page.wires) {
+  for (const { wire } of allWires(page)) {
     if (!connectivity.networkIdByKey.has(wireGraphKey(wire.id))) {
       diagnostics.push({
         code: "disconnected-wire",

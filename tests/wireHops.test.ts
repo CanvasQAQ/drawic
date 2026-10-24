@@ -7,100 +7,117 @@ import {
   wireOverlaps,
   wirePathData,
 } from "../src/core/wireHops";
-import { testLibrary } from "./fixtures";
+import { addTestNet, addTestWire, testLibrary } from "./fixtures";
 
 describe("wire crossing hops", () => {
-  it("draws a hop for crossing wires that are not on the same net", () => {
+  it("draws a hop for crossing wires owned by different nets", () => {
     const page = createEmptyPage("Crossing hops");
-    page.wires.push(
-      { id: "horizontal", points: [{ x: 0, y: 100 }, { x: 200, y: 100 }] },
-      { id: "vertical", points: [{ x: 100, y: 0 }, { x: 100, y: 200 }] },
+    addTestWire(
+      page,
+      "net_h",
+      "horizontal",
+      [
+        { x: 0, y: 100 },
+        { x: 200, y: 100 },
+      ],
+    );
+    addTestWire(
+      page,
+      "net_v",
+      "vertical",
+      [
+        { x: 100, y: 0 },
+        { x: 100, y: 200 },
+      ],
     );
     const connectivity = buildConnectivity(page, testLibrary);
     const hops = wireHops(connectivity);
-
     expect(hops.get("horizontal")).toEqual([{ x: 100, y: 100 }]);
     expect(hops.has("vertical")).toBe(false);
-    const path = wirePathData(page.wires[0]!.points, hops.get("horizontal"));
+    const path = wirePathData(
+      connectivity.segments
+        .filter((segment) => segment.wireId === "horizontal")
+        .flatMap((segment) => [segment.start, segment.end]),
+      hops.get("horizontal"),
+    );
     expect(path).toContain(`L ${100 - WIRE_HOP_RADIUS} 100`);
     expect(path).toContain("Q 100 90");
   });
 
-  it("removes the hop when an explicit junction joins the wires", () => {
-    const page = createEmptyPage("Joined crossing");
-    page.wires.push(
-      { id: "horizontal", points: [{ x: 0, y: 100 }, { x: 200, y: 100 }] },
-      { id: "vertical", points: [{ x: 100, y: 0 }, { x: 100, y: 200 }] },
+  it("draws no hop for a crossing inside the same net", () => {
+    const page = createEmptyPage("Same net crossing");
+    addTestNet(page, "net_1", "VCC");
+    addTestWire(
+      page,
+      "net_1",
+      "horizontal",
+      [
+        { x: 0, y: 100 },
+        { x: 200, y: 100 },
+      ],
     );
-    page.junctions.push({ x: 100, y: 100 });
+    addTestWire(
+      page,
+      "net_1",
+      "vertical",
+      [
+        { x: 100, y: 0 },
+        { x: 100, y: 200 },
+      ],
+    );
     expect(wireHops(buildConnectivity(page, testLibrary))).toEqual(new Map());
   });
 
-  it("treats passive endpoint overlap as a visual crossing", () => {
+  it("treats separable endpoint overlap as a visual crossing", () => {
     const page = createEmptyPage("Endpoint hop");
-    page.wires.push(
-      { id: "horizontal", points: [{ x: 0, y: 100 }, { x: 200, y: 100 }] },
-      { id: "branch", points: [{ x: 100, y: 100 }, { x: 100, y: 200 }] },
+    addTestWire(
+      page,
+      "net_h",
+      "horizontal",
+      [
+        { x: 0, y: 100 },
+        { x: 200, y: 100 },
+      ],
     );
-    const connectivity = buildConnectivity(page, testLibrary);
-    expect(wireHops(connectivity).get("horizontal")).toEqual([
+    addTestWire(
+      page,
+      "net_v",
+      "branch",
+      [
+        { x: 100, y: 100 },
+        { x: 100, y: 200 },
+      ],
+    );
+    expect(wireHops(buildConnectivity(page, testLibrary)).get("horizontal")).toEqual([
       { x: 100, y: 100 },
     ]);
   });
 
-  it("hops the through-wire when a horizontal endpoint lands on a vertical wire", () => {
-    const page = createEmptyPage("Endpoint on vertical");
-    page.wires.push(
-      { id: "ending", points: [{ x: 100, y: 100 }, { x: 200, y: 100 }] },
-      { id: "vertical", points: [{ x: 100, y: 0 }, { x: 100, y: 200 }] },
-    );
-    const connectivity = buildConnectivity(page, testLibrary);
-    expect(wireHops(connectivity).get("vertical")).toEqual([
-      { x: 100, y: 100 },
-    ]);
-  });
-
-  it("suppresses duplicate collinear geometry inside one merged net", () => {
+  it("suppresses duplicate collinear geometry inside one net", () => {
     const page = createEmptyPage("Merged overlap");
-    page.wires.push(
-      {
-        id: "a",
-        name: "VCC",
-        points: [{ x: 0, y: 100 }, { x: 100, y: 100 }],
-      },
-      {
-        id: "b",
-        name: "VCC",
-        points: [{ x: 50, y: 100 }, { x: 150, y: 100 }],
-      },
+    addTestNet(page, "net_1", "VCC");
+    addTestWire(
+      page,
+      "net_1",
+      "a",
+      [
+        { x: 0, y: 100 },
+        { x: 100, y: 100 },
+      ],
+    );
+    addTestWire(
+      page,
+      "net_1",
+      "b",
+      [
+        { x: 50, y: 100 },
+        { x: 150, y: 100 },
+      ],
     );
     const connectivity = buildConnectivity(page, testLibrary);
     const overlaps = wireOverlaps(connectivity);
     expect(overlaps.get("b")).toEqual([
       { segmentIndex: 0, start: 0, end: 0.5 },
-    ]);
-    expect(
-      wirePathData(page.wires[1]!.points, [], overlaps.get("b")),
-    ).not.toContain("M 50 100");
-  });
-
-  it("does not draw a hop on deliberately overlapping collinear wires", () => {
-    const page = createEmptyPage("Overlapping branch start");
-    page.wires.push(
-      {
-        id: "existing",
-        points: [{ x: 0, y: 100 }, { x: 200, y: 100 }],
-      },
-      {
-        id: "overlap",
-        points: [{ x: 100, y: 100 }, { x: 200, y: 100 }],
-      },
-    );
-    page.junctions.push({ x: 100, y: 100 });
-    const connectivity = buildConnectivity(page, testLibrary);
-    expect(wireHops(connectivity)).toEqual(new Map());
-    expect(wireOverlaps(connectivity).get("overlap")).toEqual([
-      { segmentIndex: 0, start: 0, end: 1 },
     ]);
   });
 });

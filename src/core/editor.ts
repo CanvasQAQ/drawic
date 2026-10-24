@@ -1,6 +1,12 @@
 import {
-  defaultWireName,
+  allJunctions,
+  allWires,
+  createEmptyNet,
+  createIdentifier,
+  findJunction,
+  findWire,
   junctionSelectionId,
+  pinEndpoint,
   pageById,
   replacePage,
   type Annotation,
@@ -9,13 +15,15 @@ import {
   type DrawingPage,
   type DrawingShape,
   type DrawicDocument,
+  type Junction,
+  type Net,
   type NodeLabelKind,
   type Point,
   type Rotation,
   type SelectionRef,
   type SymbolDefinition,
   type Wire,
-  wireDisplayName,
+  type WireEndpoint,
 } from "./model";
 import {
   pathProjectionRatio,
@@ -29,7 +37,7 @@ import {
   pointsEqual,
   simplifyOrthogonalPath,
 } from "./geometry";
-import { normalizePageWireOverlaps } from "./wireMerge";
+import { canonicalizePageNetGraph } from "./netGraph";
 
 type LibraryOrTimestamp = readonly SymbolDefinition[] | string;
 
@@ -46,6 +54,221 @@ function resolveLibraryAndTimestamp(
         ? libraryOrTimestamp
         : timestamp ?? new Date().toISOString(),
   };
+}
+
+function endpointFromAnchor(anchor?: ConnectionAnchor): WireEndpoint {
+  return anchor ? pinEndpoint(anchor) : { kind: "open" };
+}
+
+function pinEndpoints(wire: Wire): ConnectionAnchor[] {
+  return [wire.start, wire.end].flatMap((endpoint) =>
+    endpoint.kind === "pin"
+      ? [{ deviceId: endpoint.deviceId, pinId: endpoint.pinId }]
+      : [],
+  );
+}
+
+function netIdsForPin(
+  page: DrawingPage,
+  anchor: ConnectionAnchor | undefined,
+): string[] {
+  if (!anchor) {
+    return [];
+  }
+  return allWires(page).flatMap(({ net, wire }) =>
+    pinEndpoints(wire).some(
+      (endpoint) =>
+        endpoint.deviceId === anchor.deviceId &&
+        endpoint.pinId === anchor.pinId,
+    )
+      ? [net.id]
+      : [],
+  );
+}
+
+function mergeNetIds(
+  page: DrawingPage,
+  netIds: readonly string[],
+  preferredName?: string,
+): { page: DrawingPage; netId: string } {
+  const wanted = new Set(netIds);
+  const selected = page.nets.filter((net) => wanted.has(net.id));
+  const primary =
+    selected[0] ??
+    createEmptyNet(createIdentifier("net"), preferredName?.trim() || undefined);
+  const mergedName =
+    preferredName?.trim() || selected.find((net) => net.name)?.name;
+  const merged: Net = {
+    id: primary.id,
+    ...(mergedName ? { name: mergedName } : {}),
+    wires: [
+      ...primary.wires,
+      ...selected.slice(1).flatMap((net) => net.wires),
+    ],
+    junctions: [
+      ...primary.junctions,
+      ...selected.slice(1).flatMap((net) => net.junctions),
+    ],
+  };
+  const remap = new Map(
+    selected.map((net) => [net.id, primary.id] as const),
+  );
+  return {
+    netId: primary.id,
+    page: {
+      ...page,
+      nets: [
+        ...page.nets.filter(
+          (net) => net.id !== primary.id && !remap.has(net.id),
+        ),
+        merged,
+      ],
+      annotations: page.annotations.map((annotation) =>
+        annotation.netId && remap.has(annotation.netId)
+          ? { ...annotation, netId: primary.id }
+          : annotation,
+      ),
+    },
+  };
+}
+
+interface JunctionSplit {
+  page: DrawingPage;
+  netId: string;
+  junction: Junction | null;
+}
+
+function splitWireAtPoint(
+  page: DrawingPage,
+  point: Point,
+): JunctionSplit | null {
+  for (const net of page.nets) {
+    for (const wire of net.wires) {
+      const startMatch = pointsEqual(wire.points[0]!, point, 0.5);
+      const endMatch = pointsEqual(wire.points.at(-1)!, point, 0.5);
+      if (startMatch || endMatch) {
+        const endpoint = startMatch ? wire.start : wire.end;
+        if (endpoint.kind === "junction") {
+          const junction = net.junctions.find(
+            (candidate) => candidate.id === endpoint.junctionId,
+          );
+          return junction ? { page, netId: net.id, junction } : null;
+        }
+        if (endpoint.kind === "pin") {
+          return { page, netId: net.id, junction: null };
+        }
+        const junction: Junction = {
+          id: createIdentifier("junction"),
+          point: { ...point },
+        };
+        return {
+          netId: net.id,
+          junction,
+          page: {
+            ...page,
+            nets: page.nets.map((candidate) =>
+              candidate.id === net.id
+                ? {
+                    ...candidate,
+                    junctions: [...candidate.junctions, junction],
+                    wires: candidate.wires.map((entry) =>
+                      entry.id === wire.id
+                        ? {
+                            ...entry,
+                            start: startMatch
+                              ? {
+                                  kind: "junction",
+                                  junctionId: junction.id,
+                                }
+                              : entry.start,
+                            end: endMatch
+                              ? {
+                                  kind: "junction",
+                                  junctionId: junction.id,
+                                }
+                              : entry.end,
+                          }
+                        : entry,
+                    ),
+                  }
+                : candidate,
+            ),
+          },
+        };
+      }
+
+      let splitIndex = wire.points.findIndex((candidate) =>
+        pointsEqual(candidate, point, 0.5),
+      );
+      if (splitIndex <= 0 || splitIndex >= wire.points.length - 1) {
+        splitIndex = -1;
+        for (let index = 1; index < wire.points.length; index += 1) {
+          if (
+            pointOnSegment(
+              point,
+              wire.points[index - 1]!,
+              wire.points[index]!,
+              0.5,
+            )
+          ) {
+            splitIndex = index;
+            break;
+          }
+        }
+      }
+      if (splitIndex < 1) {
+        continue;
+      }
+      const junction: Junction = {
+        id: createIdentifier("junction"),
+        point: { ...point },
+      };
+      const leftPoints = simplifyOrthogonalPath([
+        ...wire.points.slice(0, splitIndex),
+        { ...point },
+      ]);
+      const rightPoints = simplifyOrthogonalPath([
+        { ...point },
+        ...wire.points.slice(splitIndex),
+      ]);
+      const left: Wire = {
+        id: wire.id,
+        points: leftPoints,
+        start: wire.start,
+        end: { kind: "junction", junctionId: junction.id },
+      };
+      const right: Wire = {
+        id: createIdentifier("wire"),
+        points: rightPoints,
+        start: { kind: "junction", junctionId: junction.id },
+        end: wire.end,
+      };
+      return {
+        page: {
+          ...page,
+          nets: page.nets.map((candidate) =>
+            candidate.id === net.id
+              ? {
+                  ...candidate,
+                  junctions: [...candidate.junctions, junction],
+                  wires: candidate.wires.flatMap((entry) =>
+                    entry.id === wire.id ? [left, right] : [entry],
+                  ),
+                }
+              : candidate,
+          ),
+          annotations: page.annotations.map((annotation) =>
+            annotation.wireId === wire.id
+              ? { ...annotation, wireId: left.id }
+              : annotation,
+          ),
+        },
+        netId: net.id,
+        junction,
+      };
+    }
+  }
+  return null;
 }
 
 function updatePage(
@@ -115,31 +338,54 @@ export function addWire(
     document,
     pageId,
     (page) => {
-      const junctions = [...page.junctions];
+      let next = page;
+      let start = endpointFromAnchor(request.startAnchor);
+      let end = endpointFromAnchor(request.endAnchor);
+      const netIds = [
+        ...netIdsForPin(page, request.startAnchor),
+        ...netIdsForPin(page, request.endAnchor),
+      ];
       for (const point of request.junctionPoints ?? []) {
-        if (
-          !junctions.some(
-            (junction) =>
-              Math.abs(junction.x - point.x) <= 0.5 &&
-              Math.abs(junction.y - point.y) <= 0.5,
-          )
-        ) {
-          junctions.push({ ...point });
+        const split = splitWireAtPoint(next, point);
+        if (!split) {
+          continue;
+        }
+        next = split.page;
+        netIds.push(split.netId);
+        if (split.junction) {
+          const junctionEndpoint: WireEndpoint = {
+            kind: "junction",
+            junctionId: split.junction.id,
+          };
+          if (pointsEqual(request.points[0]!, point, 0.5)) {
+            start = junctionEndpoint;
+          }
+          if (pointsEqual(request.points.at(-1)!, point, 0.5)) {
+            end = junctionEndpoint;
+          }
         }
       }
-      return normalizePageWireOverlaps({
-        ...page,
-        wires: [
-          ...page.wires,
-          {
-            id: request.id,
-            points: request.points,
-            ...(request.name ? { name: request.name } : {}),
-            ...(request.startAnchor ? { startAnchor: request.startAnchor } : {}),
-            ...(request.endAnchor ? { endAnchor: request.endAnchor } : {}),
-          },
-        ],
-        junctions,
+      const merged = mergeNetIds(next, netIds, request.name);
+      next = merged.page;
+      const wire: Wire = {
+        id: request.id,
+        points: request.points.map((point) => ({ ...point })),
+        start,
+        end,
+      };
+      return canonicalizePageNetGraph({
+        ...next,
+        nets: next.nets.map((net) =>
+          net.id === merged.netId
+            ? {
+                ...net,
+                ...(request.name?.trim()
+                  ? { name: request.name.trim() }
+                  : {}),
+                wires: [...net.wires, wire],
+              }
+            : net,
+        ),
       });
     },
     request.now,
@@ -161,21 +407,35 @@ export function addAnnotation(
   return updatePage(
     document,
     pageId,
-    (page) => ({
-      ...page,
-      annotations: [
-        ...page.annotations,
-        {
-          id: request.id,
-          kind: request.kind,
-          text: request.text,
-          x: Math.round(request.point.x),
-          y: Math.round(request.point.y),
-          size: 16,
-          ...(request.wireId ? { wireId: request.wireId } : {}),
-        },
-      ],
-    }),
+    (page) => {
+      const located = request.wireId
+        ? findWire(page, request.wireId)
+        : null;
+      const netName =
+        request.kind === "net" ? request.text.trim() : "";
+      return canonicalizePageNetGraph({
+        ...page,
+        nets:
+          located && netName
+            ? page.nets.map((net) =>
+                net.id === located.net.id ? { ...net, name: netName } : net,
+              )
+            : page.nets,
+        annotations: [
+          ...page.annotations,
+          {
+            id: request.id,
+            kind: request.kind,
+            text: request.text,
+            x: Math.round(request.point.x),
+            y: Math.round(request.point.y),
+            size: 16,
+            ...(request.wireId ? { wireId: request.wireId } : {}),
+            ...(located ? { netId: located.net.id } : {}),
+          },
+        ],
+      });
+    },
     request.now,
   );
 }
@@ -238,7 +498,7 @@ export function removeSelection(
   const junctionIds = new Set(
     selection
       .filter((item) => item.kind === "junction")
-      .map((item) => item.id),
+      .map((item) => item.id.replace(/^junction:/, "")),
   );
   const hiddenLabels = new Map<string, Set<NodeLabelKind>>();
   for (const item of selection) {
@@ -252,51 +512,64 @@ export function removeSelection(
   return updatePage(
     document,
     pageId,
-    (page) => ({
-      ...page,
-      nodes: page.nodes
-        .filter((node) => !nodeIds.has(node.id))
-        .map((node) => {
-          const labels = hiddenLabels.get(node.id);
-          if (!labels) {
-            return node;
-          }
-          const labelLayout = { ...node.labelLayout };
-          for (const label of labels) {
-            const current = labelLayout[label];
-            labelLayout[label] = {
-              offset: current?.offset ?? { x: 0, y: 0 },
-              hidden: true,
-            };
-          }
-          return { ...node, labelLayout };
-        }),
-      wires: page.wires
-        .filter((wire) => !wireIds.has(wire.id))
-        .map((wire) => {
-          const removeStart = Boolean(
-            wire.startAnchor && nodeIds.has(wire.startAnchor.deviceId),
-          );
-          const removeEnd = Boolean(wire.endAnchor && nodeIds.has(wire.endAnchor.deviceId));
-          const next = { ...wire };
-          if (removeStart) {
-            delete next.startAnchor;
-          }
-          if (removeEnd) {
-            delete next.endAnchor;
-          }
-          return next;
-        }),
-      annotations: page.annotations.filter(
-        (annotation) =>
-          !annotationIds.has(annotation.id) &&
-          !(annotation.wireId && wireIds.has(annotation.wireId)),
-      ),
-      junctions: page.junctions.filter(
-        (junction) => !junctionIds.has(junctionSelectionId(junction)),
-      ),
-      shapes: page.shapes.filter((shape) => !shapeIds.has(shape.id)),
-    }),
+    (page) => {
+      const nets = page.nets
+        .map((net) => ({
+          ...net,
+          wires: net.wires
+            .filter((wire) => !wireIds.has(wire.id))
+            .map((wire) => ({
+              ...wire,
+              start:
+                (wire.start.kind === "pin" &&
+                  nodeIds.has(wire.start.deviceId)) ||
+                (wire.start.kind === "junction" &&
+                  junctionIds.has(wire.start.junctionId))
+                  ? ({ kind: "open" } as const)
+                  : wire.start,
+              end:
+                (wire.end.kind === "pin" &&
+                  nodeIds.has(wire.end.deviceId)) ||
+                (wire.end.kind === "junction" &&
+                  junctionIds.has(wire.end.junctionId))
+                  ? ({ kind: "open" } as const)
+                  : wire.end,
+            })),
+          junctions: net.junctions.filter(
+            (junction) => !junctionIds.has(junction.id),
+          ),
+        }))
+        .filter((net) => net.wires.length > 0 || net.junctions.length > 0);
+      const remainingNetIds = new Set(nets.map((net) => net.id));
+      return canonicalizePageNetGraph({
+        ...page,
+        nodes: page.nodes
+          .filter((node) => !nodeIds.has(node.id))
+          .map((node) => {
+            const labels = hiddenLabels.get(node.id);
+            if (!labels) {
+              return node;
+            }
+            const labelLayout = { ...node.labelLayout };
+            for (const label of labels) {
+              const current = labelLayout[label];
+              labelLayout[label] = {
+                offset: current?.offset ?? { x: 0, y: 0 },
+                hidden: true,
+              };
+            }
+            return { ...node, labelLayout };
+          }),
+        nets,
+        annotations: page.annotations.filter(
+          (annotation) =>
+            !annotationIds.has(annotation.id) &&
+            !(annotation.wireId && wireIds.has(annotation.wireId)) &&
+            (!annotation.netId || remainingNetIds.has(annotation.netId)),
+        ),
+        shapes: page.shapes.filter((shape) => !shapeIds.has(shape.id)),
+      });
+    },
     now,
   );
 }
@@ -308,10 +581,10 @@ function moveAttachedWireLegacy(
 ): Wire {
   const points = wire.points.map((point) => ({ ...point }));
   const moveStart = Boolean(
-    wire.startAnchor && selectedNodeIds.has(wire.startAnchor.deviceId),
+    wire.start.kind === "pin" && selectedNodeIds.has(wire.start.deviceId),
   );
   const moveEnd = Boolean(
-    wire.endAnchor && selectedNodeIds.has(wire.endAnchor.deviceId),
+    wire.end.kind === "pin" && selectedNodeIds.has(wire.end.deviceId),
   );
   if (!moveStart && !moveEnd) {
     return wire;
@@ -388,12 +661,12 @@ function transformAttachedWireLegacy(
   transform: (point: Point, node: ComponentNode) => Point,
 ): Wire {
   const startNode =
-    wire.startAnchor && selectedNodeIds.has(wire.startAnchor.deviceId)
-      ? nodes.get(wire.startAnchor.deviceId)
+    wire.start.kind === "pin" && selectedNodeIds.has(wire.start.deviceId)
+      ? nodes.get(wire.start.deviceId)
       : undefined;
   const endNode =
-    wire.endAnchor && selectedNodeIds.has(wire.endAnchor.deviceId)
-      ? nodes.get(wire.endAnchor.deviceId)
+    wire.end.kind === "pin" && selectedNodeIds.has(wire.end.deviceId)
+      ? nodes.get(wire.end.deviceId)
       : undefined;
   if (!startNode && !endNode) {
     return wire;
@@ -453,17 +726,20 @@ export function moveNodes(
         return planNodeMove(page, library, new Set(nodeIds), delta);
       }
       const ids = new Set(nodeIds);
-      return {
+      return canonicalizePageNetGraph({
         ...page,
         nodes: page.nodes.map((node) =>
           ids.has(node.id)
             ? { ...node, x: node.x + delta.x, y: node.y + delta.y }
             : node,
         ),
-        wires: page.wires.map((wire) =>
-          moveAttachedWireLegacy(wire, ids, delta),
-        ),
-      };
+        nets: page.nets.map((net) => ({
+          ...net,
+          wires: net.wires.map((wire) =>
+            moveAttachedWireLegacy(wire, ids, delta),
+          ),
+        })),
+      });
     },
     now,
   );
@@ -518,11 +794,14 @@ export function rotateSelection(
                     }
                   : node,
               ),
-              wires: page.wires.map((wire) =>
-                transformAttachedWireLegacy(wire, nodes, ids, (point, node) =>
-                  rotatePointAround(point, { x: node.x, y: node.y }, 90),
+              nets: page.nets.map((net) => ({
+                ...net,
+                wires: net.wires.map((wire) =>
+                  transformAttachedWireLegacy(wire, nodes, ids, (point, node) =>
+                    rotatePointAround(point, { x: node.x, y: node.y }, 90),
+                  ),
                 ),
-              ),
+              })),
             };
           })();
       return {
@@ -579,24 +858,27 @@ export function mirrorSelection(
         nodes: page.nodes.map((node) =>
           ids.has(node.id) ? { ...node, mirrored: !node.mirrored } : node,
         ),
-        wires: page.wires.map((wire) =>
-          transformAttachedWireLegacy(wire, nodes, ids, (point, node) => {
-            const unrotated = rotatePointAround(
-              point,
-              { x: node.x, y: node.y },
-              (360 - node.rotation) as Rotation,
-            );
-            const mirrored = mirrorPointAround(unrotated, {
-              x: node.x,
-              y: node.y,
-            });
-            return rotatePointAround(
-              mirrored,
-              { x: node.x, y: node.y },
-              node.rotation,
-            );
-          }),
-        ),
+        nets: page.nets.map((net) => ({
+          ...net,
+          wires: net.wires.map((wire) =>
+            transformAttachedWireLegacy(wire, nodes, ids, (point, node) => {
+              const unrotated = rotatePointAround(
+                point,
+                { x: node.x, y: node.y },
+                (360 - node.rotation) as Rotation,
+              );
+              const mirrored = mirrorPointAround(unrotated, {
+                x: node.x,
+                y: node.y,
+              });
+              return rotatePointAround(
+                mirrored,
+                { x: node.x, y: node.y },
+                node.rotation,
+              );
+            }),
+          ),
+        })),
       };
     },
     now,
@@ -702,12 +984,27 @@ export function updateAnnotation(
       ) {
         return page;
       }
-      return {
+      return canonicalizePageNetGraph({
         ...page,
+        nets:
+          next.kind === "net" && next.netId && next.text.trim()
+            ? page.nets.map((net) =>
+                net.id === next.netId
+                  ? { ...net, name: next.text.trim() }
+                  : net,
+              )
+            : page.nets,
         annotations: page.annotations.map((annotation) =>
-          annotation.id === annotationId ? next : annotation,
+          annotation.id === annotationId
+            ? next
+            : next.kind === "net" &&
+                next.netId &&
+                annotation.kind === "net" &&
+                annotation.netId === next.netId
+              ? { ...annotation, text: next.text }
+              : annotation,
         ),
-      };
+      });
     },
     now,
   );
@@ -839,76 +1136,71 @@ export function updateWirePoints(
     document,
     pageId,
     (page) => {
-      const target = page.wires.find((wire) => wire.id === wireId);
-      if (!target) {
+      const located = findWire(page, wireId);
+      if (!located) {
         return page;
       }
-      const junctionMoves: Array<{ from: Point; to: Point }> = [];
-      const junctions = page.junctions.map((junction) => {
-        const touchesPath = target.points.some((point, index) => {
-          const next = target.points[index + 1];
-          return (
-            pointsEqual(junction, point, 0.5) ||
-            (next ? pointOnSegment(junction, point, next, 0.7) : false)
-          );
-        });
-        if (!touchesPath) {
-          return junction;
-        }
-        const next = pointAtPathRatio(
-          points,
-          pathProjectionRatio(junction, target.points),
-        );
-        junctionMoves.push({ from: junction, to: next });
-        return next;
-      });
-      const wires = page.wires.map((wire) => {
-        if (wire.id === wireId) {
-          return { ...wire, points };
-        }
-        let nextPoints = wire.points.map((point) => ({ ...point }));
-        let moveStart = false;
-        let moveEnd = false;
-        for (const move of junctionMoves) {
-          if (
-            !wire.startAnchor &&
-            nextPoints[0] &&
-            pointsEqual(nextPoints[0], move.from, 0.5)
-          ) {
-            nextPoints[0] = { ...move.to };
-            moveStart = true;
-          }
-          if (
-            !wire.endAnchor &&
-            nextPoints.at(-1) &&
-            pointsEqual(nextPoints.at(-1)!, move.from, 0.5)
-          ) {
-            nextPoints[nextPoints.length - 1] = { ...move.to };
-            moveEnd = true;
-          }
-        }
-        if (moveStart || moveEnd) {
-          nextPoints = makeEndpointSegmentsOrthogonal(
-            nextPoints,
-            moveStart,
-            moveEnd,
-          );
-        }
-        return moveStart || moveEnd
-          ? { ...wire, points: nextPoints }
-          : wire;
-      });
-      return normalizePageWireOverlaps({
+      const junctionMoves = new Map<string, Point>();
+      if (located.wire.start.kind === "junction") {
+        junctionMoves.set(located.wire.start.junctionId, points[0]!);
+      }
+      if (located.wire.end.kind === "junction") {
+        junctionMoves.set(located.wire.end.junctionId, points.at(-1)!);
+      }
+      const nets = page.nets.map((net) =>
+        net.id === located.net.id
+          ? {
+              ...net,
+              junctions: net.junctions.map((junction) =>
+                junctionMoves.has(junction.id)
+                  ? {
+                      ...junction,
+                      point: { ...junctionMoves.get(junction.id)! },
+                    }
+                  : junction,
+              ),
+              wires: net.wires.map((wire) => {
+                if (wire.id === wireId) {
+                  return {
+                    ...wire,
+                    points: points.map((point) => ({ ...point })),
+                  };
+                }
+                let changed = false;
+                const nextPoints = wire.points.map((point) => ({ ...point }));
+                if (
+                  wire.start.kind === "junction" &&
+                  junctionMoves.has(wire.start.junctionId)
+                ) {
+                  nextPoints[0] = {
+                    ...junctionMoves.get(wire.start.junctionId)!,
+                  };
+                  changed = true;
+                }
+                if (
+                  wire.end.kind === "junction" &&
+                  junctionMoves.has(wire.end.junctionId)
+                ) {
+                  nextPoints[nextPoints.length - 1] = {
+                    ...junctionMoves.get(wire.end.junctionId)!,
+                  };
+                  changed = true;
+                }
+                return changed ? { ...wire, points: nextPoints } : wire;
+              }),
+            }
+          : net,
+      );
+      return canonicalizePageNetGraph({
         ...page,
-        wires,
-        junctions,
+        nets,
       });
     },
     now,
   );
 }
 
-export function updateWireName(
+export function updateNetNameForWire(
   document: DrawicDocument,
   pageId: string,
   wireId: string,
@@ -919,24 +1211,21 @@ export function updateWireName(
     document,
     pageId,
     (page) => {
-      const target = page.wires.find((wire) => wire.id === wireId);
       const nextName = name.trim();
-      if (!target) {
+      const located = findWire(page, wireId);
+      if (!located) {
         return page;
       }
-      const wireIndex = page.wires.findIndex((wire) => wire.id === wireId);
-      const previousName = wireDisplayName(target, wireIndex);
-      const displayName = nextName || defaultWireName(wireIndex);
-      if (previousName === displayName) {
+      if ((located.net.name ?? "") === nextName) {
         return page;
       }
-      return {
+      return canonicalizePageNetGraph({
         ...page,
-        wires: page.wires.map((wire) => {
-          if (wire.id !== wireId) {
-            return wire;
+        nets: page.nets.map((net) => {
+          if (net.id !== located.net.id) {
+            return net;
           }
-          const next = { ...wire };
+          const next = { ...net };
           if (nextName) {
             next.name = nextName;
           } else {
@@ -946,12 +1235,11 @@ export function updateWireName(
         }),
         annotations: page.annotations.map((annotation) =>
           annotation.kind === "net" &&
-          annotation.wireId === wireId &&
-          annotation.text.trim() === previousName
-            ? { ...annotation, text: displayName }
+          annotation.netId === located.net.id
+            ? { ...annotation, text: nextName }
             : annotation,
         ),
-      };
+      });
     },
     now,
   );
@@ -969,18 +1257,26 @@ export function renameNet(
   if (!clean || wireIds.length === 0) {
     return document;
   }
-  const wireIdSet = new Set(wireIds);
+  const netIds = new Set(
+    wireIds.flatMap((wireId) => {
+      const located = pageById(document, pageId);
+      const net = findWire(located, wireId)?.net;
+      return net ? [net.id] : [];
+    }),
+  );
   const annotationIdSet = new Set(annotationIds);
   return updatePage(
     document,
     pageId,
-    (page) => ({
+    (page) => canonicalizePageNetGraph({
       ...page,
-      wires: page.wires.map((wire) =>
-        wireIdSet.has(wire.id) ? { ...wire, name: clean } : wire,
+      nets: page.nets.map((net) =>
+        netIds.has(net.id) ? { ...net, name: clean } : net,
       ),
       annotations: page.annotations.map((annotation) =>
-        annotationIdSet.has(annotation.id) && annotation.kind === "net"
+        (annotationIdSet.has(annotation.id) ||
+          (annotation.netId && netIds.has(annotation.netId))) &&
+        annotation.kind === "net"
           ? { ...annotation, text: clean }
           : annotation,
       ),
@@ -1003,5 +1299,10 @@ export function createWireFromPath(
   points: Point[],
   anchors?: { startAnchor?: ConnectionAnchor; endAnchor?: ConnectionAnchor },
 ): Wire {
-  return { id, points, ...anchors };
+  return {
+    id,
+    points,
+    start: endpointFromAnchor(anchors?.startAnchor),
+    end: endpointFromAnchor(anchors?.endAnchor),
+  };
 }

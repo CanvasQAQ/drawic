@@ -10,16 +10,27 @@ import {
   rotateSelection,
   updateNode,
   updateWirePoints,
-  updateWireName,
+  updateNetNameForWire,
 } from "../src/core/editor";
 import {
+  allJunctions,
+  allWires,
   createDocument,
   createEmptyPage,
+  findWire,
   junctionSelectionId,
   pageById,
 } from "../src/core/model";
 import { addPage } from "../src/core/project";
-import { testLibrary, twoPinSymbol } from "./fixtures";
+import {
+  addTestJunction,
+  addTestNet,
+  addTestWire,
+  allTestWires,
+  testLibrary,
+  twoPinSymbol,
+  wireInPage,
+} from "./fixtures";
 
 function twoAnchorDocument() {
   let document = createDocument({ pageId: "page_a" });
@@ -55,24 +66,24 @@ function twoAnchorDocument() {
   return document;
 }
 
-describe("page-scoped editing", () => {
+describe("page-scoped net editing", () => {
   it("keeps independent edits on their selected page", () => {
     const document = twoAnchorDocument();
     expect(pageById(document, "page_a").nodes).toHaveLength(2);
     expect(pageById(document, "page_b").nodes).toHaveLength(0);
   });
 
-  it("connects anchor-backed wire endpoints even when geometry is temporarily displaced", () => {
-    let document = twoAnchorDocument();
+  it("connects pin endpoint references even when stored geometry is displaced", () => {
+    const document = twoAnchorDocument();
     const page = pageById(document, "page_a");
-    page.wires[0]!.points[0] = { x: 50, y: 50 };
+    findWire(page, "w1")!.wire.points[0] = { x: 50, y: 50 };
     const connectivity = buildConnectivity(page, testLibrary);
     expect(connectivity.networkIdByPin.get(pinGraphKey("r1", 1))).toBe(
       connectivity.networkIdByWire.get("w1"),
     );
   });
 
-  it("moves attached wire endpoints with a device while preserving orthogonal segments", () => {
+  it("moves attached wire endpoints with a device while preserving orthogonality", () => {
     const moved = moveNodes(
       twoAnchorDocument(),
       "page_a",
@@ -82,53 +93,11 @@ describe("page-scoped editing", () => {
       "2026-10-23T00:00:04.000Z",
     );
     const page = pageById(moved, "page_a");
-    expect(page.nodes.find((node) => node.id === "r1")).toMatchObject({ x: 120, y: 130 });
-    expect(page.wires[0]?.points[0]).toEqual({ x: 120, y: 150 });
-    for (let index = 1; index < (page.wires[0]?.points.length ?? 0); index += 1) {
-      const previous = page.wires[0]!.points[index - 1]!;
-      const current = page.wires[0]!.points[index]!;
-      expect(previous.x === current.x || previous.y === current.y).toBe(true);
-    }
-  });
-
-  it("keeps anchored wire endpoints on their pins through rotation and mirroring", () => {
-    let document = twoAnchorDocument();
-    document = rotateSelection(
-      document,
-      "page_a",
-      [{ kind: "node", id: "r1" }],
-      testLibrary,
-      "2026-10-23T00:00:05.000Z",
-    );
-    let wire = pageById(document, "page_a").wires[0]!;
-    expect(wire.points[0]).toEqual({ x: 80, y: 100 });
-    for (let index = 1; index < wire.points.length; index += 1) {
-      const previous = wire.points[index - 1]!;
-      const current = wire.points[index]!;
-      expect(previous.x === current.x || previous.y === current.y).toBe(true);
-    }
-
-    document = mirrorSelection(
-      document,
-      "page_a",
-      [{ kind: "node", id: "r1" }],
-      testLibrary,
-      "2026-10-23T00:00:06.000Z",
-    );
-    wire = pageById(document, "page_a").wires[0]!;
-    expect(wire.points[0]).toEqual({ x: 80, y: 100 });
-  });
-
-  it("moves connected wires when device coordinates are edited directly", () => {
-    const moved = updateNode(
-      twoAnchorDocument(),
-      "page_a",
-      "r1",
-      { x: 120, y: 130 },
-      testLibrary,
-      "2026-10-23T00:00:07.000Z",
-    );
-    const wire = pageById(moved, "page_a").wires[0]!;
+    const wire = wireInPage(page, "w1")!;
+    expect(page.nodes.find((node) => node.id === "r1")).toMatchObject({
+      x: 120,
+      y: 130,
+    });
     expect(wire.points[0]).toEqual({ x: 120, y: 150 });
     for (let index = 1; index < wire.points.length; index += 1) {
       const previous = wire.points[index - 1]!;
@@ -137,26 +106,33 @@ describe("page-scoped editing", () => {
     }
   });
 
-  it("commits explicit junctions with a newly drawn branch wire", () => {
-    let document = createDocument({ pageId: "page_branch" });
-    document = addWire(document, "page_branch", {
-      id: "wire_branch",
-      name: "N001",
-      points: [
-        { x: 100, y: 100 },
-        { x: 100, y: 180 },
-      ],
-      junctionPoints: [{ x: 100, y: 100 }],
-      now: "2026-10-24T00:00:00.000Z",
-    });
-    const page = pageById(document, "page_branch");
-    expect(page.wires[0]?.name).toBe("N001");
-    expect(page.junctions).toEqual([{ x: 100, y: 100 }]);
+  it("keeps pin endpoint references through rotation and mirroring", () => {
+    let document = twoAnchorDocument();
+    document = rotateSelection(
+      document,
+      "page_a",
+      [{ kind: "node", id: "r1" }],
+      testLibrary,
+      "2026-10-23T00:00:05.000Z",
+    );
+    let wire = findWire(pageById(document, "page_a"), "w1")!.wire;
+    expect(wire.points[0]).toEqual({ x: 80, y: 100 });
+    expect(wire.start).toEqual({ kind: "pin", deviceId: "r1", pinId: "2" });
+
+    document = mirrorSelection(
+      document,
+      "page_a",
+      [{ kind: "node", id: "r1" }],
+      testLibrary,
+      "2026-10-23T00:00:06.000Z",
+    );
+    wire = findWire(pageById(document, "page_a"), "w1")!.wire;
+    expect(wire.points[0]).toEqual({ x: 80, y: 100 });
   });
 
-  it("keeps an attached net label in sync when the wire is renamed", () => {
-    let document = createDocument({ pageId: "page_rename_wire" });
-    document = addWire(document, "page_rename_wire", {
+  it("updates a net name once and updates all attached labels", () => {
+    let document = createDocument({ pageId: "page_rename_net" });
+    document = addWire(document, "page_rename_net", {
       id: "wire_rename",
       name: "N001",
       points: [
@@ -164,141 +140,170 @@ describe("page-scoped editing", () => {
         { x: 100, y: 0 },
       ],
     });
-    document = {
-      ...document,
-      pages: document.pages.map((page) => ({
-        ...page,
-        annotations: [
-          {
-            id: "label_n001",
-            kind: "net",
-            text: "N001",
-            x: 20,
-            y: 0,
-            size: 14,
-            wireId: "wire_rename",
-          },
-        ],
-      })),
-    };
-    const renamed = updateWireName(
+    const page = pageById(document, "page_rename_net");
+    page.annotations.push({
+      id: "label_n001",
+      kind: "net",
+      text: "N001",
+      x: 20,
+      y: 0,
+      size: 14,
+      wireId: "wire_rename",
+      netId: page.nets[0]!.id,
+    });
+    const renamed = updateNetNameForWire(
       document,
-      "page_rename_wire",
+      "page_rename_net",
       "wire_rename",
       "VOUT",
       "2026-10-24T00:00:00.000Z",
     );
-    const page = pageById(renamed, "page_rename_wire");
-    expect(page.wires[0]?.name).toBe("VOUT");
-    expect(page.annotations[0]?.text).toBe("VOUT");
+    const next = pageById(renamed, "page_rename_net");
+    expect(next.nets[0]?.name).toBe("VOUT");
+    expect(next.annotations[0]?.text).toBe("VOUT");
   });
 
-  it("renames every wire and label in one connected net", () => {
-    let document = createDocument({ pageId: "page_rename_net" });
-    document = addWire(document, "page_rename_net", {
+  it("creates a junction and splits a through wire when drawing a branch", () => {
+    let document = createDocument({ pageId: "page_branch" });
+    document = addWire(document, "page_branch", {
+      id: "through",
+      name: "N001",
+      points: [
+        { x: 0, y: 100 },
+        { x: 200, y: 100 },
+      ],
+    });
+    document = addWire(document, "page_branch", {
+      id: "branch",
+      points: [
+        { x: 100, y: 100 },
+        { x: 100, y: 180 },
+      ],
+      junctionPoints: [{ x: 100, y: 100 }],
+    });
+    const page = pageById(document, "page_branch");
+    expect(page.nets).toHaveLength(1);
+    expect(page.nets[0]?.name).toBe("N001");
+    expect(page.nets[0]?.junctions).toHaveLength(1);
+    expect(allWires(page)).toHaveLength(3);
+  });
+
+  it("renames a net directly without duplicating names on wires", () => {
+    let document = createDocument({ pageId: "page_rename_group" });
+    document = addWire(document, "page_rename_group", {
       id: "a",
       points: [
         { x: 0, y: 0 },
         { x: 100, y: 0 },
       ],
     });
-    document = addWire(document, "page_rename_net", {
-      id: "b",
-      points: [
+    const page = pageById(document, "page_rename_group");
+    addTestWire(
+      page,
+      page.nets[0]!.id,
+      "b",
+      [
         { x: 100, y: 0 },
         { x: 100, y: 80 },
       ],
+    );
+    page.annotations.push({
+      id: "label_a",
+      kind: "net",
+      text: "N001",
+      x: 20,
+      y: 0,
+      size: 14,
+      wireId: "a",
+      netId: page.nets[0]!.id,
     });
-    document = {
-      ...document,
-      pages: document.pages.map((page) => ({
-        ...page,
-        annotations: [
-          {
-            id: "label_a",
-            kind: "net",
-            text: "N001",
-            x: 20,
-            y: 0,
-            size: 14,
-            wireId: "a",
-          },
-        ],
-      })),
-    };
     const renamed = renameNet(
       document,
-      "page_rename_net",
+      "page_rename_group",
       ["a", "b"],
       ["label_a"],
       "CLOCK",
       "2026-10-24T00:00:00.000Z",
     );
-    const page = pageById(renamed, "page_rename_net");
-    expect(page.wires.map((wire) => wire.name)).toEqual(["CLOCK", "CLOCK"]);
-    expect(page.annotations[0]?.text).toBe("CLOCK");
+    const next = pageById(renamed, "page_rename_group");
+    expect(next.nets[0]?.name).toBe("CLOCK");
+    expect(next.annotations[0]?.text).toBe("CLOCK");
   });
 
-  it("deletes a standalone explicit junction", () => {
-    let document = createDocument({ pageId: "page_junction_delete" });
-    const point = { x: 80, y: 120 };
-    document = {
-      ...document,
-      pages: document.pages.map((page) => ({
-        ...page,
-        junctions: [point],
-      })),
-    };
+  it("deletes a stable junction selection", () => {
+    const document = createDocument({ pageId: "page_junction_delete" });
+    const junction = addTestJunction(
+      document.pages[0]!,
+      "net_1",
+      "junction_1",
+      80,
+      120,
+    );
     const deleted = removeSelection(
       document,
       "page_junction_delete",
-      [{ kind: "junction", id: junctionSelectionId(point) }],
+      [{ kind: "junction", id: junctionSelectionId(junction) }],
       "2026-10-24T00:00:00.000Z",
     );
-    expect(pageById(deleted, "page_junction_delete").junctions).toEqual([]);
+    expect(allJunctions(pageById(deleted, "page_junction_delete"))).toEqual([]);
   });
 
-  it("moves a junction and its connected branch when a wire segment is edited", () => {
-    let document = createDocument({ pageId: "page_junction_move" });
-    document = addWire(document, "page_junction_move", {
-      id: "through",
-      points: [
+  it("moves a junction and all incident wire endpoints together", () => {
+    const document = createDocument({ pageId: "page_junction_move" });
+    const page = document.pages[0]!;
+    addTestNet(page, "net_1");
+    addTestJunction(page, "net_1", "junction_1", 100, 100);
+    addTestWire(
+      page,
+      "net_1",
+      "left",
+      [
         { x: 0, y: 100 },
+        { x: 100, y: 100 },
+      ],
+      { kind: "open" },
+      { kind: "junction", junctionId: "junction_1" },
+    );
+    addTestWire(
+      page,
+      "net_1",
+      "right",
+      [
+        { x: 100, y: 100 },
         { x: 200, y: 100 },
       ],
-    });
-    document = addWire(document, "page_junction_move", {
-      id: "branch",
-      points: [
+      { kind: "junction", junctionId: "junction_1" },
+      { kind: "open" },
+    );
+    addTestWire(
+      page,
+      "net_1",
+      "branch",
+      [
         { x: 100, y: 100 },
         { x: 100, y: 180 },
       ],
-    });
-    document = {
-      ...document,
-      pages: document.pages.map((page) => ({
-        ...page,
-        junctions: [{ x: 100, y: 100 }],
-      })),
-    };
+      { kind: "junction", junctionId: "junction_1" },
+      { kind: "open" },
+    );
     const moved = updateWirePoints(
       document,
       "page_junction_move",
-      "through",
+      "branch",
       [
-        { x: 0, y: 120 },
-        { x: 200, y: 120 },
+        { x: 120, y: 100 },
+        { x: 120, y: 180 },
       ],
       "2026-10-24T00:00:00.000Z",
     );
-    const page = pageById(moved, "page_junction_move");
-    expect(page.junctions).toEqual([{ x: 100, y: 120 }]);
-    expect(page.wires.find((wire) => wire.id === "branch")?.points[0]).toEqual({
-      x: 100,
-      y: 120,
+    const next = pageById(moved, "page_junction_move");
+    expect(allJunctions(next)[0]?.junction.point).toEqual({ x: 120, y: 100 });
+    expect(findWire(next, "left")?.wire.points[1]).toEqual({
+      x: 120,
+      y: 100,
     });
-    const connectivity = buildConnectivity(page, testLibrary);
-    expect(connectivity.networkIdByWire.get("through")).toBe(
+    const connectivity = buildConnectivity(next, testLibrary);
+    expect(connectivity.networkIdByWire.get("left")).toBe(
       connectivity.networkIdByWire.get("branch"),
     );
   });

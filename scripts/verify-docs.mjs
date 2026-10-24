@@ -7,7 +7,9 @@ const documents = [
   "CLEAN_ROOM.md",
   "PROVENANCE.md",
   "docs/AGENT_WORKFLOW.md",
+  "docs/DEVICE_PIN_AUDIT.md",
   "docs/adr/005-pages-and-single-file-device-library.md",
+  "docs/adr/009-net-owned-wire-graph.md",
 ];
 
 const forbiddenPatterns = [

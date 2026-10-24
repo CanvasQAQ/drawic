@@ -7,7 +7,7 @@ Copyright © 2026 CanvasQAQ. Released under the MIT License in `LICENSE`.
 ## Device symbol artwork
 
 The bundled static device SVG collection was supplied to this project by
-CanvasQAQ on 2026-10-23 and is used under the repository owner's explicit
+CanvasQAQ on 2026-10-24 and is used under the repository owner's explicit
 authorization for Drawic. It is distributed as SVG artwork and pin metadata,
 not as source code. File-level SHA-256 values and the exact supplied revision
 identifier are recorded in `PROVENANCE.md` and

@@ -7,7 +7,17 @@ import {
   parseProjectText,
   serializeProject,
 } from "../src/core/model";
-import { duplicatePage, movePage } from "../src/core/project";
+import {
+  duplicatePage,
+  addJunction,
+  movePage,
+} from "../src/core/project";
+import {
+  addTestNet,
+  addTestWire,
+  allTestWires,
+} from "./fixtures";
+import { allJunctions, allWires, pageById } from "../src/core/model";
 
 describe("Drawic drawing format", () => {
   it("round-trips independent pages without dropping stable identities", () => {
@@ -61,24 +71,28 @@ describe("Drawic drawing format", () => {
     expect(parsed).toEqual(document);
   });
 
-  it("round-trips wire names and attached net labels", () => {
+  it("round-trips net-owned wires and attached net labels", () => {
     const document = createDocument({ pageId: "page_wire_mode" });
-    document.pages[0]!.wires.push({
-      id: "wire_auto",
-      name: "VOUT",
-      points: [
+    addTestNet(document.pages[0]!, "net_vout", "VOUT");
+    addTestNet(document.pages[0]!, "net_gnd", "GND");
+    addTestWire(
+      document.pages[0]!,
+      "net_vout",
+      "wire_auto",
+      [
         { x: 0, y: 0 },
         { x: 20, y: 0 },
       ],
-    });
-    document.pages[0]!.wires.push({
-      id: "wire_manual",
-      name: "GND",
-      points: [
+    );
+    addTestWire(
+      document.pages[0]!,
+      "net_gnd",
+      "wire_manual",
+      [
         { x: 0, y: 20 },
         { x: 20, y: 20 },
       ],
-    });
+    );
     document.pages[0]!.annotations.push({
       id: "label_vout",
       kind: "net",
@@ -87,6 +101,7 @@ describe("Drawic drawing format", () => {
       y: 0,
       size: 14,
       wireId: "wire_auto",
+      netId: "net_vout",
     });
 
     const parsed = parseProjectText(serializeProject(document));
@@ -96,11 +111,16 @@ describe("Drawic drawing format", () => {
       pageId: "page_wire_mode_copy",
       idFactory: (prefix) => `${prefix}_copy_${++copyIndex}`,
     });
-    expect(duplicated.pages[1]?.wires.map((wire) => wire.name)).toEqual([
+    expect(duplicated.pages[1]?.nets.map((net) => net.name)).toEqual([
       "VOUT",
       "GND",
     ]);
-    expect(duplicated.pages[1]?.annotations[0]?.wireId).toBe("wire_copy_1");
+    expect(duplicated.pages[1]?.annotations[0]?.wireId).toBe("wire_copy_3");
+    expect(duplicated.pages[1]?.nets[0]?.id).toBe("net_copy_1");
+    expect(allTestWires(duplicated.pages[1]!).map((wire) => wire.id)).toEqual([
+      "wire_copy_3",
+      "wire_copy_4",
+    ]);
   });
 
   it("rejects future schema versions instead of guessing", () => {
@@ -118,6 +138,25 @@ describe("Drawic drawing format", () => {
           schemaVersion: 1,
           kind: "drawic-schematic",
           cells: [],
+        }),
+      ),
+    ).toThrow(/retired Drawic format/i);
+  });
+
+  it("explicitly rejects schema version 2 instead of migrating it", () => {
+    const current = createDocument();
+    expect(() =>
+      parseProjectText(
+        JSON.stringify({
+          ...current,
+          schemaVersion: 2,
+          pages: [
+            {
+              ...current.pages[0],
+              wires: [],
+              junctions: [],
+            },
+          ],
         }),
       ),
     ).toThrow(/retired Drawic format/i);
@@ -153,5 +192,48 @@ describe("Drawic drawing format", () => {
       "page_copy",
       "page_b",
     ]);
+  });
+
+  it("joins crossing nets at a stable junction and splits both wire edges", () => {
+    const document = createDocument({ pageId: "page_crossing" });
+    const page = document.pages[0]!;
+    addTestWire(
+      page,
+      "net_h",
+      "horizontal",
+      [
+        { x: 0, y: 100 },
+        { x: 200, y: 100 },
+      ],
+    );
+    addTestWire(
+      page,
+      "net_v",
+      "vertical",
+      [
+        { x: 100, y: 0 },
+        { x: 100, y: 200 },
+      ],
+    );
+    const joined = addJunction(
+      document,
+      "page_crossing",
+      { x: 100, y: 100 },
+      () => "2026-10-24T01:00:00.000Z",
+    );
+    const next = pageById(joined, "page_crossing");
+    expect(next.nets).toHaveLength(1);
+    expect(allJunctions(next)).toHaveLength(1);
+    expect(allWires(next)).toHaveLength(4);
+    const junction = allJunctions(next)[0]!.junction;
+    for (const { wire } of allWires(next)) {
+      expect(
+        [wire.start, wire.end].some(
+          (endpoint) =>
+            endpoint.kind === "junction" &&
+            endpoint.junctionId === junction.id,
+        ),
+      ).toBe(true);
+    }
   });
 });

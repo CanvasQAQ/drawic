@@ -10,6 +10,7 @@ const bridge: DrawicBridge = {
   importSpice: () => ipcRenderer.invoke("spice:import"),
   saveSpice: (suggestedName, content) =>
     ipcRenderer.invoke("spice:save", { suggestedName, content }),
+  savePinAudit: (request) => ipcRenderer.invoke("pin-audit:save", request),
   checkpoint: (request) => ipcRenderer.invoke("recovery:checkpoint", request),
   clearRecovery: (projectId) => ipcRenderer.invoke("recovery:clear", projectId),
   getRecovery: () => ipcRenderer.invoke("recovery:latest"),

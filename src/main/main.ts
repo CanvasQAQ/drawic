@@ -10,7 +10,12 @@ import {
 import { mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { basename, dirname, extname, join, resolve } from "node:path";
 import { buildBitmapPdf } from "../core/export/pdf";
-import type { AppCommand, ExportRequest, SaveProjectRequest } from "../shared/bridge";
+import type {
+  AppCommand,
+  ExportRequest,
+  PinAuditExportRequest,
+  SaveProjectRequest,
+} from "../shared/bridge";
 import {
   UNSAVED_CLOSE_PROMPT,
   interpretCloseResponse,
@@ -502,6 +507,42 @@ function registerIpc(): void {
       await atomicWriteFile(result.filePath, request.content);
       const details = await stat(result.filePath);
       return { canceled: false, path: result.filePath, bytes: details.size };
+    },
+  );
+  ipcMain.handle(
+    "pin-audit:save",
+    async (event, request: PinAuditExportRequest) => {
+      if (event.sender !== mainWindow?.webContents) {
+        throw new Error("Unexpected renderer for pin audit export.");
+      }
+      if (
+        typeof request?.suggestedName !== "string" ||
+        typeof request.content !== "string" ||
+        request.content.length > 5 * 1024 * 1024
+      ) {
+        throw new Error("Invalid pin audit export.");
+      }
+      const owner = BrowserWindow.getFocusedWindow() ?? mainWindow ?? undefined;
+      const safeName =
+        request.suggestedName.replace(/[^a-zA-Z0-9._-]/g, "-").slice(0, 96) ||
+        "drawic-pin-direction-audit";
+      const options: Electron.SaveDialogOptions = {
+        title: "Export Device Pin Audit",
+        defaultPath: `${safeName}.json`,
+        filters: [{ name: "Pin direction audit", extensions: ["json"] }],
+      };
+      const result = owner
+        ? await dialog.showSaveDialog(owner, options)
+        : await dialog.showSaveDialog(options);
+      if (result.canceled || !result.filePath) {
+        return { canceled: true };
+      }
+      const target = result.filePath.toLowerCase().endsWith(".json")
+        ? result.filePath
+        : `${result.filePath}.json`;
+      await atomicWriteFile(target, request.content);
+      const details = await stat(target);
+      return { canceled: false, path: target, bytes: details.size };
     },
   );
   ipcMain.handle(

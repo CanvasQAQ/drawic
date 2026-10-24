@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
-import { copyFile, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
-import { dirname, join, resolve } from "node:path";
+import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
+import { basename, dirname, join, resolve } from "node:path";
 
 const sourceRoot = process.env.DRAWIC_ASSET_SOURCE;
 if (!sourceRoot) {
@@ -22,6 +22,7 @@ const entries = [];
 const allowedCategories = new Set();
 
 await mkdir(join(destination, "svg"), { recursive: true });
+await mkdir(join(destination, "svg", "variants"), { recursive: true });
 
 for (const entry of original.entries) {
   if (
@@ -41,6 +42,38 @@ for (const entry of original.entries) {
   await mkdir(dirname(targetFile), { recursive: true });
   await copyFile(sourceFile, targetFile);
   files.push({ path: relativeFile, sha256: sha256(svg), bytes: svg.byteLength });
+
+  const variants = [];
+  for (const variant of Array.isArray(entry.variants) ? entry.variants : []) {
+    if (
+      typeof variant.id !== "string" ||
+      typeof variant.file !== "string" ||
+      !variant.id.trim() ||
+      !variant.file.trim()
+    ) {
+      throw new Error(`Malformed variant in source entry: ${entry.id}`);
+    }
+    const variantSource = resolve(source, variant.file);
+    const expectedPrefix = `${join(source, "svg", "variants")}${process.platform === "win32" ? "\\" : "/"}`;
+    if (!variantSource.startsWith(expectedPrefix)) {
+      throw new Error(`Variant path escapes variants directory: ${variant.file}`);
+    }
+    const variantFile = `svg/variants/${basename(variant.file)}`;
+    const variantTarget = resolve(destination, variantFile);
+    const variantSvg = await readFile(variantSource);
+    await mkdir(dirname(variantTarget), { recursive: true });
+    await copyFile(variantSource, variantTarget);
+    files.push({
+      path: variantFile,
+      sha256: sha256(variantSvg),
+      bytes: variantSvg.byteLength,
+    });
+    variants.push({
+      id: variant.id,
+      file: variantFile.replace(/^svg\//, ""),
+      default: Boolean(variant.default),
+    });
+  }
 
   entries.push({
     id: entry.id,
@@ -66,6 +99,8 @@ for (const entry of original.entries) {
       side: String(pin.direction),
     })),
     file: relativeFile.replace(/^svg\//, ""),
+    primaryVariant: String(entry.primaryVariant ?? "base"),
+    variants,
   });
 }
 
@@ -73,23 +108,23 @@ entries.sort((a, b) => a.id.localeCompare(b.id));
 const outputManifest = {
   manifestVersion: 1,
   collection: "Drawic Device Symbols",
+  sourceRevision: original.sourceCommit ?? original.sourceRevision ?? null,
   categories: [...allowedCategories].sort(),
   entries,
 };
 await writeFile(join(destination, "manifest.json"), `${JSON.stringify(outputManifest, null, 2)}\n`);
 
-const discovered = await readdir(join(destination, "svg"));
 files.sort((a, b) => a.path.localeCompare(b.path));
 const lock = {
-  source: "analog-canvas-device-svg-20261023/device-svg-export",
+  source: "analog-canvas-device-svg-20261024/device-svg-export",
   suppliedBy: "CanvasQAQ",
-  suppliedOn: "2026-10-23",
+  suppliedOn: "2026-10-24",
   usageBasis: "User-supplied static artwork and pin metadata; authorized for Drawic releases by the repository owner.",
   copiedFonts: false,
   entryCount: entries.length,
-  svgCount: discovered.length,
+  svgCount: files.length,
   files,
 };
 await writeFile(join(destination, "asset-lock.json"), `${JSON.stringify(lock, null, 2)}\n`);
 
-console.log(`Imported ${entries.length} symbols and ${discovered.length} SVG files.`);
+console.log(`Imported ${entries.length} symbols and ${files.length} SVG appearances.`);

@@ -1,6 +1,6 @@
 # ADR 008: Wire hops, explicit junctions, and net names
 
-Status: accepted, 2026-10-24
+Status: partially superseded by ADR 009 for persisted topology, 2026-10-24
 
 ## Decision
 

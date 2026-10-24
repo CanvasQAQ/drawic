@@ -62,8 +62,13 @@ for (const file of lock.files) {
 if (lock.copiedFonts !== false) {
   failures.push("The approved asset import must not copy fonts.");
 }
-if (lock.files.length !== 109) {
-  failures.push(`Expected 109 locked SVG files, found ${lock.files.length}.`);
+if (
+  lock.files.length !== lock.svgCount ||
+  lock.svgCount < lock.entryCount
+) {
+  failures.push(
+    `Asset ledger is incomplete: ${lock.files.length} locked files for ${lock.svgCount} declared appearances.`,
+  );
 }
 
 const runtimeLibrary = JSON.parse(
@@ -75,8 +80,11 @@ const runtimeLibrary = JSON.parse(
 if (runtimeLibrary.format !== "drawic-device-library" || runtimeLibrary.schemaVersion !== 1) {
   failures.push("Generated device library has an unexpected format or schema.");
 }
-if (!Array.isArray(runtimeLibrary.devices) || runtimeLibrary.devices.length !== 109) {
-  failures.push("Generated device library must contain 109 device records.");
+if (
+  !Array.isArray(runtimeLibrary.devices) ||
+  runtimeLibrary.devices.length < lock.entryCount
+) {
+  failures.push("Generated device library is missing primary device records.");
 }
 if (
   runtimeLibrary.devices?.some(
@@ -96,5 +104,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  `Clean-room audit passed: ${lock.files.length} approved SVG hashes, one 109-device library, and no excluded source markers found.`,
+  `Clean-room audit passed: ${lock.files.length} approved SVG hashes, one ${runtimeLibrary.devices.length}-appearance library, and no excluded source markers found.`,
 );

@@ -10,13 +10,15 @@
 
 ## Device symbols
 
-- Supplied collection: `analog-canvas-device-svg-20261023/device-svg-export`
+- Supplied collection: `analog-canvas-device-svg-20261024/device-svg-export`
+- Supplied archive: `analog-canvas-device-svg-20261024.zip`, SHA-256
+  `2a53f925a324fe98c915cae12a7ebcd2b7a9a1f068eafa0bc39af4614c78a846`
 - Supplier and rights basis: CanvasQAQ, repository owner, via the Drawic product
   brief dated 2026-10-23. The owner explicitly authorized use of this static
   artwork for Drawic.
-- Imported material: 109 selected primary symbol SVGs plus the matching labels,
-  categories, view boxes, and pin direction metadata. The supplied pack contains
-  126 SVG files; only the 109 primary files are bundled by this import.
+- Imported material: 109 primary symbol SVGs and 17 alternate/base appearances,
+  plus the matching labels, categories, view boxes, variant mappings, and pin
+  direction metadata. All 126 supplied SVG files are retained as build inputs.
 - Excluded material: package fonts, exporter scripts, source catalogs, and any
   implementation files.
 - Import transform: `scripts/import-device-assets.mjs` creates an original,
@@ -29,11 +31,12 @@
   `src/renderer/assets/device-libraries/drawic-built-in.drawiclib.json`. Each
   device record retains its source filename and source-file SHA-256.
 - Generated library SHA-256:
-  `77c28a55e88cb9642973d279c3692ac70c98c873d2093ef660d5378816f519dd`.
-- Runtime library size: 346,626 bytes, containing 109 self-contained device
-  records. The transform sanitizes active content and external references,
-  normalizes fixed black paint to the renderer theme color, and derives exact
-  visual pin coordinates and label anchors.
+  `cd8cb21c32754396ad96e8c852ba6c07c5a34284538e02958f0136f689a1194f`.
+- Runtime library size: 403,652 bytes, containing 109 primary records and 11
+  distinct alternate appearances (120 total). The transform sanitizes active
+  content and external references, normalizes fixed black paint to the renderer
+  theme color, applies terminal visibility per variant, and derives exact visual
+  pin coordinates and label anchors.
 
 The supplied package reports source commit
 `a239991de3d765ad68729a2fc59b87483c7d401c` in its manifest. That value is retained

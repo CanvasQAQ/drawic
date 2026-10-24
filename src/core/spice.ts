@@ -113,7 +113,8 @@ export function exportSpice(
     if (node.symbolId === "ground") {
       continue;
     }
-    const prefix = simpleElements[node.symbolId];
+    const deviceKind = symbol.variantOf ?? node.symbolId;
+    const prefix = simpleElements[deviceKind];
     if (!prefix) {
       unsupportedDevices.push(`${node.reference || node.id}: ${symbol.label}`);
       continue;
@@ -122,7 +123,7 @@ export function exportSpice(
     const value = node.value.trim() || "1";
     const net = (pin: string): string => pinNet(node, symbol, pin, connectivity, nets);
 
-    switch (node.symbolId) {
+    switch (deviceKind) {
       case "resistor":
       case "variable-resistor":
         lines.push(`R${ref.replace(/^R/i, "")} ${net("1")} ${net("2")} ${value}`);
@@ -152,9 +153,12 @@ export function exportSpice(
         break;
       case "nmos":
       case "pmos": {
-        const model = value || (node.symbolId === "nmos" ? "NMOS" : "PMOS");
+        const model = value || (deviceKind === "nmos" ? "NMOS" : "PMOS");
+        const hasBulkPin = symbol.pins.some(
+          (pin) => pin.role.toLowerCase() === "bulk" || pin.key.toUpperCase() === "B",
+        );
         lines.push(
-          `M${ref.replace(/^M/i, "")} ${net("D")} ${net("G")} ${net("S")} ${net("B")} ${model}`,
+          `M${ref.replace(/^M/i, "")} ${net("D")} ${net("G")} ${net("S")} ${hasBulkPin ? net("B") : net("S")} ${model}`,
         );
         break;
       }
@@ -164,7 +168,7 @@ export function exportSpice(
         const collector = pins.find((key) => /^c$/i.test(key)) ?? pins[0] ?? "C";
         const base = pins.find((key) => /^b$/i.test(key)) ?? pins[1] ?? "B";
         const emitter = pins.find((key) => /^e$/i.test(key)) ?? pins[2] ?? "E";
-        const model = value || (node.symbolId === "npn" ? "NPN" : "PNP");
+        const model = value || (deviceKind === "npn" ? "NPN" : "PNP");
         lines.push(
           `Q${ref.replace(/^Q/i, "")} ${net(collector)} ${net(base)} ${net(emitter)} ${model}`,
         );
@@ -296,9 +300,31 @@ export function importSpice(
 
   const rows = Math.max(1, Math.ceil(Math.sqrt(elements.length)));
   elements.forEach((element, index) => {
+    let symbolId = element.symbolId;
+    let symbol =
+      options?.library?.find((candidate) => candidate.id === symbolId) ??
+      syntheticSymbolForImport(symbolId);
+    if (
+      (symbolId === "nmos" || symbolId === "pmos") &&
+      element.nets.length > symbol.pins.length
+    ) {
+      const bulkVariant = options?.library?.find(
+        (candidate) =>
+          candidate.variantOf === symbolId &&
+          candidate.pins.some(
+            (pin) =>
+              pin.role.toLowerCase() === "bulk" ||
+              pin.key.toUpperCase() === "B",
+          ),
+      );
+      if (bulkVariant) {
+        symbolId = bulkVariant.id;
+        symbol = bulkVariant;
+      }
+    }
     const node: ComponentNode = {
       id: idFactory("node"),
-      symbolId: element.symbolId,
+      symbolId,
       reference: element.reference,
       value: element.value,
       x: 180 + (index % rows) * 150,
@@ -307,10 +333,14 @@ export function importSpice(
       mirrored: false,
     };
     page.nodes.push(node);
-    const symbol =
-      options?.library?.find((candidate) => candidate.id === element.symbolId) ??
-      syntheticSymbolForImport(element.symbolId);
-    element.nets.forEach((netName, pinIndex) => {
+    const representableNets = element.nets.slice(0, symbol.pins.length);
+    const omittedNets = element.nets.slice(symbol.pins.length);
+    if (omittedNets.length > 0) {
+      warnings.push(
+        `${element.reference}: ${omittedNets.length} terminal net(s) omitted because ${element.symbolId} is three-terminal.`,
+      );
+    }
+    representableNets.forEach((netName, pinIndex) => {
       const point = nodePinPosition(node, symbol, pinIndex);
       const annotation: Annotation = {
         id: idFactory("label"),

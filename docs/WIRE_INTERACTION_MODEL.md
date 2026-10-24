@@ -1,6 +1,6 @@
 # Drawic wire interaction model
 
-Status: normative, 2026-10-23
+Status: normative, schema version 3, 2026-10-24
 
 This document defines how schematic wires are represented, resolved, edited, and
 committed. Implementations must use one path fact for rendering, hit testing,
@@ -11,8 +11,7 @@ connectivity, movement previews, and final edits.
 A wire has two separate responsibilities:
 
 1. It records an electrical connection between stable objects.
-2. It stores a visible drawing route made of ordered bends and constrained
-   segments.
+2. It stores a visible polyline between two electrical endpoints.
 
 Connection intent takes priority when a device moves. The wire endpoint follows
 its resolved object, while the authored path is preserved wherever possible.
@@ -20,40 +19,48 @@ Device movement must not trigger global rerouting.
 
 ## 2. Wire data
 
-A wire has:
+A net has:
+
+- a stable, unique net ID;
+- one canonical optional name;
+- zero or more wire edges;
+- zero or more stable junction vertices.
+
+Each wire has:
 
 - a stable, unique wire ID;
-- a start endpoint intent;
-- an end endpoint intent;
-- ordered intermediate bend points;
+- exactly one start endpoint and one end endpoint;
+- ordered bend points between those endpoints.
 - optional per-segment direction metadata;
-- an optional hidden net name;
 - optional visual style and attached-object metadata.
 
-Endpoint intent is either a stable `{ deviceId, pinId }` anchor or a stable
-junction reference. A transient "nearest point" is not a valid persistent
-endpoint. An open end must be represented explicitly rather than rebound by
-proximity.
+An endpoint is exactly one of:
+
+- a stable device-pin reference;
+- a stable junction ID in the same net;
+- an explicit open end.
+
+A transient nearest point is not a persistent endpoint. A wire never owns a net
+name; the containing net does.
 
 Intermediate bends use world-canvas coordinates. Segment identity, when present,
 must remain stable so labels, probes, and other attachments do not depend on a
 segment's current array index.
 
-Current Drawic schema version 2 stores endpoint anchors, bend points, optional
-wire names, and wire-attached labels. Segment identity and per-segment direction
-mode are reserved extension points; adding them requires an ADR and a
-parser/serializer update.
+Current Drawic schema version 3 stores nets, junction IDs, endpoint references,
+and bend points. Version 2 is rejected. Stable segment identity and per-segment
+direction mode remain reserved extension points.
 
-The current editor implements shared endpoint/path resolution, rigid internal
-wire movement, local boundary stretching, grouped device rotation/mirroring,
-gesture cancellation, resolved export bounds, hidden wire names, attached net
-labels, junction selection/deletion, same-net geometry cleanup, and one
+The editor implements shared endpoint/path resolution, topology-driven wire
+split/merge, rigid internal wire movement, local boundary stretching, grouped
+device rotation/mirroring, gesture cancellation, resolved export bounds, stable
+junction selection, net-owned names, attached net labels, and one
 preview/commit plan. Stable segment identity, editable direction modes, and an
 explicit disconnection-move gesture remain future work.
 
 ## 3. Resolving endpoints and paths
 
-An anchored endpoint is resolved from the current device state:
+A pin endpoint is resolved from the current device state:
 
 1. find the device instance;
 2. find the pin on the device's symbol;
@@ -66,13 +73,13 @@ The visible path is the resolved start point, persisted bends, and resolved end
 point. Rendering, connectivity, export, bounds, and pointer hit testing must all
 consume the same resolved path.
 
-If an anchor cannot be resolved, its connection must not be guessed from a
+If an endpoint cannot be resolved, its connection must not be guessed from a
 nearby item. Diagnostics should identify the unresolved wire.
 
 ## 4. Drawing a new wire
 
 Endpoint resolution distinguishes device pins, existing wire contact points,
-junctions, and open ends. It records:
+junction vertices, and open ends. It records:
 
 - the exact contact point;
 - a grid landing point;
@@ -95,63 +102,76 @@ Every automatic routing trigger applies the same escape rule. A later
 auto-routing pass may restore the default pin escape even if a previous route
 was arranged differently.
 
-Completing a wire commits its endpoint intent, any required junction, network
-membership, attachments, and its single undo record atomically.
+Completing a wire commits its endpoint references, any required junction and net
+merge, resulting wire edge count, attachments, and its single undo record
+atomically.
 
 ## 5. Electrical contact
 
 A device pin touching an anchored wire connects to it. Wire-to-wire crossings
-and passive endpoint overlap do not connect. Two wires become electrically joined
-only through an explicit junction, which is created when the user deliberately
-snaps a new wire endpoint onto an existing wire or places a junction.
+and passive endpoint overlap do not invent topology. Two different nets become
+electrically joined only through an explicit junction operation or a shared net
+name.
 
 Without an explicit junction, crossing routes remain separate electrical
 networks and the horizontal wire renders a small arc hop over a vertical wire.
 An endpoint laying on another wire without junction intent is also treated as a
 non-connection and receives the same visual separation.
 
-When two wires already belong to the same electrical network, their T or
-crossing intersection is shown as one merged junction indicator rather than an
-electrically ambiguous crossing. Exactly duplicated collinear conductor
-segments are rendered only once.
+A junction is a stable vertex in one net:
 
-When a new wire deliberately starts on an existing wire and initially follows
-the same axis, the shared collinear section is treated as one conductor. The
-two wires merge electrically, the duplicate section is drawn once, and the
-start junction is not shown while it lies inside that overlap.
+- it is created when a branch is attached to an existing wire;
+- wires reference it by `junctionId`, never by coordinate;
+- every incident wire endpoint resolves to the junction point;
+- a degree-two junction is normalized away and its two wires become one edge;
+- a degree-three or higher junction remains;
+- moving it updates every incident wire endpoint atomically.
 
-This overlap is normalized into persistent geometry rather than only hidden at
-render time. The later wire is trimmed so its retained path starts where it
-leaves the shared conductor:
+All wires already owned by one net are electrically equivalent. A geometric
+crossing inside that net is not a second junction representation and receives no
+arc. A crossing between different nets remains non-connected and renders an arc
+on the horizontal wire.
 
-- if it branches away while the other wire continues through that point, the
-  retained path starts at an explicit junction on the through-wire;
-- if the overlap ends in collinear continuation, both wire objects are merged
-  into one continuous polyline with no junction;
-- repeated overlaps are processed in order, producing the same split points
-  regardless of the original authored start/end beyond the shared section.
+Normalization updates wire count and coordinates from topology:
 
-Network membership is rebuilt from final pins, explicit junctions, and named
-net labels. Geometry alone is not proof of a current electrical path.
+- splitting a wire at a branch creates two edge wires and one junction;
+- a branch that initially overlaps its trunk is trimmed back to the divergence
+  point, and the junction moves there;
+- two branches that converge with a shared tail are split at the tail boundary,
+  leaving two branch edges plus one unique continuation edge;
+- an open wire endpoint landing inside another same-net edge creates a junction
+  and splits the through edge at that point;
+- an interior crossing between two same-net wires creates one degree-4 junction
+  and splits both edges;
+- continuing end-to-end merges two edges into one polyline;
+- duplicate edges between the same endpoint pair are removed;
+- separate nets with the same explicit name are merged;
+- nets sharing a pin endpoint are merged.
+
+Geometry alone still never creates electrical topology.
+
+Net graph canonicalization runs as one segment-arrangement pipeline rather than
+operation-specific overlap passes. ERC validates the resulting invariants:
+stable Junction references, degree >= 3 junctions, no Junction or wire endpoint
+inside another edge, no duplicate endpoint edges, and no overlapping conductor
+segments inside one Net.
 
 ## 5.1 Net names and labels
 
-The electrical network, not an individual wire, owns the canonical net name.
-Every connected wire displays the same name even when only one wire or label
-provided it.
+The Net owns the canonical name. Every wire in that net displays the same name
+without duplicating a name field in wire records.
 
 Canonical-name precedence is:
 
 1. a visible Net Label;
-2. an explicit wire name;
+2. the explicit Net name;
 3. a generated default such as `N001`.
 
-Renaming a net from the inspector updates every wire and visible Net Label in
-that connected network in one transaction. Explicit aliases that still disagree
-remain visible to ERC as name conflicts.
+Renaming a net from the inspector updates the Net object and all visible labels
+in one transaction.
 
-Default names remain hidden on the canvas. Explicit wire names with the same
-trimmed text also identify the same logical net.
+Default names remain hidden on the canvas. Nets with the same trimmed explicit
+name merge into one logical net.
 
 The Net Label tool attaches a visible label to a wire. Labels with the same text
 merge networks. Label text can be edited directly or in the inspector.
@@ -168,9 +188,9 @@ At the start of a device drag, freeze:
 
 Classify wires for the whole gesture:
 
-- internal: both endpoint intents belong to the moving set;
-- boundary: exactly one endpoint intent belongs to the moving set;
-- external: neither endpoint intent belongs to the moving set.
+- internal: every pin endpoint belongs to the moving set;
+- boundary: at least one, but not every, pin endpoint belongs to the moving set;
+- external: no pin endpoint belongs to the moving set.
 
 This classification must not change while the same gesture is active.
 
@@ -277,13 +297,12 @@ The following scenarios are required regression coverage:
     renders a hop on the horizontal route.
 15. Snapping a new wire endpoint onto an existing wire creates an explicit
     junction and joins the networks.
-16. Hidden default wire names are editable, and matching Net Labels merge
-    networks.
-17. A same-net T or crossing displays one merged connection indicator and no
-    arc hop.
-18. Duplicate collinear segments inside one net are drawn once.
-19. Every wire in one connected network displays the same canonical net name.
-20. Renaming one wire's net name updates the whole connected net.
+16. Every schema v3 wire belongs to one net and references two electrical
+    endpoints.
+17. Matching Net names and labels merge nets.
+18. Duplicate endpoint edges inside one net are normalized to one wire.
+19. Every wire in one net displays the same canonical net name.
+20. Renaming a net updates all visible labels without rewriting wire records.
 21. Wire snapping always lands on the 10-unit grid when staying on an
     existing orthogonal segment.
 22. A new wire overlapping its source wire along the first segment merges into
@@ -293,3 +312,9 @@ The following scenarios are required regression coverage:
 24. A collinear overlap followed by continuation is merged without a junction.
 25. A collinear continuation becomes one wire object containing the resulting
     bends, not a long wire plus a second short continuation wire.
+26. A later wire whose trailing segment overlaps an existing continuation is
+    merged into that wire and the overlap junction is removed.
+27. Two wires meeting end-to-end at a degree-two join become one polyline;
+    genuine T branches remain separate and keep their junction.
+28. A same-net geometric crossing draws no arc, creates one degree-4 junction,
+    and splits both crossing edges.

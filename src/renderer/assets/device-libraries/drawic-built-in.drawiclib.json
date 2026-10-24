@@ -3,7 +3,7 @@
   "schemaVersion": 1,
   "id": "drawic-built-in",
   "title": "Drawic Built-in Devices",
-  "revision": "8e607aa4cbf0f1d8c777838cd431491ee579cdb5d20120ab58c4b5ee578c154f",
+  "revision": "f430c2dcfc03d7b84c5fc29a98cb8c20d0fda7d28d981453bb4c26f8a599c710",
   "source": {
     "collection": "Drawic Device Symbols",
     "manifestVersion": 1,
@@ -12,16 +12,19 @@
   "devices": [
     {
       "id": "adc",
+      "variantId": "base",
       "title": "Analog-to-Digital Converter",
       "category": "analog-block",
       "keywords": [
         "adc",
         "analog-block",
         "analog-to-digital converter",
+        "base",
         "in",
         "input",
         "out",
-        "output"
+        "output",
+        "undefined"
       ],
       "electrical": false,
       "palette": true,
@@ -30,6 +33,12 @@
         "y": -24,
         "width": 98,
         "height": 48
+      },
+      "selectionBox": {
+        "x": -52,
+        "y": -22,
+        "width": 94,
+        "height": 44
       },
       "artwork": {
         "type": "svg",
@@ -79,20 +88,23 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "adder",
+      "variantId": "base",
       "title": "Adder",
       "category": "signal-flow",
       "keywords": [
         "a",
         "adder",
         "b",
+        "base",
         "input",
         "output",
         "signal-flow",
+        "undefined",
         "y"
       ],
       "electrical": false,
@@ -102,6 +114,12 @@
         "y": -16,
         "width": 48,
         "height": 40
+      },
+      "selectionBox": {
+        "x": -22,
+        "y": -14,
+        "width": 44,
+        "height": 36
       },
       "artwork": {
         "type": "svg",
@@ -161,11 +179,12 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "and-gate",
+      "variantId": "base",
       "title": "AND Gate",
       "category": "logic",
       "keywords": [
@@ -173,9 +192,11 @@
         "and gate",
         "and-gate",
         "b",
+        "base",
         "input",
         "logic",
         "output",
+        "undefined",
         "y"
       ],
       "electrical": false,
@@ -185,6 +206,12 @@
         "y": -24,
         "width": 88,
         "height": 48
+      },
+      "selectionBox": {
+        "x": -32,
+        "y": -17.077165,
+        "width": 54,
+        "height": 33.999129
       },
       "artwork": {
         "type": "svg",
@@ -244,11 +271,12 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "and-gate-3",
+      "variantId": "base",
       "title": "AND Gate (3 inputs)",
       "category": "logic",
       "keywords": [
@@ -256,10 +284,12 @@
         "and gate (3 inputs)",
         "and-gate-3",
         "b",
+        "base",
         "c",
         "input",
         "logic",
         "output",
+        "undefined",
         "y"
       ],
       "electrical": false,
@@ -269,6 +299,12 @@
         "y": -24,
         "width": 88,
         "height": 48
+      },
+      "selectionBox": {
+        "x": -32,
+        "y": -17.077165,
+        "width": 54,
+        "height": 33.999129
       },
       "artwork": {
         "type": "svg",
@@ -338,11 +374,12 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "and-gate-4",
+      "variantId": "base",
       "title": "AND Gate (4 inputs)",
       "category": "logic",
       "keywords": [
@@ -350,11 +387,13 @@
         "and gate (4 inputs)",
         "and-gate-4",
         "b",
+        "base",
         "c",
         "d",
         "input",
         "logic",
         "output",
+        "undefined",
         "y"
       ],
       "electrical": false,
@@ -364,6 +403,12 @@
         "y": -24,
         "width": 88,
         "height": 48
+      },
+      "selectionBox": {
+        "x": -32,
+        "y": -17.077165,
+        "width": 54,
+        "height": 33.999129
       },
       "artwork": {
         "type": "svg",
@@ -443,20 +488,23 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "battery",
+      "variantId": "base",
       "title": "Battery",
       "category": "source",
       "keywords": [
         "+",
         "-",
+        "base",
         "battery",
         "negative",
         "positive",
-        "source"
+        "source",
+        "undefined"
       ],
       "electrical": true,
       "palette": true,
@@ -465,6 +513,12 @@
         "y": -24,
         "width": 48,
         "height": 48
+      },
+      "selectionBox": {
+        "x": -17.341072,
+        "y": -22,
+        "width": 35.326977,
+        "height": 44
       },
       "artwork": {
         "type": "svg",
@@ -514,19 +568,22 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "buffer",
+      "variantId": "base",
       "title": "Buffer",
       "category": "logic",
       "keywords": [
         "a",
+        "base",
         "buffer",
         "input",
         "logic",
         "output",
+        "undefined",
         "y"
       ],
       "electrical": false,
@@ -536,6 +593,12 @@
         "y": -24,
         "width": 88,
         "height": 48
+      },
+      "selectionBox": {
+        "x": -32,
+        "y": -15.749865,
+        "width": 44,
+        "height": 32.748801
       },
       "artwork": {
         "type": "svg",
@@ -585,18 +648,21 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "capacitor",
+      "variantId": "base",
       "title": "Capacitor",
       "category": "passive",
       "keywords": [
         "1",
         "2",
+        "base",
         "capacitor",
-        "passive"
+        "passive",
+        "undefined"
       ],
       "electrical": true,
       "palette": true,
@@ -605,6 +671,12 @@
         "y": -24,
         "width": 24,
         "height": 48
+      },
+      "selectionBox": {
+        "x": -10.05064,
+        "y": -22,
+        "width": 20.10128,
+        "height": 44
       },
       "artwork": {
         "type": "svg",
@@ -654,21 +726,24 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "cccs",
+      "variantId": "base",
       "title": "Current-Controlled Current Source",
       "category": "source",
       "keywords": [
         "+",
         "-",
+        "base",
         "cccs",
         "current-controlled current source",
         "negative",
         "positive",
-        "source"
+        "source",
+        "undefined"
       ],
       "electrical": true,
       "palette": true,
@@ -677,6 +752,12 @@
         "y": -24,
         "width": 30,
         "height": 48
+      },
+      "selectionBox": {
+        "x": -12.755814,
+        "y": -22,
+        "width": 25.511628,
+        "height": 44
       },
       "artwork": {
         "type": "svg",
@@ -726,21 +807,105 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
+      }
+    },
+    {
+      "id": "cccs--diamond",
+      "variantOf": "cccs",
+      "variantId": "diamond",
+      "title": "Current-Controlled Current Source (diamond)",
+      "category": "source",
+      "keywords": [
+        "+",
+        "-",
+        "cccs",
+        "current-controlled current source",
+        "diamond",
+        "negative",
+        "positive",
+        "source"
+      ],
+      "electrical": true,
+      "palette": true,
+      "frame": {
+        "x": -15,
+        "y": -24,
+        "width": 30,
+        "height": 48
+      },
+      "selectionBox": {
+        "x": -14.5,
+        "y": -22,
+        "width": 29,
+        "height": 44
+      },
+      "artwork": {
+        "type": "svg",
+        "viewBox": "-15 -24 30 48",
+        "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"><line x1=\"0\" y1=\"-6.976744\" x2=\"0\" y2=\"-2.325581\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><polygon points=\"0,6.976744 -4.651163,-2.325581 4.651163,-2.325581\" fill=\"currentColor\" stroke=\"none\"/><polygon points=\"0,-12.5 12.5,0 0,12.5 -12.5,0\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"0\" y1=\"-12.5\" x2=\"0\" y2=\"-20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"0\" y1=\"12.5\" x2=\"0\" y2=\"20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/></g>",
+        "source": "variants/cccs--diamond.svg",
+        "sourceSha256": "76307ab54d1529d0eb6929188a4517b6f0155880cc361f33bf285ccd8bfa9bd6"
+      },
+      "pins": [
+        {
+          "id": "+",
+          "key": "+",
+          "name": "+",
+          "role": "positive",
+          "direction": "north",
+          "side": "north",
+          "x": 0,
+          "y": -20
+        },
+        {
+          "id": "-",
+          "key": "-",
+          "name": "-",
+          "role": "negative",
+          "direction": "south",
+          "side": "south",
+          "x": 0,
+          "y": 20
+        }
+      ],
+      "labelAnchors": {
+        "reference": {
+          "x": 21,
+          "y": -3,
+          "anchor": "start"
+        },
+        "value": {
+          "x": 21,
+          "y": 12,
+          "anchor": "start"
+        }
+      },
+      "spice": {
+        "prefix": "CC",
+        "defaultValue": "",
+        "supported": false
+      },
+      "metadata": {
+        "sourceCollection": "Drawic Device Symbols",
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "ccvs",
+      "variantId": "base",
       "title": "Current-Controlled Voltage Source",
       "category": "source",
       "keywords": [
         "+",
         "-",
+        "base",
         "ccvs",
         "current-controlled voltage source",
         "negative",
         "positive",
-        "source"
+        "source",
+        "undefined"
       ],
       "electrical": true,
       "palette": true,
@@ -749,6 +914,12 @@
         "y": -24,
         "width": 39,
         "height": 48
+      },
+      "selectionBox": {
+        "x": -22.058139,
+        "y": -22,
+        "width": 34.813953,
+        "height": 44
       },
       "artwork": {
         "type": "svg",
@@ -798,20 +969,104 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
+      }
+    },
+    {
+      "id": "ccvs--diamond",
+      "variantOf": "ccvs",
+      "variantId": "diamond",
+      "title": "Current-Controlled Voltage Source (diamond)",
+      "category": "source",
+      "keywords": [
+        "+",
+        "-",
+        "ccvs",
+        "current-controlled voltage source",
+        "diamond",
+        "negative",
+        "positive",
+        "source"
+      ],
+      "electrical": true,
+      "palette": true,
+      "frame": {
+        "x": -24,
+        "y": -24,
+        "width": 39,
+        "height": 48
+      },
+      "selectionBox": {
+        "x": -22.058139,
+        "y": -22,
+        "width": 36.558139,
+        "height": 44
+      },
+      "artwork": {
+        "type": "svg",
+        "viewBox": "-24 -24 39 48",
+        "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"><line data-part=\"upright-polarity-positive-horizontal\" x1=\"-20.058139\" y1=\"-14.534884\" x2=\"-11.918605\" y2=\"-14.534884\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line data-part=\"upright-polarity-positive-vertical\" x1=\"-15.988372\" y1=\"-18.604651\" x2=\"-15.988372\" y2=\"-10.465117\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line data-part=\"upright-polarity-negative\" x1=\"-20.058139\" y1=\"13.372093\" x2=\"-11.918605\" y2=\"13.372093\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><polygon points=\"0,-12.5 12.5,0 0,12.5 -12.5,0\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"0\" y1=\"-12.5\" x2=\"0\" y2=\"-20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"0\" y1=\"12.5\" x2=\"0\" y2=\"20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/></g>",
+        "source": "variants/ccvs--diamond.svg",
+        "sourceSha256": "7bec76cadf2f3c9da00b907e584e7e10d278f8d179b4e3d2448e51f016226c02"
+      },
+      "pins": [
+        {
+          "id": "+",
+          "key": "+",
+          "name": "+",
+          "role": "positive",
+          "direction": "north",
+          "side": "north",
+          "x": 4.5,
+          "y": -20
+        },
+        {
+          "id": "-",
+          "key": "-",
+          "name": "-",
+          "role": "negative",
+          "direction": "south",
+          "side": "south",
+          "x": 4.5,
+          "y": 20
+        }
+      ],
+      "labelAnchors": {
+        "reference": {
+          "x": 21,
+          "y": -3,
+          "anchor": "start"
+        },
+        "value": {
+          "x": 21,
+          "y": 12,
+          "anchor": "start"
+        }
+      },
+      "spice": {
+        "prefix": "CC",
+        "defaultValue": "",
+        "supported": false
+      },
+      "metadata": {
+        "sourceCollection": "Drawic Device Symbols",
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "center-tap-inductor",
+      "variantId": "base",
       "title": "Center-Tap Inductor",
       "category": "passive",
       "keywords": [
         "1",
         "2",
         "3",
+        "base",
         "center-tap inductor",
         "center-tap-inductor",
-        "passive"
+        "passive",
+        "undefined"
       ],
       "electrical": true,
       "palette": true,
@@ -820,6 +1075,12 @@
         "y": -16,
         "width": 108,
         "height": 40
+      },
+      "selectionBox": {
+        "x": -52,
+        "y": -8.981984,
+        "width": 104,
+        "height": 30.981984
       },
       "artwork": {
         "type": "svg",
@@ -879,21 +1140,24 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "chopper",
+      "variantId": "base",
       "title": "Chopper",
       "category": "switch",
       "keywords": [
+        "base",
         "chopper",
         "inn",
         "inp",
         "outn",
         "outp",
         "passive",
-        "switch"
+        "switch",
+        "undefined"
       ],
       "electrical": true,
       "palette": true,
@@ -902,6 +1166,12 @@
         "y": -34,
         "width": 48,
         "height": 68
+      },
+      "selectionBox": {
+        "x": -22,
+        "y": -32,
+        "width": 44,
+        "height": 64
       },
       "artwork": {
         "type": "svg",
@@ -971,20 +1241,23 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "closed-switch",
+      "variantId": "base",
       "title": "Closed Switch",
       "category": "switch",
       "keywords": [
         "1",
         "2",
+        "base",
         "closed switch",
         "closed-switch",
         "passive",
-        "switch"
+        "switch",
+        "undefined"
       ],
       "electrical": true,
       "palette": true,
@@ -993,6 +1266,12 @@
         "y": -12,
         "width": 68,
         "height": 24
+      },
+      "selectionBox": {
+        "x": -22,
+        "y": -6.694003,
+        "width": 44,
+        "height": 11.892887
       },
       "artwork": {
         "type": "svg",
@@ -1042,22 +1321,25 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "comparator",
+      "variantId": "base",
       "title": "Comparator",
       "category": "analog-block",
       "keywords": [
         "analog-block",
+        "base",
         "comparator",
         "in+",
         "in-",
         "inverting-input",
         "non-inverting-input",
         "out",
-        "output"
+        "output",
+        "undefined"
       ],
       "electrical": false,
       "palette": true,
@@ -1066,6 +1348,12 @@
         "y": -34,
         "width": 88,
         "height": 68
+      },
+      "selectionBox": {
+        "x": -42,
+        "y": -32,
+        "width": 74,
+        "height": 64
       },
       "artwork": {
         "type": "svg",
@@ -1125,15 +1413,17 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "comparator-differential",
+      "variantId": "base",
       "title": "Fully Differential Comparator",
       "category": "analog-block",
       "keywords": [
         "analog-block",
+        "base",
         "comparator-differential",
         "fully differential comparator",
         "in+",
@@ -1142,7 +1432,8 @@
         "non-inverting-input",
         "out+",
         "out-",
-        "output"
+        "output",
+        "undefined"
       ],
       "electrical": false,
       "palette": true,
@@ -1151,6 +1442,12 @@
         "y": -34,
         "width": 88,
         "height": 68
+      },
+      "selectionBox": {
+        "x": -42,
+        "y": -32,
+        "width": 74,
+        "height": 64
       },
       "artwork": {
         "type": "svg",
@@ -1220,15 +1517,17 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "comparator-differential-inputs-swapped",
+      "variantId": "base",
       "title": "Fully Differential Comparator (swapped inputs)",
       "category": "analog-block",
       "keywords": [
         "analog-block",
+        "base",
         "comparator-differential-inputs-swapped",
         "fully differential comparator (swapped inputs)",
         "in+",
@@ -1237,7 +1536,8 @@
         "non-inverting-input",
         "out+",
         "out-",
-        "output"
+        "output",
+        "undefined"
       ],
       "electrical": false,
       "palette": false,
@@ -1246,6 +1546,12 @@
         "y": -34,
         "width": 88,
         "height": 68
+      },
+      "selectionBox": {
+        "x": -42,
+        "y": -32,
+        "width": 74,
+        "height": 64
       },
       "artwork": {
         "type": "svg",
@@ -1315,15 +1621,17 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "comparator-differential-unmarked",
+      "variantId": "base",
       "title": "Fully Differential Comparator (unmarked)",
       "category": "analog-block",
       "keywords": [
         "analog-block",
+        "base",
         "comparator-differential-unmarked",
         "fully differential comparator (unmarked)",
         "in+",
@@ -1332,7 +1640,8 @@
         "non-inverting-input",
         "out+",
         "out-",
-        "output"
+        "output",
+        "undefined"
       ],
       "electrical": false,
       "palette": false,
@@ -1341,6 +1650,12 @@
         "y": -34,
         "width": 88,
         "height": 68
+      },
+      "selectionBox": {
+        "x": -42,
+        "y": -32,
+        "width": 74,
+        "height": 64
       },
       "artwork": {
         "type": "svg",
@@ -1410,15 +1725,17 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "comparator-differential-unmarked-inputs-swapped",
+      "variantId": "base",
       "title": "Fully Differential Comparator (unmarked) (swapped inputs)",
       "category": "analog-block",
       "keywords": [
         "analog-block",
+        "base",
         "comparator-differential-unmarked-inputs-swapped",
         "fully differential comparator (unmarked) (swapped inputs)",
         "in+",
@@ -1427,7 +1744,8 @@
         "non-inverting-input",
         "out+",
         "out-",
-        "output"
+        "output",
+        "undefined"
       ],
       "electrical": false,
       "palette": false,
@@ -1436,6 +1754,12 @@
         "y": -34,
         "width": 88,
         "height": 68
+      },
+      "selectionBox": {
+        "x": -42,
+        "y": -32,
+        "width": 74,
+        "height": 64
       },
       "artwork": {
         "type": "svg",
@@ -1505,15 +1829,17 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "comparator-inputs-swapped",
+      "variantId": "base",
       "title": "Comparator (swapped inputs)",
       "category": "analog-block",
       "keywords": [
         "analog-block",
+        "base",
         "comparator (swapped inputs)",
         "comparator-inputs-swapped",
         "in+",
@@ -1521,7 +1847,8 @@
         "inverting-input",
         "non-inverting-input",
         "out",
-        "output"
+        "output",
+        "undefined"
       ],
       "electrical": false,
       "palette": false,
@@ -1530,6 +1857,12 @@
         "y": -34,
         "width": 88,
         "height": 68
+      },
+      "selectionBox": {
+        "x": -42,
+        "y": -32,
+        "width": 74,
+        "height": 64
       },
       "artwork": {
         "type": "svg",
@@ -1589,15 +1922,17 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "comparator-unmarked",
+      "variantId": "base",
       "title": "Comparator (unmarked)",
       "category": "analog-block",
       "keywords": [
         "analog-block",
+        "base",
         "comparator (unmarked)",
         "comparator-unmarked",
         "in+",
@@ -1605,7 +1940,8 @@
         "inverting-input",
         "non-inverting-input",
         "out",
-        "output"
+        "output",
+        "undefined"
       ],
       "electrical": false,
       "palette": false,
@@ -1614,6 +1950,12 @@
         "y": -34,
         "width": 88,
         "height": 68
+      },
+      "selectionBox": {
+        "x": -42,
+        "y": -32,
+        "width": 74,
+        "height": 64
       },
       "artwork": {
         "type": "svg",
@@ -1673,15 +2015,17 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "comparator-unmarked-inputs-swapped",
+      "variantId": "base",
       "title": "Comparator (unmarked) (swapped inputs)",
       "category": "analog-block",
       "keywords": [
         "analog-block",
+        "base",
         "comparator (unmarked) (swapped inputs)",
         "comparator-unmarked-inputs-swapped",
         "in+",
@@ -1689,7 +2033,8 @@
         "inverting-input",
         "non-inverting-input",
         "out",
-        "output"
+        "output",
+        "undefined"
       ],
       "electrical": false,
       "palette": false,
@@ -1698,6 +2043,12 @@
         "y": -34,
         "width": 88,
         "height": 68
+      },
+      "selectionBox": {
+        "x": -42,
+        "y": -32,
+        "width": 74,
+        "height": 64
       },
       "artwork": {
         "type": "svg",
@@ -1757,21 +2108,24 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "current-source",
+      "variantId": "base",
       "title": "Independent Current Source",
       "category": "source",
       "keywords": [
         "+",
         "-",
+        "base",
         "current-source",
         "independent current source",
         "negative",
         "positive",
-        "source"
+        "source",
+        "undefined"
       ],
       "electrical": true,
       "palette": true,
@@ -1780,6 +2134,12 @@
         "y": -24,
         "width": 30,
         "height": 48
+      },
+      "selectionBox": {
+        "x": -12.755814,
+        "y": -22,
+        "width": 25.511628,
+        "height": 44
       },
       "artwork": {
         "type": "svg",
@@ -1829,14 +2189,97 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
+      }
+    },
+    {
+      "id": "current-source--diamond",
+      "variantOf": "current-source",
+      "variantId": "diamond",
+      "title": "Independent Current Source (diamond)",
+      "category": "source",
+      "keywords": [
+        "+",
+        "-",
+        "current-source",
+        "diamond",
+        "independent current source",
+        "negative",
+        "positive",
+        "source"
+      ],
+      "electrical": true,
+      "palette": true,
+      "frame": {
+        "x": -15,
+        "y": -24,
+        "width": 30,
+        "height": 48
+      },
+      "selectionBox": {
+        "x": -14.5,
+        "y": -22,
+        "width": 29,
+        "height": 44
+      },
+      "artwork": {
+        "type": "svg",
+        "viewBox": "-15 -24 30 48",
+        "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"><line x1=\"0\" y1=\"-6.976744\" x2=\"0\" y2=\"-2.325581\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><polygon points=\"0,6.976744 -4.651163,-2.325581 4.651163,-2.325581\" fill=\"currentColor\" stroke=\"none\"/><polygon points=\"0,-12.5 12.5,0 0,12.5 -12.5,0\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"0\" y1=\"-12.5\" x2=\"0\" y2=\"-20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"0\" y1=\"12.5\" x2=\"0\" y2=\"20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/></g>",
+        "source": "variants/current-source--diamond.svg",
+        "sourceSha256": "509e9f7af49ee620322ed491aaa0b416e32f133843f27afa13428c6812360c9b"
+      },
+      "pins": [
+        {
+          "id": "+",
+          "key": "+",
+          "name": "+",
+          "role": "positive",
+          "direction": "north",
+          "side": "north",
+          "x": 0,
+          "y": -20
+        },
+        {
+          "id": "-",
+          "key": "-",
+          "name": "-",
+          "role": "negative",
+          "direction": "south",
+          "side": "south",
+          "x": 0,
+          "y": 20
+        }
+      ],
+      "labelAnchors": {
+        "reference": {
+          "x": 21,
+          "y": -3,
+          "anchor": "start"
+        },
+        "value": {
+          "x": 21,
+          "y": 12,
+          "anchor": "start"
+        }
+      },
+      "spice": {
+        "prefix": "I",
+        "defaultValue": "DC 1m",
+        "supported": true
+      },
+      "metadata": {
+        "sourceCollection": "Drawic Device Symbols",
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "d-flip-flop",
+      "variantId": "base",
       "title": "D Flip-Flop",
       "category": "logic",
       "keywords": [
+        "base",
         "ck",
         "clock",
         "d",
@@ -1847,11 +2290,18 @@
         "output",
         "output-complement",
         "q",
-        "qbar"
+        "qbar",
+        "undefined"
       ],
       "electrical": false,
       "palette": true,
       "frame": {
+        "x": -42,
+        "y": -27,
+        "width": 84,
+        "height": 54
+      },
+      "selectionBox": {
         "x": -42,
         "y": -27,
         "width": 84,
@@ -1925,14 +2375,16 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "d-flip-flop-q",
+      "variantId": "base",
       "title": "D Flip-Flop (Q)",
       "category": "logic",
       "keywords": [
+        "base",
         "ck",
         "clock",
         "d",
@@ -1941,11 +2393,18 @@
         "input",
         "logic",
         "output",
-        "q"
+        "q",
+        "undefined"
       ],
       "electrical": false,
       "palette": true,
       "frame": {
+        "x": -42,
+        "y": -27,
+        "width": 84,
+        "height": 54
+      },
+      "selectionBox": {
         "x": -42,
         "y": -27,
         "width": 84,
@@ -2009,14 +2468,16 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "d-flip-flop-reset",
+      "variantId": "base",
       "title": "D Flip-Flop (Reset)",
       "category": "logic",
       "keywords": [
+        "base",
         "ck",
         "clock",
         "d",
@@ -2029,11 +2490,18 @@
         "q",
         "qbar",
         "reset",
-        "rst"
+        "rst",
+        "undefined"
       ],
       "electrical": false,
       "palette": true,
       "frame": {
+        "x": -42,
+        "y": -27,
+        "width": 84,
+        "height": 79
+      },
+      "selectionBox": {
         "x": -42,
         "y": -27,
         "width": 84,
@@ -2117,21 +2585,24 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "dac",
+      "variantId": "base",
       "title": "Digital-to-Analog Converter",
       "category": "analog-block",
       "keywords": [
         "analog-block",
+        "base",
         "dac",
         "digital-to-analog converter",
         "in",
         "input",
         "out",
-        "output"
+        "output",
+        "undefined"
       ],
       "electrical": false,
       "palette": true,
@@ -2140,6 +2611,12 @@
         "y": -24,
         "width": 98,
         "height": 48
+      },
+      "selectionBox": {
+        "x": -42,
+        "y": -22,
+        "width": 94,
+        "height": 44
       },
       "artwork": {
         "type": "svg",
@@ -2189,20 +2666,23 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "delay-cell",
+      "variantId": "base",
       "title": "Delay Cell",
       "category": "logic",
       "keywords": [
         "a",
+        "base",
         "delay cell",
         "delay-cell",
         "input",
         "logic",
         "output",
+        "undefined",
         "y"
       ],
       "electrical": false,
@@ -2212,6 +2692,12 @@
         "y": -24,
         "width": 88,
         "height": 48
+      },
+      "selectionBox": {
+        "x": -42,
+        "y": -14,
+        "width": 84,
+        "height": 28
       },
       "artwork": {
         "type": "svg",
@@ -2261,11 +2747,12 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "depletion-nmos",
+      "variantId": "textbook-3terminal",
       "title": "Depletion Nmos",
       "category": "Extended Devices",
       "keywords": [
@@ -2279,7 +2766,9 @@
         "g",
         "gate",
         "s",
-        "source"
+        "source",
+        "textbook-3terminal",
+        "undefined"
       ],
       "electrical": true,
       "palette": false,
@@ -2288,6 +2777,12 @@
         "y": -24,
         "width": 48,
         "height": 48
+      },
+      "selectionBox": {
+        "x": -22,
+        "y": -22,
+        "width": 34.581395,
+        "height": 44
       },
       "artwork": {
         "type": "svg",
@@ -2326,6 +2821,101 @@
           "side": "south",
           "x": 10,
           "y": 20
+        }
+      ],
+      "labelAnchors": {
+        "reference": {
+          "x": 30,
+          "y": -3,
+          "anchor": "start"
+        },
+        "value": {
+          "x": 30,
+          "y": 12,
+          "anchor": "start"
+        }
+      },
+      "spice": {
+        "prefix": "DE",
+        "defaultValue": "",
+        "supported": false
+      },
+      "metadata": {
+        "sourceCollection": "Drawic Device Symbols",
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
+      }
+    },
+    {
+      "id": "depletion-nmos--base",
+      "variantOf": "depletion-nmos",
+      "variantId": "base",
+      "title": "Depletion Nmos (4-terminal)",
+      "category": "Extended Devices",
+      "keywords": [
+        "b",
+        "base",
+        "bulk",
+        "d",
+        "depletion nmos",
+        "depletion-nmos",
+        "drain",
+        "extended devices",
+        "g",
+        "gate",
+        "s",
+        "source"
+      ],
+      "electrical": true,
+      "palette": false,
+      "frame": {
+        "x": -24,
+        "y": -24,
+        "width": 48,
+        "height": 48
+      },
+      "selectionBox": {
+        "x": -22,
+        "y": -22,
+        "width": 44,
+        "height": 44
+      },
+      "artwork": {
+        "type": "svg",
+        "viewBox": "-24 -24 48 48",
+        "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"><polyline points=\"-4.244186,-6.976744 10,-6.976744 10,-20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><polyline points=\"-4.244186,6.976744 10,6.976744 10,20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><polygon points=\"-11.802326,-9.593023 -11.802326,9.593023 -8.895349,9.593023 -8.895349,-9.593023\" fill=\"currentColor\" stroke=\"none\"/><polygon points=\"-6.569767,-12.5 -6.569767,12.5 -3.662791,12.5 -3.662791,-12.5\" fill=\"currentColor\" stroke=\"none\"/><line x1=\"-8.895349\" y1=\"0\" x2=\"-20\" y2=\"0\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"-3.662791\" y1=\"0\" x2=\"10\" y2=\"0\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"16.395349\" y1=\"0\" x2=\"20\" y2=\"0\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><polygon points=\"10,0 16.395349,-3.488372 16.395349,3.488372\" fill=\"currentColor\" stroke=\"none\"/><line x1=\"-0.368217\" y1=\"-7.776744\" x2=\"-0.368217\" y2=\"7.776744\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/></g>",
+        "source": "variants/depletion-nmos--base.svg",
+        "sourceSha256": "34b9ffe34c530c6cb46be32aef01aa5d338f07b07e4ca7c71054a35ab5398e96"
+      },
+      "pins": [
+        {
+          "id": "D",
+          "key": "D",
+          "name": "D",
+          "role": "drain",
+          "direction": "north",
+          "side": "north",
+          "x": 10,
+          "y": -20
+        },
+        {
+          "id": "G",
+          "key": "G",
+          "name": "G",
+          "role": "gate",
+          "direction": "west",
+          "side": "west",
+          "x": -20,
+          "y": 0
+        },
+        {
+          "id": "S",
+          "key": "S",
+          "name": "S",
+          "role": "source",
+          "direction": "south",
+          "side": "south",
+          "x": 10,
+          "y": 20
         },
         {
           "id": "B",
@@ -2334,6 +2924,101 @@
           "role": "bulk",
           "direction": "east",
           "side": "east",
+          "x": 20,
+          "y": 0
+        }
+      ],
+      "labelAnchors": {
+        "reference": {
+          "x": 30,
+          "y": -3,
+          "anchor": "start"
+        },
+        "value": {
+          "x": 30,
+          "y": 12,
+          "anchor": "start"
+        }
+      },
+      "spice": {
+        "prefix": "DE",
+        "defaultValue": "",
+        "supported": false
+      },
+      "metadata": {
+        "sourceCollection": "Drawic Device Symbols",
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
+      }
+    },
+    {
+      "id": "depletion-pmos",
+      "variantId": "textbook-3terminal",
+      "title": "Depletion Pmos",
+      "category": "Extended Devices",
+      "keywords": [
+        "b",
+        "bulk",
+        "d",
+        "depletion pmos",
+        "depletion-pmos",
+        "drain",
+        "extended devices",
+        "g",
+        "gate",
+        "s",
+        "source",
+        "textbook-3terminal",
+        "undefined"
+      ],
+      "electrical": true,
+      "palette": false,
+      "frame": {
+        "x": -24,
+        "y": -24,
+        "width": 48,
+        "height": 48
+      },
+      "selectionBox": {
+        "x": -22,
+        "y": -22,
+        "width": 34,
+        "height": 44
+      },
+      "artwork": {
+        "type": "svg",
+        "viewBox": "-24 -24 48 48",
+        "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"><polyline points=\"-4.244186,6.976744 10,6.976744 10,20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><polygon points=\"-11.802326,-9.593023 -11.802326,9.593023 -8.895349,9.593023 -8.895349,-9.593023\" fill=\"currentColor\" stroke=\"none\"/><polygon points=\"-6.569767,-12.5 -6.569767,12.5 -3.662791,12.5 -3.662791,-12.5\" fill=\"currentColor\" stroke=\"none\"/><line x1=\"-8.895349\" y1=\"0\" x2=\"-20\" y2=\"0\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"-0.368217\" y1=\"-7.776744\" x2=\"-0.368217\" y2=\"7.776744\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><polyline points=\"5.639535,-7.122093 10,-7.122093 10,-20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><polygon points=\"-3.662791,-7.122093 5.639535,-11.19186 5.639535,-3.052326\" fill=\"currentColor\" stroke=\"none\"/></g>",
+        "source": "depletion-pmos.svg",
+        "sourceSha256": "c4f56d2bc6dc3828494865c16f8a63c04cdc0286956cb75a980320e6d07ae16f"
+      },
+      "pins": [
+        {
+          "id": "D",
+          "key": "D",
+          "name": "D",
+          "role": "drain",
+          "direction": "south",
+          "side": "south",
+          "x": 10,
+          "y": 20
+        },
+        {
+          "id": "G",
+          "key": "G",
+          "name": "G",
+          "role": "gate",
+          "direction": "west",
+          "side": "west",
+          "x": -20,
+          "y": 0
+        },
+        {
+          "id": "S",
+          "key": "S",
+          "name": "S",
+          "role": "source",
+          "direction": "north",
+          "side": "north",
           "x": 10,
           "y": -20
         }
@@ -2357,15 +3042,18 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
-      "id": "depletion-pmos",
-      "title": "Depletion Pmos",
+      "id": "depletion-pmos--base",
+      "variantOf": "depletion-pmos",
+      "variantId": "base",
+      "title": "Depletion Pmos (4-terminal)",
       "category": "Extended Devices",
       "keywords": [
         "b",
+        "base",
         "bulk",
         "d",
         "depletion pmos",
@@ -2385,12 +3073,18 @@
         "width": 48,
         "height": 48
       },
+      "selectionBox": {
+        "x": -22,
+        "y": -22,
+        "width": 44,
+        "height": 44
+      },
       "artwork": {
         "type": "svg",
         "viewBox": "-24 -24 48 48",
-        "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"><polyline points=\"-4.244186,6.976744 10,6.976744 10,20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><polygon points=\"-11.802326,-9.593023 -11.802326,9.593023 -8.895349,9.593023 -8.895349,-9.593023\" fill=\"currentColor\" stroke=\"none\"/><polygon points=\"-6.569767,-12.5 -6.569767,12.5 -3.662791,12.5 -3.662791,-12.5\" fill=\"currentColor\" stroke=\"none\"/><line x1=\"-8.895349\" y1=\"0\" x2=\"-20\" y2=\"0\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"-0.368217\" y1=\"-7.776744\" x2=\"-0.368217\" y2=\"7.776744\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><polyline points=\"5.639535,-7.122093 10,-7.122093 10,-20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><polygon points=\"-3.662791,-7.122093 5.639535,-11.19186 5.639535,-3.052326\" fill=\"currentColor\" stroke=\"none\"/></g>",
-        "source": "depletion-pmos.svg",
-        "sourceSha256": "c4f56d2bc6dc3828494865c16f8a63c04cdc0286956cb75a980320e6d07ae16f"
+        "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"><polyline points=\"-4.244186,6.976744 10,6.976744 10,20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><polyline points=\"-4.244186,-6.976744 10,-6.976744 10,-20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><polygon points=\"-11.802326,-9.593023 -11.802326,9.593023 -8.895349,9.593023 -8.895349,-9.593023\" fill=\"currentColor\" stroke=\"none\"/><polygon points=\"-6.569767,-12.5 -6.569767,12.5 -3.662791,12.5 -3.662791,-12.5\" fill=\"currentColor\" stroke=\"none\"/><line x1=\"-8.895349\" y1=\"0\" x2=\"-20\" y2=\"0\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"-3.662791\" y1=\"0\" x2=\"13.604651\" y2=\"0\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><polygon points=\"20,0 13.604651,-3.77907 13.604651,3.77907\" fill=\"currentColor\" stroke=\"none\"/><line x1=\"-0.368217\" y1=\"-7.776744\" x2=\"-0.368217\" y2=\"7.776744\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/></g>",
+        "source": "variants/depletion-pmos--base.svg",
+        "sourceSha256": "b323091aeeb5fbb7010078fd63677e608163dca9ee83f1e3ef588d69b3115519"
       },
       "pins": [
         {
@@ -2430,8 +3124,8 @@
           "role": "bulk",
           "direction": "east",
           "side": "east",
-          "x": 10,
-          "y": -20
+          "x": 20,
+          "y": 0
         }
       ],
       "labelAnchors": {
@@ -2453,15 +3147,17 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "differential-transconductance",
+      "variantId": "base",
       "title": "Differential Transconductance (gₘ)",
       "category": "analog-block",
       "keywords": [
         "analog-block",
+        "base",
         "differential transconductance (gₘ)",
         "differential-transconductance",
         "in+",
@@ -2469,7 +3165,8 @@
         "inverting-input",
         "non-inverting-input",
         "out",
-        "output"
+        "output",
+        "undefined"
       ],
       "electrical": false,
       "palette": true,
@@ -2478,6 +3175,12 @@
         "y": -39,
         "width": 68,
         "height": 78
+      },
+      "selectionBox": {
+        "x": -32,
+        "y": -37,
+        "width": 64,
+        "height": 74
       },
       "artwork": {
         "type": "svg",
@@ -2537,15 +3240,17 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "differential-transconductance-inputs-swapped",
+      "variantId": "base",
       "title": "Differential Transconductance (gₘ) (swapped inputs)",
       "category": "analog-block",
       "keywords": [
         "analog-block",
+        "base",
         "differential transconductance (gₘ) (swapped inputs)",
         "differential-transconductance-inputs-swapped",
         "in+",
@@ -2553,7 +3258,8 @@
         "inverting-input",
         "non-inverting-input",
         "out",
-        "output"
+        "output",
+        "undefined"
       ],
       "electrical": false,
       "palette": false,
@@ -2562,6 +3268,12 @@
         "y": -39,
         "width": 68,
         "height": 78
+      },
+      "selectionBox": {
+        "x": -32,
+        "y": -37,
+        "width": 64,
+        "height": 74
       },
       "artwork": {
         "type": "svg",
@@ -2621,20 +3333,23 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "diode",
+      "variantId": "base",
       "title": "Diode",
       "category": "passive",
       "keywords": [
         "a",
         "anode",
+        "base",
         "cathode",
         "diode",
         "k",
-        "passive"
+        "passive",
+        "undefined"
       ],
       "electrical": true,
       "palette": true,
@@ -2643,6 +3358,12 @@
         "y": -10,
         "width": 48,
         "height": 20
+      },
+      "selectionBox": {
+        "x": -22,
+        "y": -9.333334,
+        "width": 44,
+        "height": 18.666668
       },
       "artwork": {
         "type": "svg",
@@ -2692,20 +3413,23 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "discrete-time-integrator",
+      "variantId": "base",
       "title": "Discrete-Time Integrator (z⁻¹/(1−z⁻¹))",
       "category": "signal-flow",
       "keywords": [
         "a",
+        "base",
         "discrete-time integrator (z⁻¹/(1−z⁻¹))",
         "discrete-time-integrator",
         "input",
         "output",
         "signal-flow",
+        "undefined",
         "y"
       ],
       "electrical": false,
@@ -2715,6 +3439,12 @@
         "y": -24,
         "width": 88,
         "height": 48
+      },
+      "selectionBox": {
+        "x": -42,
+        "y": -27,
+        "width": 84,
+        "height": 54
       },
       "artwork": {
         "type": "svg",
@@ -2764,14 +3494,16 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "externally-controlled-switch",
+      "variantId": "base",
       "title": "Externally Controlled Switch",
       "category": "switch",
       "keywords": [
+        "base",
         "ctrl",
         "externally controlled switch",
         "externally-controlled-switch",
@@ -2779,7 +3511,8 @@
         "n",
         "p",
         "passive",
-        "switch"
+        "switch",
+        "undefined"
       ],
       "electrical": true,
       "palette": true,
@@ -2788,6 +3521,12 @@
         "y": -24,
         "width": 48,
         "height": 48
+      },
+      "selectionBox": {
+        "x": -22,
+        "y": -22,
+        "width": 27.198884,
+        "height": 44
       },
       "artwork": {
         "type": "svg",
@@ -2847,17 +3586,20 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "ground",
+      "variantId": "base",
       "title": "Ground",
       "category": "power",
       "keywords": [
         "0",
+        "base",
         "ground",
-        "power"
+        "power",
+        "undefined"
       ],
       "electrical": true,
       "palette": true,
@@ -2866,6 +3608,12 @@
         "y": -14,
         "width": 24,
         "height": 31
+      },
+      "selectionBox": {
+        "x": -8.395349,
+        "y": -12,
+        "width": 16.790698,
+        "height": 25.046512
       },
       "artwork": {
         "type": "svg",
@@ -2905,20 +3653,23 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "ideal-switch",
+      "variantId": "base",
       "title": "Ideal Switch",
       "category": "switch",
       "keywords": [
         "1",
         "2",
+        "base",
         "ideal switch",
         "ideal-switch",
         "passive",
-        "switch"
+        "switch",
+        "undefined"
       ],
       "electrical": true,
       "palette": true,
@@ -2927,6 +3678,12 @@
         "y": -18,
         "width": 68,
         "height": 30
+      },
+      "selectionBox": {
+        "x": -22,
+        "y": -14.806695,
+        "width": 44,
+        "height": 19.9894
       },
       "artwork": {
         "type": "svg",
@@ -2976,19 +3733,22 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "inductor",
+      "variantId": "base",
       "title": "Large Inductor",
       "category": "passive",
       "keywords": [
         "1",
         "2",
+        "base",
         "inductor",
         "large inductor",
-        "passive"
+        "passive",
+        "undefined"
       ],
       "electrical": true,
       "palette": true,
@@ -2996,6 +3756,12 @@
         "x": -15,
         "y": -32,
         "width": 30,
+        "height": 64
+      },
+      "selectionBox": {
+        "x": -12.271102,
+        "y": -32,
+        "width": 24.744105,
         "height": 64
       },
       "artwork": {
@@ -3046,19 +3812,22 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "inductor-compact",
+      "variantId": "base",
       "title": "Inductor",
       "category": "passive",
       "keywords": [
         "1",
         "2",
+        "base",
         "inductor",
         "inductor-compact",
-        "passive"
+        "passive",
+        "undefined"
       ],
       "electrical": true,
       "palette": true,
@@ -3067,6 +3836,12 @@
         "y": -24,
         "width": 20,
         "height": 48
+      },
+      "selectionBox": {
+        "x": -8.847425,
+        "y": -22,
+        "width": 17.829409,
+        "height": 44
       },
       "artwork": {
         "type": "svg",
@@ -3116,20 +3891,23 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "integrator",
+      "variantId": "base",
       "title": "Integrator (1/s)",
       "category": "signal-flow",
       "keywords": [
         "a",
+        "base",
         "input",
         "integrator",
         "integrator (1/s)",
         "output",
         "signal-flow",
+        "undefined",
         "y"
       ],
       "electrical": false,
@@ -3139,6 +3917,12 @@
         "y": -24,
         "width": 68,
         "height": 48
+      },
+      "selectionBox": {
+        "x": -32,
+        "y": -27,
+        "width": 64,
+        "height": 54
       },
       "artwork": {
         "type": "svg",
@@ -3188,19 +3972,22 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "inverter",
+      "variantId": "base",
       "title": "Inverter",
       "category": "logic",
       "keywords": [
         "a",
+        "base",
         "input",
         "inverter",
         "logic",
         "output",
+        "undefined",
         "y"
       ],
       "electrical": false,
@@ -3210,6 +3997,12 @@
         "y": -24,
         "width": 88,
         "height": 48
+      },
+      "selectionBox": {
+        "x": -32,
+        "y": -17.000436,
+        "width": 54,
+        "height": 32.748801
       },
       "artwork": {
         "type": "svg",
@@ -3259,20 +4052,23 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "multiplier",
+      "variantId": "base",
       "title": "Multiplier",
       "category": "signal-flow",
       "keywords": [
         "a",
         "b",
+        "base",
         "input",
         "multiplier",
         "output",
         "signal-flow",
+        "undefined",
         "y"
       ],
       "electrical": false,
@@ -3282,6 +4078,12 @@
         "y": -16,
         "width": 48,
         "height": 40
+      },
+      "selectionBox": {
+        "x": -22,
+        "y": -14,
+        "width": 44,
+        "height": 36
       },
       "artwork": {
         "type": "svg",
@@ -3341,21 +4143,24 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "nand-gate",
+      "variantId": "base",
       "title": "NAND Gate",
       "category": "logic",
       "keywords": [
         "a",
         "b",
+        "base",
         "input",
         "logic",
         "nand gate",
         "nand-gate",
         "output",
+        "undefined",
         "y"
       ],
       "electrical": false,
@@ -3365,6 +4170,12 @@
         "y": -24,
         "width": 88,
         "height": 48
+      },
+      "selectionBox": {
+        "x": -32,
+        "y": -16.921092,
+        "width": 64,
+        "height": 34.000872
       },
       "artwork": {
         "type": "svg",
@@ -3424,22 +4235,25 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "nand-gate-3",
+      "variantId": "base",
       "title": "NAND Gate (3 inputs)",
       "category": "logic",
       "keywords": [
         "a",
         "b",
+        "base",
         "c",
         "input",
         "logic",
         "nand gate (3 inputs)",
         "nand-gate-3",
         "output",
+        "undefined",
         "y"
       ],
       "electrical": false,
@@ -3449,6 +4263,12 @@
         "y": -24,
         "width": 88,
         "height": 48
+      },
+      "selectionBox": {
+        "x": -32,
+        "y": -16.921092,
+        "width": 64,
+        "height": 34.000872
       },
       "artwork": {
         "type": "svg",
@@ -3518,16 +4338,18 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "nand-gate-4",
+      "variantId": "base",
       "title": "NAND Gate (4 inputs)",
       "category": "logic",
       "keywords": [
         "a",
         "b",
+        "base",
         "c",
         "d",
         "input",
@@ -3535,6 +4357,7 @@
         "nand gate (4 inputs)",
         "nand-gate-4",
         "output",
+        "undefined",
         "y"
       ],
       "electrical": false,
@@ -3544,6 +4367,12 @@
         "y": -24,
         "width": 88,
         "height": 48
+      },
+      "selectionBox": {
+        "x": -32,
+        "y": -16.921092,
+        "width": 64,
+        "height": 34.000872
       },
       "artwork": {
         "type": "svg",
@@ -3623,11 +4452,12 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "ndmos",
+      "variantId": "standard-3terminal",
       "title": "Ndmos",
       "category": "Extended Devices",
       "keywords": [
@@ -3640,7 +4470,9 @@
         "gate",
         "ndmos",
         "s",
-        "source"
+        "source",
+        "standard-3terminal",
+        "undefined"
       ],
       "electrical": true,
       "palette": false,
@@ -3649,6 +4481,12 @@
         "y": -24,
         "width": 48,
         "height": 48
+      },
+      "selectionBox": {
+        "x": -22,
+        "y": -22,
+        "width": 34.581395,
+        "height": 44
       },
       "artwork": {
         "type": "svg",
@@ -3687,16 +4525,6 @@
           "side": "south",
           "x": 10,
           "y": 20
-        },
-        {
-          "id": "B",
-          "key": "B",
-          "name": "B",
-          "role": "bulk",
-          "direction": "east",
-          "side": "east",
-          "x": 10,
-          "y": -20
         }
       ],
       "labelAnchors": {
@@ -3718,39 +4546,48 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
-      "id": "nmos",
-      "title": "NMOS",
-      "category": "transistor",
+      "id": "ndmos--base",
+      "variantOf": "ndmos",
+      "variantId": "base",
+      "title": "Ndmos (4-terminal)",
+      "category": "Extended Devices",
       "keywords": [
         "b",
+        "base",
         "bulk",
         "d",
         "drain",
+        "extended devices",
         "g",
         "gate",
-        "nmos",
+        "ndmos",
         "s",
-        "source",
-        "transistor"
+        "source"
       ],
       "electrical": true,
-      "palette": true,
+      "palette": false,
       "frame": {
         "x": -24,
         "y": -24,
         "width": 48,
         "height": 48
       },
+      "selectionBox": {
+        "x": -22,
+        "y": -22,
+        "width": 44,
+        "height": 44
+      },
       "artwork": {
         "type": "svg",
         "viewBox": "-24 -24 48 48",
-        "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"><polyline points=\"-4.244186,-6.976744 10,-6.976744 10,-20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><polygon points=\"-11.802326,-9.593023 -11.802326,9.593023 -8.895349,9.593023 -8.895349,-9.593023\" fill=\"currentColor\" stroke=\"none\"/><polygon points=\"-6.569767,-12.5 -6.569767,12.5 -3.662791,12.5 -3.662791,-12.5\" fill=\"currentColor\" stroke=\"none\"/><line x1=\"-8.895349\" y1=\"0\" x2=\"-20\" y2=\"0\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><polyline points=\"-3.662791,6.976744 10,6.976744 10,20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><polygon points=\"10.581395,6.976744 1.27907,2.906977 1.27907,11.046512\" fill=\"currentColor\" stroke=\"none\"/></g>",
-        "source": "nmos.svg",
-        "sourceSha256": "d0849fc2e07977152c43237f10e139a8a730739fed94c271fdc01faa615ae06c"
+        "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"><polyline points=\"-4.244186,-6.976744 10,-6.976744 10,-20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><polyline points=\"-4.244186,6.976744 10,6.976744 10,20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><polygon points=\"-11.802326,-9.593023 -11.802326,9.593023 -8.895349,9.593023 -8.895349,-9.593023\" fill=\"currentColor\" stroke=\"none\"/><polygon points=\"-6.569767,-12.5 -6.569767,12.5 -3.662791,12.5 -3.662791,-12.5\" fill=\"currentColor\" stroke=\"none\"/><line x1=\"-8.895349\" y1=\"0\" x2=\"-20\" y2=\"0\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"-3.662791\" y1=\"0\" x2=\"10\" y2=\"0\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"16.395349\" y1=\"0\" x2=\"20\" y2=\"0\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><polygon points=\"10,0 16.395349,-3.488372 16.395349,3.488372\" fill=\"currentColor\" stroke=\"none\"/><polyline points=\"-4.244186,-2.976744 10,-2.976744 10,-6.976744\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/></g>",
+        "source": "variants/ndmos--base.svg",
+        "sourceSha256": "bd1e0ab2ce6b7ee117f178d2a7b6721f92d3c8a0491a762909b93a4b5d7000e6"
       },
       "pins": [
         {
@@ -3790,8 +4627,102 @@
           "role": "bulk",
           "direction": "east",
           "side": "east",
+          "x": 20,
+          "y": 0
+        }
+      ],
+      "labelAnchors": {
+        "reference": {
+          "x": 30,
+          "y": -3,
+          "anchor": "start"
+        },
+        "value": {
+          "x": 30,
+          "y": 12,
+          "anchor": "start"
+        }
+      },
+      "spice": {
+        "prefix": "ND",
+        "defaultValue": "",
+        "supported": false
+      },
+      "metadata": {
+        "sourceCollection": "Drawic Device Symbols",
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
+      }
+    },
+    {
+      "id": "nmos",
+      "variantId": "textbook-3terminal",
+      "title": "NMOS",
+      "category": "transistor",
+      "keywords": [
+        "b",
+        "bulk",
+        "d",
+        "drain",
+        "g",
+        "gate",
+        "nmos",
+        "s",
+        "source",
+        "textbook-3terminal",
+        "transistor",
+        "undefined"
+      ],
+      "electrical": true,
+      "palette": true,
+      "frame": {
+        "x": -24,
+        "y": -24,
+        "width": 48,
+        "height": 48
+      },
+      "selectionBox": {
+        "x": -22,
+        "y": -22,
+        "width": 34.581395,
+        "height": 44
+      },
+      "artwork": {
+        "type": "svg",
+        "viewBox": "-24 -24 48 48",
+        "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"><polyline points=\"-4.244186,-6.976744 10,-6.976744 10,-20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><polygon points=\"-11.802326,-9.593023 -11.802326,9.593023 -8.895349,9.593023 -8.895349,-9.593023\" fill=\"currentColor\" stroke=\"none\"/><polygon points=\"-6.569767,-12.5 -6.569767,12.5 -3.662791,12.5 -3.662791,-12.5\" fill=\"currentColor\" stroke=\"none\"/><line x1=\"-8.895349\" y1=\"0\" x2=\"-20\" y2=\"0\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><polyline points=\"-3.662791,6.976744 10,6.976744 10,20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><polygon points=\"10.581395,6.976744 1.27907,2.906977 1.27907,11.046512\" fill=\"currentColor\" stroke=\"none\"/></g>",
+        "source": "nmos.svg",
+        "sourceSha256": "d0849fc2e07977152c43237f10e139a8a730739fed94c271fdc01faa615ae06c"
+      },
+      "pins": [
+        {
+          "id": "D",
+          "key": "D",
+          "name": "D",
+          "role": "drain",
+          "direction": "north",
+          "side": "north",
           "x": 10,
           "y": -20
+        },
+        {
+          "id": "G",
+          "key": "G",
+          "name": "G",
+          "role": "gate",
+          "direction": "west",
+          "side": "west",
+          "x": -20,
+          "y": 0
+        },
+        {
+          "id": "S",
+          "key": "S",
+          "name": "S",
+          "role": "source",
+          "direction": "south",
+          "side": "south",
+          "x": 10,
+          "y": 20
         }
       ],
       "labelAnchors": {
@@ -3813,21 +4744,128 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
+      }
+    },
+    {
+      "id": "nmos--base",
+      "variantOf": "nmos",
+      "variantId": "base",
+      "title": "NMOS (4-terminal)",
+      "category": "transistor",
+      "keywords": [
+        "b",
+        "base",
+        "bulk",
+        "d",
+        "drain",
+        "g",
+        "gate",
+        "nmos",
+        "s",
+        "source",
+        "transistor"
+      ],
+      "electrical": true,
+      "palette": true,
+      "frame": {
+        "x": -24,
+        "y": -24,
+        "width": 48,
+        "height": 48
+      },
+      "selectionBox": {
+        "x": -22,
+        "y": -22,
+        "width": 44,
+        "height": 44
+      },
+      "artwork": {
+        "type": "svg",
+        "viewBox": "-24 -24 48 48",
+        "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"><polyline points=\"-4.244186,-6.976744 10,-6.976744 10,-20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><polyline points=\"-4.244186,6.976744 10,6.976744 10,20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><polygon points=\"-11.802326,-9.593023 -11.802326,9.593023 -8.895349,9.593023 -8.895349,-9.593023\" fill=\"currentColor\" stroke=\"none\"/><polygon points=\"-6.569767,-12.5 -6.569767,12.5 -3.662791,12.5 -3.662791,-12.5\" fill=\"currentColor\" stroke=\"none\"/><line x1=\"-8.895349\" y1=\"0\" x2=\"-20\" y2=\"0\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"-3.662791\" y1=\"0\" x2=\"10\" y2=\"0\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"16.395349\" y1=\"0\" x2=\"20\" y2=\"0\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><polygon points=\"10,0 16.395349,-3.488372 16.395349,3.488372\" fill=\"currentColor\" stroke=\"none\"/></g>",
+        "source": "variants/nmos--base.svg",
+        "sourceSha256": "7ecc23c56ddb1df1935a534e0ff0231e86eba78f57612a8ff134324ecc930d05"
+      },
+      "pins": [
+        {
+          "id": "D",
+          "key": "D",
+          "name": "D",
+          "role": "drain",
+          "direction": "north",
+          "side": "north",
+          "x": 10,
+          "y": -20
+        },
+        {
+          "id": "G",
+          "key": "G",
+          "name": "G",
+          "role": "gate",
+          "direction": "west",
+          "side": "west",
+          "x": -20,
+          "y": 0
+        },
+        {
+          "id": "S",
+          "key": "S",
+          "name": "S",
+          "role": "source",
+          "direction": "south",
+          "side": "south",
+          "x": 10,
+          "y": 20
+        },
+        {
+          "id": "B",
+          "key": "B",
+          "name": "B",
+          "role": "bulk",
+          "direction": "east",
+          "side": "east",
+          "x": 20,
+          "y": 0
+        }
+      ],
+      "labelAnchors": {
+        "reference": {
+          "x": 30,
+          "y": -3,
+          "anchor": "start"
+        },
+        "value": {
+          "x": 30,
+          "y": 12,
+          "anchor": "start"
+        }
+      },
+      "spice": {
+        "prefix": "M",
+        "defaultValue": "NMOS",
+        "supported": true
+      },
+      "metadata": {
+        "sourceCollection": "Drawic Device Symbols",
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "nor-gate",
+      "variantId": "base",
       "title": "NOR Gate",
       "category": "logic",
       "keywords": [
         "a",
         "b",
+        "base",
         "input",
         "logic",
         "nor gate",
         "nor-gate",
         "output",
+        "undefined",
         "y"
       ],
       "electrical": false,
@@ -3837,6 +4875,12 @@
         "y": -24,
         "width": 88,
         "height": 48
+      },
+      "selectionBox": {
+        "x": -32,
+        "y": -19.735635,
+        "width": 64,
+        "height": 39.617752
       },
       "artwork": {
         "type": "svg",
@@ -3896,22 +4940,25 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "nor-gate-3",
+      "variantId": "base",
       "title": "NOR Gate (3 inputs)",
       "category": "logic",
       "keywords": [
         "a",
         "b",
+        "base",
         "c",
         "input",
         "logic",
         "nor gate (3 inputs)",
         "nor-gate-3",
         "output",
+        "undefined",
         "y"
       ],
       "electrical": false,
@@ -3921,6 +4968,12 @@
         "y": -24,
         "width": 88,
         "height": 48
+      },
+      "selectionBox": {
+        "x": -32,
+        "y": -19.735635,
+        "width": 64,
+        "height": 39.617752
       },
       "artwork": {
         "type": "svg",
@@ -3990,16 +5043,18 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "nor-gate-4",
+      "variantId": "base",
       "title": "NOR Gate (4 inputs)",
       "category": "logic",
       "keywords": [
         "a",
         "b",
+        "base",
         "c",
         "d",
         "input",
@@ -4007,6 +5062,7 @@
         "nor gate (4 inputs)",
         "nor-gate-4",
         "output",
+        "undefined",
         "y"
       ],
       "electrical": false,
@@ -4016,6 +5072,12 @@
         "y": -24,
         "width": 88,
         "height": 48
+      },
+      "selectionBox": {
+        "x": -32,
+        "y": -19.735635,
+        "width": 64,
+        "height": 39.617752
       },
       "artwork": {
         "type": "svg",
@@ -4095,11 +5157,12 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "npn",
+      "variantId": "base",
       "title": "NPN Bipolar Transistor",
       "category": "transistor",
       "keywords": [
@@ -4111,7 +5174,8 @@
         "emitter",
         "npn",
         "npn bipolar transistor",
-        "transistor"
+        "transistor",
+        "undefined"
       ],
       "electrical": true,
       "palette": true,
@@ -4120,6 +5184,12 @@
         "y": -24,
         "width": 42,
         "height": 48
+      },
+      "selectionBox": {
+        "x": -32,
+        "y": -22,
+        "width": 34,
+        "height": 44
       },
       "artwork": {
         "type": "svg",
@@ -4179,15 +5249,17 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "opamp",
+      "variantId": "base",
       "title": "Operational Amplifier",
       "category": "analog-block",
       "keywords": [
         "analog-block",
+        "base",
         "in+",
         "in-",
         "inverting-input",
@@ -4195,7 +5267,8 @@
         "opamp",
         "operational amplifier",
         "out",
-        "output"
+        "output",
+        "undefined"
       ],
       "electrical": false,
       "palette": true,
@@ -4204,6 +5277,12 @@
         "y": -34,
         "width": 88,
         "height": 68
+      },
+      "selectionBox": {
+        "x": -42,
+        "y": -32,
+        "width": 74,
+        "height": 64
       },
       "artwork": {
         "type": "svg",
@@ -4263,15 +5342,17 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "opamp-differential",
+      "variantId": "base",
       "title": "Differential Op Amp",
       "category": "analog-block",
       "keywords": [
         "analog-block",
+        "base",
         "differential op amp",
         "in+",
         "in-",
@@ -4280,7 +5361,8 @@
         "opamp-differential",
         "out+",
         "out-",
-        "output"
+        "output",
+        "undefined"
       ],
       "electrical": false,
       "palette": true,
@@ -4289,6 +5371,12 @@
         "y": -34,
         "width": 88,
         "height": 68
+      },
+      "selectionBox": {
+        "x": -42,
+        "y": -32,
+        "width": 74,
+        "height": 64
       },
       "artwork": {
         "type": "svg",
@@ -4358,15 +5446,17 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "opamp-differential-crossed",
+      "variantId": "base",
       "title": "Differential Op Amp (crossed outputs)",
       "category": "analog-block",
       "keywords": [
         "analog-block",
+        "base",
         "differential op amp (crossed outputs)",
         "in+",
         "in-",
@@ -4375,7 +5465,8 @@
         "opamp-differential-crossed",
         "out+",
         "out-",
-        "output"
+        "output",
+        "undefined"
       ],
       "electrical": false,
       "palette": true,
@@ -4384,6 +5475,12 @@
         "y": -34,
         "width": 88,
         "height": 68
+      },
+      "selectionBox": {
+        "x": -42,
+        "y": -32,
+        "width": 74,
+        "height": 64
       },
       "artwork": {
         "type": "svg",
@@ -4453,15 +5550,17 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "opamp-differential-crossed-inputs-swapped",
+      "variantId": "base",
       "title": "Differential Op Amp (crossed outputs) (swapped inputs)",
       "category": "analog-block",
       "keywords": [
         "analog-block",
+        "base",
         "differential op amp (crossed outputs) (swapped inputs)",
         "in+",
         "in-",
@@ -4470,7 +5569,8 @@
         "opamp-differential-crossed-inputs-swapped",
         "out+",
         "out-",
-        "output"
+        "output",
+        "undefined"
       ],
       "electrical": false,
       "palette": false,
@@ -4479,6 +5579,12 @@
         "y": -34,
         "width": 88,
         "height": 68
+      },
+      "selectionBox": {
+        "x": -42,
+        "y": -32,
+        "width": 74,
+        "height": 64
       },
       "artwork": {
         "type": "svg",
@@ -4548,15 +5654,17 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "opamp-differential-crossed-lettered",
+      "variantId": "base",
       "title": "Differential Op Amp (crossed outputs, lettered)",
       "category": "analog-block",
       "keywords": [
         "analog-block",
+        "base",
         "differential op amp (crossed outputs, lettered)",
         "in+",
         "in-",
@@ -4565,7 +5673,8 @@
         "opamp-differential-crossed-lettered",
         "out+",
         "out-",
-        "output"
+        "output",
+        "undefined"
       ],
       "electrical": false,
       "palette": false,
@@ -4574,6 +5683,12 @@
         "y": -34,
         "width": 88,
         "height": 68
+      },
+      "selectionBox": {
+        "x": -42,
+        "y": -32,
+        "width": 74,
+        "height": 64
       },
       "artwork": {
         "type": "svg",
@@ -4643,15 +5758,17 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "opamp-differential-crossed-lettered-inputs-swapped",
+      "variantId": "base",
       "title": "Differential Op Amp (crossed outputs, lettered) (swapped inputs)",
       "category": "analog-block",
       "keywords": [
         "analog-block",
+        "base",
         "differential op amp (crossed outputs, lettered) (swapped inputs)",
         "in+",
         "in-",
@@ -4660,7 +5777,8 @@
         "opamp-differential-crossed-lettered-inputs-swapped",
         "out+",
         "out-",
-        "output"
+        "output",
+        "undefined"
       ],
       "electrical": false,
       "palette": false,
@@ -4669,6 +5787,12 @@
         "y": -34,
         "width": 88,
         "height": 68
+      },
+      "selectionBox": {
+        "x": -42,
+        "y": -32,
+        "width": 74,
+        "height": 64
       },
       "artwork": {
         "type": "svg",
@@ -4738,15 +5862,17 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "opamp-differential-inputs-swapped",
+      "variantId": "base",
       "title": "Differential Op Amp (swapped inputs)",
       "category": "analog-block",
       "keywords": [
         "analog-block",
+        "base",
         "differential op amp (swapped inputs)",
         "in+",
         "in-",
@@ -4755,7 +5881,8 @@
         "opamp-differential-inputs-swapped",
         "out+",
         "out-",
-        "output"
+        "output",
+        "undefined"
       ],
       "electrical": false,
       "palette": false,
@@ -4764,6 +5891,12 @@
         "y": -34,
         "width": 88,
         "height": 68
+      },
+      "selectionBox": {
+        "x": -42,
+        "y": -32,
+        "width": 74,
+        "height": 64
       },
       "artwork": {
         "type": "svg",
@@ -4833,15 +5966,17 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "opamp-differential-lettered",
+      "variantId": "base",
       "title": "Differential Op Amp (lettered)",
       "category": "analog-block",
       "keywords": [
         "analog-block",
+        "base",
         "differential op amp (lettered)",
         "in+",
         "in-",
@@ -4850,7 +5985,8 @@
         "opamp-differential-lettered",
         "out+",
         "out-",
-        "output"
+        "output",
+        "undefined"
       ],
       "electrical": false,
       "palette": false,
@@ -4859,6 +5995,12 @@
         "y": -34,
         "width": 88,
         "height": 68
+      },
+      "selectionBox": {
+        "x": -42,
+        "y": -32,
+        "width": 74,
+        "height": 64
       },
       "artwork": {
         "type": "svg",
@@ -4928,15 +6070,17 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "opamp-differential-lettered-inputs-swapped",
+      "variantId": "base",
       "title": "Differential Op Amp (lettered) (swapped inputs)",
       "category": "analog-block",
       "keywords": [
         "analog-block",
+        "base",
         "differential op amp (lettered) (swapped inputs)",
         "in+",
         "in-",
@@ -4945,7 +6089,8 @@
         "opamp-differential-lettered-inputs-swapped",
         "out+",
         "out-",
-        "output"
+        "output",
+        "undefined"
       ],
       "electrical": false,
       "palette": false,
@@ -4954,6 +6099,12 @@
         "y": -34,
         "width": 88,
         "height": 68
+      },
+      "selectionBox": {
+        "x": -42,
+        "y": -32,
+        "width": 74,
+        "height": 64
       },
       "artwork": {
         "type": "svg",
@@ -5023,15 +6174,17 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "opamp-differential-wide",
+      "variantId": "base",
       "title": "FD Amp Wide",
       "category": "analog-block",
       "keywords": [
         "analog-block",
+        "base",
         "fd amp wide",
         "in+",
         "in-",
@@ -5040,7 +6193,8 @@
         "opamp-differential-wide",
         "out+",
         "out-",
-        "output"
+        "output",
+        "undefined"
       ],
       "electrical": false,
       "palette": true,
@@ -5049,6 +6203,12 @@
         "y": -34,
         "width": 88,
         "height": 68
+      },
+      "selectionBox": {
+        "x": -42,
+        "y": -32,
+        "width": 74,
+        "height": 64
       },
       "artwork": {
         "type": "svg",
@@ -5118,15 +6278,17 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "opamp-differential-wide-crossed",
+      "variantId": "base",
       "title": "FD Amp Wide (crossed outputs)",
       "category": "analog-block",
       "keywords": [
         "analog-block",
+        "base",
         "fd amp wide (crossed outputs)",
         "in+",
         "in-",
@@ -5135,7 +6297,8 @@
         "opamp-differential-wide-crossed",
         "out+",
         "out-",
-        "output"
+        "output",
+        "undefined"
       ],
       "electrical": false,
       "palette": true,
@@ -5144,6 +6307,12 @@
         "y": -34,
         "width": 88,
         "height": 68
+      },
+      "selectionBox": {
+        "x": -42,
+        "y": -32,
+        "width": 74,
+        "height": 64
       },
       "artwork": {
         "type": "svg",
@@ -5213,15 +6382,17 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "opamp-differential-wide-crossed-inputs-swapped",
+      "variantId": "base",
       "title": "FD Amp Wide (crossed outputs) (swapped inputs)",
       "category": "analog-block",
       "keywords": [
         "analog-block",
+        "base",
         "fd amp wide (crossed outputs) (swapped inputs)",
         "in+",
         "in-",
@@ -5230,7 +6401,8 @@
         "opamp-differential-wide-crossed-inputs-swapped",
         "out+",
         "out-",
-        "output"
+        "output",
+        "undefined"
       ],
       "electrical": false,
       "palette": false,
@@ -5239,6 +6411,12 @@
         "y": -34,
         "width": 88,
         "height": 68
+      },
+      "selectionBox": {
+        "x": -42,
+        "y": -32,
+        "width": 74,
+        "height": 64
       },
       "artwork": {
         "type": "svg",
@@ -5308,15 +6486,17 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "opamp-differential-wide-crossed-lettered",
+      "variantId": "base",
       "title": "FD Amp Wide (crossed outputs, lettered)",
       "category": "analog-block",
       "keywords": [
         "analog-block",
+        "base",
         "fd amp wide (crossed outputs, lettered)",
         "in+",
         "in-",
@@ -5325,7 +6505,8 @@
         "opamp-differential-wide-crossed-lettered",
         "out+",
         "out-",
-        "output"
+        "output",
+        "undefined"
       ],
       "electrical": false,
       "palette": false,
@@ -5334,6 +6515,12 @@
         "y": -34,
         "width": 88,
         "height": 68
+      },
+      "selectionBox": {
+        "x": -42,
+        "y": -32,
+        "width": 74,
+        "height": 64
       },
       "artwork": {
         "type": "svg",
@@ -5403,15 +6590,17 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "opamp-differential-wide-crossed-lettered-inputs-swapped",
+      "variantId": "base",
       "title": "FD Amp Wide (crossed outputs, lettered) (swapped inputs)",
       "category": "analog-block",
       "keywords": [
         "analog-block",
+        "base",
         "fd amp wide (crossed outputs, lettered) (swapped inputs)",
         "in+",
         "in-",
@@ -5420,7 +6609,8 @@
         "opamp-differential-wide-crossed-lettered-inputs-swapped",
         "out+",
         "out-",
-        "output"
+        "output",
+        "undefined"
       ],
       "electrical": false,
       "palette": false,
@@ -5429,6 +6619,12 @@
         "y": -34,
         "width": 88,
         "height": 68
+      },
+      "selectionBox": {
+        "x": -42,
+        "y": -32,
+        "width": 74,
+        "height": 64
       },
       "artwork": {
         "type": "svg",
@@ -5498,15 +6694,17 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "opamp-differential-wide-inputs-swapped",
+      "variantId": "base",
       "title": "FD Amp Wide (swapped inputs)",
       "category": "analog-block",
       "keywords": [
         "analog-block",
+        "base",
         "fd amp wide (swapped inputs)",
         "in+",
         "in-",
@@ -5515,7 +6713,8 @@
         "opamp-differential-wide-inputs-swapped",
         "out+",
         "out-",
-        "output"
+        "output",
+        "undefined"
       ],
       "electrical": false,
       "palette": false,
@@ -5524,6 +6723,12 @@
         "y": -34,
         "width": 88,
         "height": 68
+      },
+      "selectionBox": {
+        "x": -42,
+        "y": -32,
+        "width": 74,
+        "height": 64
       },
       "artwork": {
         "type": "svg",
@@ -5593,15 +6798,17 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "opamp-differential-wide-lettered",
+      "variantId": "base",
       "title": "FD Amp Wide (lettered)",
       "category": "analog-block",
       "keywords": [
         "analog-block",
+        "base",
         "fd amp wide (lettered)",
         "in+",
         "in-",
@@ -5610,7 +6817,8 @@
         "opamp-differential-wide-lettered",
         "out+",
         "out-",
-        "output"
+        "output",
+        "undefined"
       ],
       "electrical": false,
       "palette": false,
@@ -5619,6 +6827,12 @@
         "y": -34,
         "width": 88,
         "height": 68
+      },
+      "selectionBox": {
+        "x": -42,
+        "y": -32,
+        "width": 74,
+        "height": 64
       },
       "artwork": {
         "type": "svg",
@@ -5688,15 +6902,17 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "opamp-differential-wide-lettered-inputs-swapped",
+      "variantId": "base",
       "title": "FD Amp Wide (lettered) (swapped inputs)",
       "category": "analog-block",
       "keywords": [
         "analog-block",
+        "base",
         "fd amp wide (lettered) (swapped inputs)",
         "in+",
         "in-",
@@ -5705,7 +6921,8 @@
         "opamp-differential-wide-lettered-inputs-swapped",
         "out+",
         "out-",
-        "output"
+        "output",
+        "undefined"
       ],
       "electrical": false,
       "palette": false,
@@ -5714,6 +6931,12 @@
         "y": -34,
         "width": 88,
         "height": 68
+      },
+      "selectionBox": {
+        "x": -42,
+        "y": -32,
+        "width": 74,
+        "height": 64
       },
       "artwork": {
         "type": "svg",
@@ -5783,15 +7006,17 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "opamp-inputs-swapped",
+      "variantId": "base",
       "title": "Operational Amplifier (swapped inputs)",
       "category": "analog-block",
       "keywords": [
         "analog-block",
+        "base",
         "in+",
         "in-",
         "inverting-input",
@@ -5799,7 +7024,8 @@
         "opamp-inputs-swapped",
         "operational amplifier (swapped inputs)",
         "out",
-        "output"
+        "output",
+        "undefined"
       ],
       "electrical": false,
       "palette": false,
@@ -5808,6 +7034,12 @@
         "y": -34,
         "width": 88,
         "height": 68
+      },
+      "selectionBox": {
+        "x": -42,
+        "y": -32,
+        "width": 74,
+        "height": 64
       },
       "artwork": {
         "type": "svg",
@@ -5867,15 +7099,17 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "opamp-lettered",
+      "variantId": "base",
       "title": "Operational Amplifier (lettered)",
       "category": "analog-block",
       "keywords": [
         "analog-block",
+        "base",
         "in+",
         "in-",
         "inverting-input",
@@ -5883,7 +7117,8 @@
         "opamp-lettered",
         "operational amplifier (lettered)",
         "out",
-        "output"
+        "output",
+        "undefined"
       ],
       "electrical": false,
       "palette": false,
@@ -5892,6 +7127,12 @@
         "y": -34,
         "width": 88,
         "height": 68
+      },
+      "selectionBox": {
+        "x": -42,
+        "y": -32,
+        "width": 74,
+        "height": 64
       },
       "artwork": {
         "type": "svg",
@@ -5951,15 +7192,17 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "opamp-lettered-inputs-swapped",
+      "variantId": "base",
       "title": "Operational Amplifier (lettered) (swapped inputs)",
       "category": "analog-block",
       "keywords": [
         "analog-block",
+        "base",
         "in+",
         "in-",
         "inverting-input",
@@ -5967,7 +7210,8 @@
         "opamp-lettered-inputs-swapped",
         "operational amplifier (lettered) (swapped inputs)",
         "out",
-        "output"
+        "output",
+        "undefined"
       ],
       "electrical": false,
       "palette": false,
@@ -5976,6 +7220,12 @@
         "y": -34,
         "width": 88,
         "height": 68
+      },
+      "selectionBox": {
+        "x": -42,
+        "y": -32,
+        "width": 74,
+        "height": 64
       },
       "artwork": {
         "type": "svg",
@@ -6035,15 +7285,17 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "opamp-wide",
+      "variantId": "base",
       "title": "Op Amp Wide",
       "category": "analog-block",
       "keywords": [
         "analog-block",
+        "base",
         "in+",
         "in-",
         "inverting-input",
@@ -6051,7 +7303,8 @@
         "op amp wide",
         "opamp-wide",
         "out",
-        "output"
+        "output",
+        "undefined"
       ],
       "electrical": false,
       "palette": true,
@@ -6060,6 +7313,12 @@
         "y": -34,
         "width": 88,
         "height": 68
+      },
+      "selectionBox": {
+        "x": -42,
+        "y": -32,
+        "width": 74,
+        "height": 64
       },
       "artwork": {
         "type": "svg",
@@ -6119,15 +7378,17 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "opamp-wide-inputs-swapped",
+      "variantId": "base",
       "title": "Op Amp Wide (swapped inputs)",
       "category": "analog-block",
       "keywords": [
         "analog-block",
+        "base",
         "in+",
         "in-",
         "inverting-input",
@@ -6135,7 +7396,8 @@
         "op amp wide (swapped inputs)",
         "opamp-wide-inputs-swapped",
         "out",
-        "output"
+        "output",
+        "undefined"
       ],
       "electrical": false,
       "palette": false,
@@ -6144,6 +7406,12 @@
         "y": -34,
         "width": 88,
         "height": 68
+      },
+      "selectionBox": {
+        "x": -42,
+        "y": -32,
+        "width": 74,
+        "height": 64
       },
       "artwork": {
         "type": "svg",
@@ -6203,15 +7471,17 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "opamp-wide-lettered",
+      "variantId": "base",
       "title": "Op Amp Wide (lettered)",
       "category": "analog-block",
       "keywords": [
         "analog-block",
+        "base",
         "in+",
         "in-",
         "inverting-input",
@@ -6219,7 +7489,8 @@
         "op amp wide (lettered)",
         "opamp-wide-lettered",
         "out",
-        "output"
+        "output",
+        "undefined"
       ],
       "electrical": false,
       "palette": false,
@@ -6228,6 +7499,12 @@
         "y": -34,
         "width": 88,
         "height": 68
+      },
+      "selectionBox": {
+        "x": -42,
+        "y": -32,
+        "width": 74,
+        "height": 64
       },
       "artwork": {
         "type": "svg",
@@ -6287,15 +7564,17 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "opamp-wide-lettered-inputs-swapped",
+      "variantId": "base",
       "title": "Op Amp Wide (lettered) (swapped inputs)",
       "category": "analog-block",
       "keywords": [
         "analog-block",
+        "base",
         "in+",
         "in-",
         "inverting-input",
@@ -6303,7 +7582,8 @@
         "op amp wide (lettered) (swapped inputs)",
         "opamp-wide-lettered-inputs-swapped",
         "out",
-        "output"
+        "output",
+        "undefined"
       ],
       "electrical": false,
       "palette": false,
@@ -6312,6 +7592,12 @@
         "y": -34,
         "width": 88,
         "height": 68
+      },
+      "selectionBox": {
+        "x": -42,
+        "y": -32,
+        "width": 74,
+        "height": 64
       },
       "artwork": {
         "type": "svg",
@@ -6371,21 +7657,24 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "or-gate",
+      "variantId": "base",
       "title": "OR Gate",
       "category": "logic",
       "keywords": [
         "a",
         "b",
+        "base",
         "input",
         "logic",
         "or gate",
         "or-gate",
         "output",
+        "undefined",
         "y"
       ],
       "electrical": false,
@@ -6395,6 +7684,12 @@
         "y": -24,
         "width": 88,
         "height": 48
+      },
+      "selectionBox": {
+        "x": -32,
+        "y": -19.735635,
+        "width": 54,
+        "height": 39.617752
       },
       "artwork": {
         "type": "svg",
@@ -6454,22 +7749,25 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "or-gate-3",
+      "variantId": "base",
       "title": "OR Gate (3 inputs)",
       "category": "logic",
       "keywords": [
         "a",
         "b",
+        "base",
         "c",
         "input",
         "logic",
         "or gate (3 inputs)",
         "or-gate-3",
         "output",
+        "undefined",
         "y"
       ],
       "electrical": false,
@@ -6479,6 +7777,12 @@
         "y": -24,
         "width": 88,
         "height": 48
+      },
+      "selectionBox": {
+        "x": -32,
+        "y": -19.735635,
+        "width": 54,
+        "height": 39.617752
       },
       "artwork": {
         "type": "svg",
@@ -6548,16 +7852,18 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "or-gate-4",
+      "variantId": "base",
       "title": "OR Gate (4 inputs)",
       "category": "logic",
       "keywords": [
         "a",
         "b",
+        "base",
         "c",
         "d",
         "input",
@@ -6565,6 +7871,7 @@
         "or gate (4 inputs)",
         "or-gate-4",
         "output",
+        "undefined",
         "y"
       ],
       "electrical": false,
@@ -6574,6 +7881,12 @@
         "y": -24,
         "width": 88,
         "height": 48
+      },
+      "selectionBox": {
+        "x": -32,
+        "y": -19.735635,
+        "width": 54,
+        "height": 39.617752
       },
       "artwork": {
         "type": "svg",
@@ -6653,11 +7966,12 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "pdmos",
+      "variantId": "standard-3terminal",
       "title": "Pdmos",
       "category": "Extended Devices",
       "keywords": [
@@ -6670,7 +7984,9 @@
         "gate",
         "pdmos",
         "s",
-        "source"
+        "source",
+        "standard-3terminal",
+        "undefined"
       ],
       "electrical": true,
       "palette": false,
@@ -6679,6 +7995,12 @@
         "y": -24,
         "width": 48,
         "height": 48
+      },
+      "selectionBox": {
+        "x": -22,
+        "y": -22,
+        "width": 34,
+        "height": 44
       },
       "artwork": {
         "type": "svg",
@@ -6717,16 +8039,6 @@
           "side": "north",
           "x": 10,
           "y": -20
-        },
-        {
-          "id": "B",
-          "key": "B",
-          "name": "B",
-          "role": "bulk",
-          "direction": "east",
-          "side": "east",
-          "x": 10,
-          "y": -20
         }
       ],
       "labelAnchors": {
@@ -6748,39 +8060,48 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
-      "id": "pmos",
-      "title": "PMOS",
-      "category": "transistor",
+      "id": "pdmos--base",
+      "variantOf": "pdmos",
+      "variantId": "base",
+      "title": "Pdmos (4-terminal)",
+      "category": "Extended Devices",
       "keywords": [
         "b",
+        "base",
         "bulk",
         "d",
         "drain",
+        "extended devices",
         "g",
         "gate",
-        "pmos",
+        "pdmos",
         "s",
-        "source",
-        "transistor"
+        "source"
       ],
       "electrical": true,
-      "palette": true,
+      "palette": false,
       "frame": {
         "x": -24,
         "y": -24,
         "width": 48,
         "height": 48
       },
+      "selectionBox": {
+        "x": -22,
+        "y": -22,
+        "width": 44,
+        "height": 44
+      },
       "artwork": {
         "type": "svg",
         "viewBox": "-24 -24 48 48",
-        "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"><polyline points=\"-4.244186,6.976744 10,6.976744 10,20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><polygon points=\"-11.802326,-9.593023 -11.802326,9.593023 -8.895349,9.593023 -8.895349,-9.593023\" fill=\"currentColor\" stroke=\"none\"/><polygon points=\"-6.569767,-12.5 -6.569767,12.5 -3.662791,12.5 -3.662791,-12.5\" fill=\"currentColor\" stroke=\"none\"/><line x1=\"-8.895349\" y1=\"0\" x2=\"-20\" y2=\"0\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><polyline points=\"5.639535,-7.122093 10,-7.122093 10,-20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><polygon points=\"-3.662791,-7.122093 5.639535,-11.19186 5.639535,-3.052326\" fill=\"currentColor\" stroke=\"none\"/></g>",
-        "source": "pmos.svg",
-        "sourceSha256": "dc8c29cab360c91d0b1cf125a488c93cbdc081ba253b85044b991286533dcc41"
+        "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"><polyline points=\"-4.244186,6.976744 10,6.976744 10,20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><polyline points=\"-4.244186,-6.976744 10,-6.976744 10,-20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><polygon points=\"-11.802326,-9.593023 -11.802326,9.593023 -8.895349,9.593023 -8.895349,-9.593023\" fill=\"currentColor\" stroke=\"none\"/><polygon points=\"-6.569767,-12.5 -6.569767,12.5 -3.662791,12.5 -3.662791,-12.5\" fill=\"currentColor\" stroke=\"none\"/><line x1=\"-8.895349\" y1=\"0\" x2=\"-20\" y2=\"0\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"-3.662791\" y1=\"0\" x2=\"13.604651\" y2=\"0\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><polygon points=\"20,0 13.604651,-3.77907 13.604651,3.77907\" fill=\"currentColor\" stroke=\"none\"/><polyline points=\"-4.244186,2.976744 10,2.976744 10,6.976744\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/></g>",
+        "source": "variants/pdmos--base.svg",
+        "sourceSha256": "7397aeda994b01b96fb636b89be8cd549eb2a6e94f75e2409d23217f84c49aff"
       },
       "pins": [
         {
@@ -6820,6 +8141,100 @@
           "role": "bulk",
           "direction": "east",
           "side": "east",
+          "x": 20,
+          "y": 0
+        }
+      ],
+      "labelAnchors": {
+        "reference": {
+          "x": 30,
+          "y": -3,
+          "anchor": "start"
+        },
+        "value": {
+          "x": 30,
+          "y": 12,
+          "anchor": "start"
+        }
+      },
+      "spice": {
+        "prefix": "PD",
+        "defaultValue": "",
+        "supported": false
+      },
+      "metadata": {
+        "sourceCollection": "Drawic Device Symbols",
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
+      }
+    },
+    {
+      "id": "pmos",
+      "variantId": "textbook-3terminal",
+      "title": "PMOS",
+      "category": "transistor",
+      "keywords": [
+        "b",
+        "bulk",
+        "d",
+        "drain",
+        "g",
+        "gate",
+        "pmos",
+        "s",
+        "source",
+        "textbook-3terminal",
+        "transistor",
+        "undefined"
+      ],
+      "electrical": true,
+      "palette": true,
+      "frame": {
+        "x": -24,
+        "y": -24,
+        "width": 48,
+        "height": 48
+      },
+      "selectionBox": {
+        "x": -22,
+        "y": -22,
+        "width": 34,
+        "height": 44
+      },
+      "artwork": {
+        "type": "svg",
+        "viewBox": "-24 -24 48 48",
+        "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"><polyline points=\"-4.244186,6.976744 10,6.976744 10,20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><polygon points=\"-11.802326,-9.593023 -11.802326,9.593023 -8.895349,9.593023 -8.895349,-9.593023\" fill=\"currentColor\" stroke=\"none\"/><polygon points=\"-6.569767,-12.5 -6.569767,12.5 -3.662791,12.5 -3.662791,-12.5\" fill=\"currentColor\" stroke=\"none\"/><line x1=\"-8.895349\" y1=\"0\" x2=\"-20\" y2=\"0\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><polyline points=\"5.639535,-7.122093 10,-7.122093 10,-20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><polygon points=\"-3.662791,-7.122093 5.639535,-11.19186 5.639535,-3.052326\" fill=\"currentColor\" stroke=\"none\"/></g>",
+        "source": "pmos.svg",
+        "sourceSha256": "dc8c29cab360c91d0b1cf125a488c93cbdc081ba253b85044b991286533dcc41"
+      },
+      "pins": [
+        {
+          "id": "D",
+          "key": "D",
+          "name": "D",
+          "role": "drain",
+          "direction": "south",
+          "side": "south",
+          "x": 10,
+          "y": 20
+        },
+        {
+          "id": "G",
+          "key": "G",
+          "name": "G",
+          "role": "gate",
+          "direction": "west",
+          "side": "west",
+          "x": -20,
+          "y": 0
+        },
+        {
+          "id": "S",
+          "key": "S",
+          "name": "S",
+          "role": "source",
+          "direction": "north",
+          "side": "north",
           "x": 10,
           "y": -20
         }
@@ -6843,11 +8258,116 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
+      }
+    },
+    {
+      "id": "pmos--base",
+      "variantOf": "pmos",
+      "variantId": "base",
+      "title": "PMOS (4-terminal)",
+      "category": "transistor",
+      "keywords": [
+        "b",
+        "base",
+        "bulk",
+        "d",
+        "drain",
+        "g",
+        "gate",
+        "pmos",
+        "s",
+        "source",
+        "transistor"
+      ],
+      "electrical": true,
+      "palette": true,
+      "frame": {
+        "x": -24,
+        "y": -24,
+        "width": 48,
+        "height": 48
+      },
+      "selectionBox": {
+        "x": -22,
+        "y": -22,
+        "width": 44,
+        "height": 44
+      },
+      "artwork": {
+        "type": "svg",
+        "viewBox": "-24 -24 48 48",
+        "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"><polyline points=\"-4.244186,6.976744 10,6.976744 10,20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><polyline points=\"-4.244186,-6.976744 10,-6.976744 10,-20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><polygon points=\"-11.802326,-9.593023 -11.802326,9.593023 -8.895349,9.593023 -8.895349,-9.593023\" fill=\"currentColor\" stroke=\"none\"/><polygon points=\"-6.569767,-12.5 -6.569767,12.5 -3.662791,12.5 -3.662791,-12.5\" fill=\"currentColor\" stroke=\"none\"/><line x1=\"-8.895349\" y1=\"0\" x2=\"-20\" y2=\"0\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"-3.662791\" y1=\"0\" x2=\"13.604651\" y2=\"0\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><polygon points=\"20,0 13.604651,-3.77907 13.604651,3.77907\" fill=\"currentColor\" stroke=\"none\"/></g>",
+        "source": "variants/pmos--base.svg",
+        "sourceSha256": "e4708f8f749d61a114b4c9c556b5aeb4b6aa49cd7ee2ce607275360a348253e2"
+      },
+      "pins": [
+        {
+          "id": "D",
+          "key": "D",
+          "name": "D",
+          "role": "drain",
+          "direction": "south",
+          "side": "south",
+          "x": 10,
+          "y": 20
+        },
+        {
+          "id": "G",
+          "key": "G",
+          "name": "G",
+          "role": "gate",
+          "direction": "west",
+          "side": "west",
+          "x": -20,
+          "y": 0
+        },
+        {
+          "id": "S",
+          "key": "S",
+          "name": "S",
+          "role": "source",
+          "direction": "north",
+          "side": "north",
+          "x": 10,
+          "y": -20
+        },
+        {
+          "id": "B",
+          "key": "B",
+          "name": "B",
+          "role": "bulk",
+          "direction": "east",
+          "side": "east",
+          "x": 20,
+          "y": 0
+        }
+      ],
+      "labelAnchors": {
+        "reference": {
+          "x": 30,
+          "y": -3,
+          "anchor": "start"
+        },
+        "value": {
+          "x": 30,
+          "y": 12,
+          "anchor": "start"
+        }
+      },
+      "spice": {
+        "prefix": "M",
+        "defaultValue": "PMOS",
+        "supported": true
+      },
+      "metadata": {
+        "sourceCollection": "Drawic Device Symbols",
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "pnp",
+      "variantId": "base",
       "title": "PNP Bipolar Transistor",
       "category": "transistor",
       "keywords": [
@@ -6859,7 +8379,8 @@
         "emitter",
         "pnp",
         "pnp bipolar transistor",
-        "transistor"
+        "transistor",
+        "undefined"
       ],
       "electrical": true,
       "palette": true,
@@ -6868,6 +8389,12 @@
         "y": -24,
         "width": 42,
         "height": 48
+      },
+      "selectionBox": {
+        "x": -32,
+        "y": -22,
+        "width": 34,
+        "height": 44
       },
       "artwork": {
         "type": "svg",
@@ -6927,17 +8454,20 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "port",
+      "variantId": "base",
       "title": "Port",
       "category": "interface",
       "keywords": [
+        "base",
         "interface",
         "p",
-        "port"
+        "port",
+        "undefined"
       ],
       "electrical": false,
       "palette": true,
@@ -6946,6 +8476,12 @@
         "y": -7,
         "width": 18,
         "height": 14
+      },
+      "selectionBox": {
+        "x": -11.565684,
+        "y": -4.47907,
+        "width": 13.565684,
+        "height": 8.95814
       },
       "artwork": {
         "type": "svg",
@@ -6985,19 +8521,22 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "port-filled",
+      "variantId": "base",
       "title": "Bias Voltage Port",
       "category": "interface",
       "keywords": [
+        "base",
         "bias voltage port",
         "interface",
         "p",
         "port",
-        "port-filled"
+        "port-filled",
+        "undefined"
       ],
       "electrical": false,
       "palette": true,
@@ -7006,6 +8545,12 @@
         "y": -7,
         "width": 18,
         "height": 14
+      },
+      "selectionBox": {
+        "x": -11.565684,
+        "y": -4.47907,
+        "width": 13.565684,
+        "height": 8.95814
       },
       "artwork": {
         "type": "svg",
@@ -7045,21 +8590,24 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "pulse-voltage-source",
+      "variantId": "base",
       "title": "Pulse Voltage Source",
       "category": "source",
       "keywords": [
         "+",
         "-",
+        "base",
         "negative",
         "positive",
         "pulse voltage source",
         "pulse-voltage-source",
-        "source"
+        "source",
+        "undefined"
       ],
       "electrical": true,
       "palette": true,
@@ -7068,6 +8616,12 @@
         "y": -24,
         "width": 39,
         "height": 48
+      },
+      "selectionBox": {
+        "x": -12.755814,
+        "y": -22,
+        "width": 25.511628,
+        "height": 44
       },
       "artwork": {
         "type": "svg",
@@ -7117,19 +8671,22 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "quantizer",
+      "variantId": "base",
       "title": "Quantizer",
       "category": "signal-flow",
       "keywords": [
         "a",
+        "base",
         "input",
         "output",
         "quantizer",
         "signal-flow",
+        "undefined",
         "y"
       ],
       "electrical": false,
@@ -7139,6 +8696,12 @@
         "y": -24,
         "width": 68,
         "height": 48
+      },
+      "selectionBox": {
+        "x": -32,
+        "y": -22,
+        "width": 64,
+        "height": 44
       },
       "artwork": {
         "type": "svg",
@@ -7188,18 +8751,21 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "resistor",
+      "variantId": "base",
       "title": "Resistor",
       "category": "passive",
       "keywords": [
         "1",
         "2",
+        "base",
         "passive",
-        "resistor"
+        "resistor",
+        "undefined"
       ],
       "electrical": true,
       "palette": true,
@@ -7208,6 +8774,12 @@
         "y": -24,
         "width": 20,
         "height": 48
+      },
+      "selectionBox": {
+        "x": -6.988372,
+        "y": -22,
+        "width": 14.360465,
+        "height": 44
       },
       "artwork": {
         "type": "svg",
@@ -7257,21 +8829,24 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "simple-spdt-switch",
+      "variantId": "base",
       "title": "Simple SPDT Switch",
       "category": "switch",
       "keywords": [
         "a",
         "b",
+        "base",
         "com",
         "passive",
         "simple spdt switch",
         "simple-spdt-switch",
-        "switch"
+        "switch",
+        "undefined"
       ],
       "electrical": true,
       "palette": false,
@@ -7280,6 +8855,12 @@
         "y": -20,
         "width": 68,
         "height": 40
+      },
+      "selectionBox": {
+        "x": -22,
+        "y": -12,
+        "width": 44,
+        "height": 24
       },
       "artwork": {
         "type": "svg",
@@ -7339,20 +8920,23 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "simple-switch",
+      "variantId": "base",
       "title": "Simple Switch",
       "category": "switch",
       "keywords": [
         "1",
         "2",
+        "base",
         "passive",
         "simple switch",
         "simple-switch",
-        "switch"
+        "switch",
+        "undefined"
       ],
       "electrical": true,
       "palette": true,
@@ -7361,6 +8945,12 @@
         "y": -18,
         "width": 68,
         "height": 30
+      },
+      "selectionBox": {
+        "x": -22,
+        "y": -13,
+        "width": 44,
+        "height": 15
       },
       "artwork": {
         "type": "svg",
@@ -7410,21 +9000,24 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "spdt-switch",
+      "variantId": "base",
       "title": "SPDT Switch",
       "category": "switch",
       "keywords": [
         "a",
         "b",
+        "base",
         "com",
         "passive",
         "spdt switch",
         "spdt-switch",
-        "switch"
+        "switch",
+        "undefined"
       ],
       "electrical": true,
       "palette": true,
@@ -7433,6 +9026,12 @@
         "y": -20,
         "width": 68,
         "height": 40
+      },
+      "selectionBox": {
+        "x": -22,
+        "y": -15,
+        "width": 44,
+        "height": 30
       },
       "artwork": {
         "type": "svg",
@@ -7492,20 +9091,23 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "tcoil",
+      "variantId": "base",
       "title": "T-Coil",
       "category": "passive",
       "keywords": [
         "1",
         "2",
         "3",
+        "base",
         "passive",
         "t-coil",
-        "tcoil"
+        "tcoil",
+        "undefined"
       ],
       "electrical": true,
       "palette": true,
@@ -7514,6 +9116,12 @@
         "y": -56,
         "width": 188,
         "height": 90
+      },
+      "selectionBox": {
+        "x": -92,
+        "y": -53.3856,
+        "width": 184,
+        "height": 75.3856
       },
       "artwork": {
         "type": "svg",
@@ -7573,20 +9181,23 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "transconductance",
+      "variantId": "base",
       "title": "Transconductance (gₘ)",
       "category": "analog-block",
       "keywords": [
         "a",
         "analog-block",
+        "base",
         "input",
         "output",
         "transconductance",
         "transconductance (gₘ)",
+        "undefined",
         "y"
       ],
       "electrical": false,
@@ -7596,6 +9207,12 @@
         "y": -39,
         "width": 68,
         "height": 78
+      },
+      "selectionBox": {
+        "x": -32,
+        "y": -37,
+        "width": 64,
+        "height": 74
       },
       "artwork": {
         "type": "svg",
@@ -7645,18 +9262,21 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "unit-delay",
+      "variantId": "base",
       "title": "Unit Delay (z⁻¹)",
       "category": "signal-flow",
       "keywords": [
         "a",
+        "base",
         "input",
         "output",
         "signal-flow",
+        "undefined",
         "unit delay (z⁻¹)",
         "unit-delay",
         "y"
@@ -7668,6 +9288,12 @@
         "y": -24,
         "width": 68,
         "height": 48
+      },
+      "selectionBox": {
+        "x": -32,
+        "y": -17,
+        "width": 64,
+        "height": 34
       },
       "artwork": {
         "type": "svg",
@@ -7717,17 +9343,20 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "variable-capacitor",
+      "variantId": "base",
       "title": "Variable Capacitor",
       "category": "passive",
       "keywords": [
+        "base",
         "p1",
         "p2",
         "passive",
+        "undefined",
         "variable capacitor",
         "variable-capacitor"
       ],
@@ -7738,6 +9367,12 @@
         "y": -24,
         "width": 32,
         "height": 48
+      },
+      "selectionBox": {
+        "x": -14,
+        "y": -22,
+        "width": 28,
+        "height": 44
       },
       "artwork": {
         "type": "svg",
@@ -7787,17 +9422,20 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "variable-inductor",
+      "variantId": "base",
       "title": "Variable Inductor",
       "category": "passive",
       "keywords": [
+        "base",
         "p1",
         "p2",
         "passive",
+        "undefined",
         "variable inductor",
         "variable-inductor"
       ],
@@ -7808,6 +9446,12 @@
         "y": -24,
         "width": 32,
         "height": 48
+      },
+      "selectionBox": {
+        "x": -14,
+        "y": -22,
+        "width": 28,
+        "height": 44
       },
       "artwork": {
         "type": "svg",
@@ -7857,17 +9501,20 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "variable-resistor",
+      "variantId": "base",
       "title": "Variable Resistor",
       "category": "passive",
       "keywords": [
+        "base",
         "p1",
         "p2",
         "passive",
+        "undefined",
         "variable resistor",
         "variable-resistor"
       ],
@@ -7878,6 +9525,12 @@
         "y": -24,
         "width": 32,
         "height": 48
+      },
+      "selectionBox": {
+        "x": -14,
+        "y": -22,
+        "width": 28,
+        "height": 44
       },
       "artwork": {
         "type": "svg",
@@ -7927,19 +9580,22 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "vccs",
+      "variantId": "base",
       "title": "Voltage-Controlled Current Source",
       "category": "source",
       "keywords": [
         "+",
         "-",
+        "base",
         "negative",
         "positive",
         "source",
+        "undefined",
         "vccs",
         "voltage-controlled current source"
       ],
@@ -7950,6 +9606,12 @@
         "y": -24,
         "width": 30,
         "height": 48
+      },
+      "selectionBox": {
+        "x": -12.755814,
+        "y": -22,
+        "width": 25.511628,
+        "height": 44
       },
       "artwork": {
         "type": "svg",
@@ -7999,19 +9661,103 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
+      }
+    },
+    {
+      "id": "vccs--diamond",
+      "variantOf": "vccs",
+      "variantId": "diamond",
+      "title": "Voltage-Controlled Current Source (diamond)",
+      "category": "source",
+      "keywords": [
+        "+",
+        "-",
+        "diamond",
+        "negative",
+        "positive",
+        "source",
+        "vccs",
+        "voltage-controlled current source"
+      ],
+      "electrical": true,
+      "palette": true,
+      "frame": {
+        "x": -15,
+        "y": -24,
+        "width": 30,
+        "height": 48
+      },
+      "selectionBox": {
+        "x": -14.5,
+        "y": -22,
+        "width": 29,
+        "height": 44
+      },
+      "artwork": {
+        "type": "svg",
+        "viewBox": "-15 -24 30 48",
+        "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"><line x1=\"0\" y1=\"-6.976744\" x2=\"0\" y2=\"-2.325581\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><polygon points=\"0,6.976744 -4.651163,-2.325581 4.651163,-2.325581\" fill=\"currentColor\" stroke=\"none\"/><polygon points=\"0,-12.5 12.5,0 0,12.5 -12.5,0\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"0\" y1=\"-12.5\" x2=\"0\" y2=\"-20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"0\" y1=\"12.5\" x2=\"0\" y2=\"20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/></g>",
+        "source": "variants/vccs--diamond.svg",
+        "sourceSha256": "5ef2485923e60c8bf4b27965b92304325e872702e7b6111a8b059ceb9fbadfd7"
+      },
+      "pins": [
+        {
+          "id": "+",
+          "key": "+",
+          "name": "+",
+          "role": "positive",
+          "direction": "north",
+          "side": "north",
+          "x": 0,
+          "y": -20
+        },
+        {
+          "id": "-",
+          "key": "-",
+          "name": "-",
+          "role": "negative",
+          "direction": "south",
+          "side": "south",
+          "x": 0,
+          "y": 20
+        }
+      ],
+      "labelAnchors": {
+        "reference": {
+          "x": 21,
+          "y": -3,
+          "anchor": "start"
+        },
+        "value": {
+          "x": 21,
+          "y": 12,
+          "anchor": "start"
+        }
+      },
+      "spice": {
+        "prefix": "VC",
+        "defaultValue": "",
+        "supported": false
+      },
+      "metadata": {
+        "sourceCollection": "Drawic Device Symbols",
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "vcvs",
+      "variantId": "base",
       "title": "Voltage-Controlled Voltage Source",
       "category": "source",
       "keywords": [
         "+",
         "-",
+        "base",
         "negative",
         "positive",
         "source",
+        "undefined",
         "vcvs",
         "voltage-controlled voltage source"
       ],
@@ -8022,6 +9768,12 @@
         "y": -24,
         "width": 39,
         "height": 48
+      },
+      "selectionBox": {
+        "x": -22.058139,
+        "y": -22,
+        "width": 34.813953,
+        "height": 44
       },
       "artwork": {
         "type": "svg",
@@ -8071,16 +9823,100 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
+      }
+    },
+    {
+      "id": "vcvs--diamond",
+      "variantOf": "vcvs",
+      "variantId": "diamond",
+      "title": "Voltage-Controlled Voltage Source (diamond)",
+      "category": "source",
+      "keywords": [
+        "+",
+        "-",
+        "diamond",
+        "negative",
+        "positive",
+        "source",
+        "vcvs",
+        "voltage-controlled voltage source"
+      ],
+      "electrical": true,
+      "palette": true,
+      "frame": {
+        "x": -24,
+        "y": -24,
+        "width": 39,
+        "height": 48
+      },
+      "selectionBox": {
+        "x": -22.058139,
+        "y": -22,
+        "width": 36.558139,
+        "height": 44
+      },
+      "artwork": {
+        "type": "svg",
+        "viewBox": "-24 -24 39 48",
+        "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"><line data-part=\"upright-polarity-positive-horizontal\" x1=\"-20.058139\" y1=\"-14.534884\" x2=\"-11.918605\" y2=\"-14.534884\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line data-part=\"upright-polarity-positive-vertical\" x1=\"-15.988372\" y1=\"-18.604651\" x2=\"-15.988372\" y2=\"-10.465117\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line data-part=\"upright-polarity-negative\" x1=\"-20.058139\" y1=\"13.372093\" x2=\"-11.918605\" y2=\"13.372093\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><polygon points=\"0,-12.5 12.5,0 0,12.5 -12.5,0\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"0\" y1=\"-12.5\" x2=\"0\" y2=\"-20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"0\" y1=\"12.5\" x2=\"0\" y2=\"20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/></g>",
+        "source": "variants/vcvs--diamond.svg",
+        "sourceSha256": "cfc0aed8c6998ae47cd3c0568d1c5a84f0e69acefdc36837762bf3adeef97860"
+      },
+      "pins": [
+        {
+          "id": "+",
+          "key": "+",
+          "name": "+",
+          "role": "positive",
+          "direction": "north",
+          "side": "north",
+          "x": 4.5,
+          "y": -20
+        },
+        {
+          "id": "-",
+          "key": "-",
+          "name": "-",
+          "role": "negative",
+          "direction": "south",
+          "side": "south",
+          "x": 4.5,
+          "y": 20
+        }
+      ],
+      "labelAnchors": {
+        "reference": {
+          "x": 21,
+          "y": -3,
+          "anchor": "start"
+        },
+        "value": {
+          "x": 21,
+          "y": 12,
+          "anchor": "start"
+        }
+      },
+      "spice": {
+        "prefix": "VC",
+        "defaultValue": "",
+        "supported": false
+      },
+      "metadata": {
+        "sourceCollection": "Drawic Device Symbols",
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "vdd-port",
+      "variantId": "base",
       "title": "VDD Power Port",
       "category": "power",
       "keywords": [
+        "base",
         "p",
         "power",
+        "undefined",
         "vdd power port",
         "vdd-port"
       ],
@@ -8091,6 +9927,12 @@
         "y": -2,
         "width": 24,
         "height": 26
+      },
+      "selectionBox": {
+        "x": -12,
+        "y": -2.88,
+        "width": 24,
+        "height": 24.88
       },
       "artwork": {
         "type": "svg",
@@ -8130,19 +9972,22 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "voltage-amplifier",
+      "variantId": "base",
       "title": "Voltage Amplifier",
       "category": "analog-block",
       "keywords": [
         "analog-block",
+        "base",
         "in",
         "input",
         "out",
         "output",
+        "undefined",
         "voltage amplifier",
         "voltage-amplifier"
       ],
@@ -8153,6 +9998,12 @@
         "y": -34,
         "width": 88,
         "height": 68
+      },
+      "selectionBox": {
+        "x": -42,
+        "y": -32,
+        "width": 74,
+        "height": 64
       },
       "artwork": {
         "type": "svg",
@@ -8202,19 +10053,22 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "voltage-amplifier-lettered",
+      "variantId": "base",
       "title": "Voltage Amplifier (lettered)",
       "category": "analog-block",
       "keywords": [
         "analog-block",
+        "base",
         "in",
         "input",
         "out",
         "output",
+        "undefined",
         "voltage amplifier (lettered)",
         "voltage-amplifier-lettered"
       ],
@@ -8225,6 +10079,12 @@
         "y": -34,
         "width": 88,
         "height": 68
+      },
+      "selectionBox": {
+        "x": -42,
+        "y": -32,
+        "width": 74,
+        "height": 64
       },
       "artwork": {
         "type": "svg",
@@ -8274,20 +10134,23 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "voltage-controlled-switch",
+      "variantId": "base",
       "title": "Voltage-Controlled Switch",
       "category": "switch",
       "keywords": [
+        "base",
         "cn",
         "cp",
         "n",
         "p",
         "passive",
         "switch",
+        "undefined",
         "voltage-controlled switch",
         "voltage-controlled-switch"
       ],
@@ -8298,6 +10161,12 @@
         "y": -27,
         "width": 68,
         "height": 55
+      },
+      "selectionBox": {
+        "x": -22,
+        "y": -24.8,
+        "width": 44,
+        "height": 52.8
       },
       "artwork": {
         "type": "svg",
@@ -8367,20 +10236,23 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "voltage-source",
+      "variantId": "base",
       "title": "Independent Voltage Source",
       "category": "source",
       "keywords": [
         "+",
         "-",
+        "base",
         "independent voltage source",
         "negative",
         "positive",
         "source",
+        "undefined",
         "voltage-source"
       ],
       "electrical": true,
@@ -8390,6 +10262,12 @@
         "y": -24,
         "width": 39,
         "height": 48
+      },
+      "selectionBox": {
+        "x": -22.058139,
+        "y": -22,
+        "width": 34.813953,
+        "height": 44
       },
       "artwork": {
         "type": "svg",
@@ -8439,19 +10317,22 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "xfmr",
+      "variantId": "base",
       "title": "XFMR",
       "category": "passive",
       "keywords": [
+        "base",
         "p+",
         "p-",
         "passive",
         "s+",
         "s-",
+        "undefined",
         "xfmr"
       ],
       "electrical": true,
@@ -8461,6 +10342,12 @@
         "y": -24,
         "width": 48,
         "height": 48
+      },
+      "selectionBox": {
+        "x": -22,
+        "y": -23.2444,
+        "width": 45.4326,
+        "height": 46.8993
       },
       "artwork": {
         "type": "svg",
@@ -8530,19 +10417,22 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "xnor-gate",
+      "variantId": "base",
       "title": "XNOR Gate",
       "category": "logic",
       "keywords": [
         "a",
         "b",
+        "base",
         "input",
         "logic",
         "output",
+        "undefined",
         "xnor gate",
         "xnor-gate",
         "y"
@@ -8554,6 +10444,12 @@
         "y": -24,
         "width": 88,
         "height": 48
+      },
+      "selectionBox": {
+        "x": -32,
+        "y": -19.737379,
+        "width": 74,
+        "height": 39.706688
       },
       "artwork": {
         "type": "svg",
@@ -8613,20 +10509,23 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "xnor-gate-3",
+      "variantId": "base",
       "title": "XNOR Gate (3 inputs)",
       "category": "logic",
       "keywords": [
         "a",
         "b",
+        "base",
         "c",
         "input",
         "logic",
         "output",
+        "undefined",
         "xnor gate (3 inputs)",
         "xnor-gate-3",
         "y"
@@ -8638,6 +10537,12 @@
         "y": -24,
         "width": 88,
         "height": 48
+      },
+      "selectionBox": {
+        "x": -32,
+        "y": -19.737379,
+        "width": 74,
+        "height": 39.706688
       },
       "artwork": {
         "type": "svg",
@@ -8707,21 +10612,24 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "xnor-gate-4",
+      "variantId": "base",
       "title": "XNOR Gate (4 inputs)",
       "category": "logic",
       "keywords": [
         "a",
         "b",
+        "base",
         "c",
         "d",
         "input",
         "logic",
         "output",
+        "undefined",
         "xnor gate (4 inputs)",
         "xnor-gate-4",
         "y"
@@ -8733,6 +10641,12 @@
         "y": -24,
         "width": 88,
         "height": 48
+      },
+      "selectionBox": {
+        "x": -32,
+        "y": -19.737379,
+        "width": 74,
+        "height": 39.706688
       },
       "artwork": {
         "type": "svg",
@@ -8812,19 +10726,22 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "xor-gate",
+      "variantId": "base",
       "title": "XOR Gate",
       "category": "logic",
       "keywords": [
         "a",
         "b",
+        "base",
         "input",
         "logic",
         "output",
+        "undefined",
         "xor gate",
         "xor-gate",
         "y"
@@ -8836,6 +10753,12 @@
         "y": -24,
         "width": 88,
         "height": 48
+      },
+      "selectionBox": {
+        "x": -32,
+        "y": -19.737379,
+        "width": 64,
+        "height": 39.706688
       },
       "artwork": {
         "type": "svg",
@@ -8895,20 +10818,23 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "xor-gate-3",
+      "variantId": "base",
       "title": "XOR Gate (3 inputs)",
       "category": "logic",
       "keywords": [
         "a",
         "b",
+        "base",
         "c",
         "input",
         "logic",
         "output",
+        "undefined",
         "xor gate (3 inputs)",
         "xor-gate-3",
         "y"
@@ -8920,6 +10846,12 @@
         "y": -24,
         "width": 88,
         "height": 48
+      },
+      "selectionBox": {
+        "x": -32,
+        "y": -19.737379,
+        "width": 64,
+        "height": 39.706688
       },
       "artwork": {
         "type": "svg",
@@ -8989,21 +10921,24 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "xor-gate-4",
+      "variantId": "base",
       "title": "XOR Gate (4 inputs)",
       "category": "logic",
       "keywords": [
         "a",
         "b",
+        "base",
         "c",
         "d",
         "input",
         "logic",
         "output",
+        "undefined",
         "xor gate (4 inputs)",
         "xor-gate-4",
         "y"
@@ -9015,6 +10950,12 @@
         "y": -24,
         "width": 88,
         "height": 48
+      },
+      "selectionBox": {
+        "x": -32,
+        "y": -19.737379,
+        "width": 64,
+        "height": 39.706688
       },
       "artwork": {
         "type": "svg",
@@ -9094,19 +11035,22 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     },
     {
       "id": "zener-diode",
+      "variantId": "base",
       "title": "Zener Diode",
       "category": "passive",
       "keywords": [
         "a",
         "anode",
+        "base",
         "cathode",
         "k",
         "passive",
+        "undefined",
         "zener diode",
         "zener-diode"
       ],
@@ -9117,6 +11061,12 @@
         "y": -10,
         "width": 48,
         "height": 20
+      },
+      "selectionBox": {
+        "x": -22,
+        "y": -10.506555,
+        "width": 44,
+        "height": 20.711855
       },
       "artwork": {
         "type": "svg",
@@ -9166,7 +11116,7 @@
       },
       "metadata": {
         "sourceCollection": "Drawic Device Symbols",
-        "sourceRevision": null
+        "sourceRevision": "a239991de3d765ad68729a2fc59b87483c7d401c"
       }
     }
   ]

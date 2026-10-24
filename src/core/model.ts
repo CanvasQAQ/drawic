@@ -1,4 +1,4 @@
-export const DOCUMENT_SCHEMA_VERSION = 2 as const;
+export const DOCUMENT_SCHEMA_VERSION = 3 as const;
 export const DOCUMENT_KIND = "drawic-drawing" as const;
 
 export type Rotation = 0 | 90 | 180 | 270;
@@ -26,11 +26,14 @@ export interface SymbolFrame {
 
 export interface SymbolDefinition {
   id: string;
+  variantOf?: string;
+  variantId?: string;
   label: string;
   category: string;
   electrical: boolean;
   palette: boolean;
   frame: SymbolFrame;
+  selectionBox?: SymbolFrame;
   pins: SymbolPin[];
   file: string;
   svgBody: string;
@@ -65,12 +68,52 @@ export interface ConnectionAnchor {
   pinId: string;
 }
 
+export interface PinEndpoint {
+  kind: "pin";
+  deviceId: string;
+  pinId: string;
+}
+
+export interface JunctionEndpoint {
+  kind: "junction";
+  junctionId: string;
+}
+
+export interface OpenEndpoint {
+  kind: "open";
+}
+
+export type WireEndpoint = PinEndpoint | JunctionEndpoint | OpenEndpoint;
+
+export function pinEndpoint(anchor: ConnectionAnchor): PinEndpoint {
+  return { kind: "pin", deviceId: anchor.deviceId, pinId: anchor.pinId };
+}
+
+export function endpointAnchor(
+  endpoint: WireEndpoint,
+): ConnectionAnchor | undefined {
+  return endpoint.kind === "pin"
+    ? { deviceId: endpoint.deviceId, pinId: endpoint.pinId }
+    : undefined;
+}
+
 export interface Wire {
   id: string;
   points: Point[];
+  start: WireEndpoint;
+  end: WireEndpoint;
+}
+
+export interface Junction {
+  id: string;
+  point: Point;
+}
+
+export interface Net {
+  id: string;
   name?: string;
-  startAnchor?: ConnectionAnchor;
-  endAnchor?: ConnectionAnchor;
+  wires: Wire[];
+  junctions: Junction[];
 }
 
 export interface Annotation {
@@ -81,6 +124,7 @@ export interface Annotation {
   y: number;
   size: number;
   wireId?: string;
+  netId?: string;
 }
 
 export type ShapeKind = "rectangle" | "ellipse";
@@ -102,8 +146,7 @@ export interface DrawingPage {
   id: string;
   name: string;
   nodes: ComponentNode[];
-  wires: Wire[];
-  junctions: Point[];
+  nets: Net[];
   annotations: Annotation[];
   shapes: DrawingShape[];
 }
@@ -132,17 +175,16 @@ export interface SelectionRef {
   label?: NodeLabelKind;
 }
 
-export function junctionSelectionId(point: Point): string {
-  return `junction:${point.x.toFixed(3)}:${point.y.toFixed(3)}`;
+export function junctionSelectionId(junction: Pick<Junction, "id"> | string): string {
+  return `junction:${typeof junction === "string" ? junction : junction.id}`;
 }
 
-export function junctionPointFromSelectionId(id: string): Point | null {
-  const [kind, x, y] = id.split(":");
-  if (kind !== "junction" || x === undefined || y === undefined) {
+export function junctionIdFromSelectionId(id: string): string | null {
+  const [kind, junctionId] = id.split(":");
+  if (kind !== "junction" || !junctionId) {
     return null;
   }
-  const point = { x: Number(x), y: Number(y) };
-  return Number.isFinite(point.x) && Number.isFinite(point.y) ? point : null;
+  return junctionId;
 }
 
 export type DiagnosticSeverity = "error" | "warning";
@@ -173,19 +215,67 @@ export function createIdentifier(prefix: string): string {
   return `${prefix}_${globalThis.crypto.randomUUID()}`;
 }
 
-export function defaultWireName(index: number): string {
+export function defaultNetName(index: number): string {
   return `N${String(Math.max(1, index + 1)).padStart(3, "0")}`;
 }
 
-export function defaultNetName(index: number): string {
-  return defaultWireName(index);
+export function createEmptyNet(
+  id = createIdentifier("net"),
+  name?: string,
+): Net {
+  return {
+    id,
+    ...(name ? { name } : {}),
+    wires: [],
+    junctions: [],
+  };
 }
 
-export function wireDisplayName(
-  wire: Pick<Wire, "name">,
-  index: number,
-): string {
-  return wire.name?.trim() || defaultWireName(index);
+export interface LocatedWire {
+  net: Net;
+  wire: Wire;
+}
+
+export interface LocatedJunction {
+  net: Net;
+  junction: Junction;
+}
+
+export function allWires(page: DrawingPage): LocatedWire[] {
+  return page.nets.flatMap((net) =>
+    net.wires.map((wire) => ({ net, wire })),
+  );
+}
+
+export function allJunctions(page: DrawingPage): LocatedJunction[] {
+  return page.nets.flatMap((net) =>
+    net.junctions.map((junction) => ({ net, junction })),
+  );
+}
+
+export function findWire(page: DrawingPage, wireId: string): LocatedWire | null {
+  for (const net of page.nets) {
+    const wire = net.wires.find((candidate) => candidate.id === wireId);
+    if (wire) {
+      return { net, wire };
+    }
+  }
+  return null;
+}
+
+export function findJunction(
+  page: DrawingPage,
+  junctionId: string,
+): LocatedJunction | null {
+  for (const net of page.nets) {
+    const junction = net.junctions.find(
+      (candidate) => candidate.id === junctionId,
+    );
+    if (junction) {
+      return { net, junction };
+    }
+  }
+  return null;
 }
 
 export function createEmptyPage(
@@ -196,8 +286,7 @@ export function createEmptyPage(
     id,
     name,
     nodes: [],
-    wires: [],
-    junctions: [],
+    nets: [],
     annotations: [],
     shapes: [],
   };
@@ -296,17 +385,30 @@ function parsePoint(value: unknown, field: string): Point {
   };
 }
 
-function parseAnchor(value: unknown, field: string): ConnectionAnchor | undefined {
-  if (value === undefined) {
-    return undefined;
-  }
+function parseWireEndpoint(value: unknown, field: string): WireEndpoint {
   if (!isRecord(value)) {
-    throw new ProjectFormatError("invalid-field", `${field} must be a connection anchor.`);
+    throw new ProjectFormatError("invalid-field", `${field} must be a wire endpoint.`);
   }
-  return {
-    deviceId: expectString(value.deviceId, `${field}.deviceId`),
-    pinId: expectString(value.pinId, `${field}.pinId`),
-  };
+  switch (value.kind) {
+    case "pin":
+      return {
+        kind: "pin",
+        deviceId: expectString(value.deviceId, `${field}.deviceId`),
+        pinId: expectString(value.pinId, `${field}.pinId`),
+      };
+    case "junction":
+      return {
+        kind: "junction",
+        junctionId: expectString(value.junctionId, `${field}.junctionId`),
+      };
+    case "open":
+      return { kind: "open" };
+    default:
+      throw new ProjectFormatError(
+        "invalid-field",
+        `${field}.kind is not supported.`,
+      );
+  }
 }
 
 function parseNode(value: unknown, index: number): ComponentNode {
@@ -368,24 +470,86 @@ function parseNodeLabelLayout(
 }
 
 function parseWire(value: unknown, index: number): Wire {
-  const field = `pages[].wires[${index}]`;
+  const field = `pages[].nets[].wires[${index}]`;
   if (!isRecord(value) || !Array.isArray(value.points)) {
     throw new ProjectFormatError("invalid-field", `${field} must contain a points array.`);
   }
-  const startAnchor = parseAnchor(value.startAnchor, `${field}.startAnchor`);
-  const endAnchor = parseAnchor(value.endAnchor, `${field}.endAnchor`);
-  const name =
-    value.name === undefined
-      ? undefined
-      : expectString(value.name, `${field}.name`);
+  if (value.points.length < 2) {
+    throw new ProjectFormatError(
+      "invalid-field",
+      `${field}.points must contain at least two points.`,
+    );
+  }
   return {
     id: expectString(value.id, `${field}.id`),
     points: value.points.map((point, pointIndex) =>
       parsePoint(point, `${field}.points[${pointIndex}]`),
     ),
+    start: parseWireEndpoint(value.start, `${field}.start`),
+    end: parseWireEndpoint(value.end, `${field}.end`),
+  };
+}
+
+function parseJunction(value: unknown, index: number): Junction {
+  const field = `pages[].nets[].junctions[${index}]`;
+  if (!isRecord(value)) {
+    throw new ProjectFormatError("invalid-field", `${field} must be an object.`);
+  }
+  return {
+    id: expectString(value.id, `${field}.id`),
+    point: parsePoint(value.point, `${field}.point`),
+  };
+}
+
+function parseNet(value: unknown, index: number): Net {
+  const field = `pages[].nets[${index}]`;
+  if (
+    !isRecord(value) ||
+    !Array.isArray(value.wires) ||
+    !Array.isArray(value.junctions)
+  ) {
+    throw new ProjectFormatError(
+      "invalid-field",
+      `${field} must contain wires and junctions arrays.`,
+    );
+  }
+  const junctionIds = new Set(
+    value.junctions.map((junction, junctionIndex) => {
+      if (!isRecord(junction)) {
+        throw new ProjectFormatError(
+          "invalid-field",
+          `${field}.junctions[${junctionIndex}] must be an object.`,
+        );
+      }
+      return expectString(
+        junction.id,
+        `${field}.junctions[${junctionIndex}].id`,
+      );
+    }),
+  );
+  const wires = value.wires.map(parseWire);
+  for (const wire of wires) {
+    for (const endpoint of [wire.start, wire.end]) {
+      if (
+        endpoint.kind === "junction" &&
+        !junctionIds.has(endpoint.junctionId)
+      ) {
+        throw new ProjectFormatError(
+          "invalid-field",
+          `${field}.wires contains a reference to unknown junction ${endpoint.junctionId}.`,
+        );
+      }
+    }
+  }
+  const name =
+    value.name === undefined
+      ? undefined
+      : expectString(value.name, `${field}.name`).trim();
+  return {
+    id: expectString(value.id, `${field}.id`),
     ...(name ? { name } : {}),
-    ...(startAnchor ? { startAnchor } : {}),
-    ...(endAnchor ? { endAnchor } : {}),
+    wires,
+    junctions: value.junctions.map(parseJunction),
   };
 }
 
@@ -407,6 +571,9 @@ function parseAnnotation(value: unknown, index: number): Annotation {
     ...(value.wireId === undefined
       ? {}
       : { wireId: expectString(value.wireId, `${field}.wireId`) }),
+    ...(value.netId === undefined
+      ? {}
+      : { netId: expectString(value.netId, `${field}.netId`) }),
   };
 }
 
@@ -436,8 +603,7 @@ function parsePage(value: unknown, index: number): DrawingPage {
   if (
     !isRecord(value) ||
     !Array.isArray(value.nodes) ||
-    !Array.isArray(value.wires) ||
-    !Array.isArray(value.junctions) ||
+    !Array.isArray(value.nets) ||
     !Array.isArray(value.annotations) ||
     !Array.isArray(value.shapes)
   ) {
@@ -447,10 +613,7 @@ function parsePage(value: unknown, index: number): DrawingPage {
     id: expectString(value.id, `${field}.id`),
     name: expectString(value.name, `${field}.name`),
     nodes: value.nodes.map(parseNode),
-    wires: value.wires.map(parseWire),
-    junctions: value.junctions.map((point, pointIndex) =>
-      parsePoint(point, `${field}.junctions[${pointIndex}]`),
-    ),
+    nets: value.nets.map(parseNet),
     annotations: value.annotations.map(parseAnnotation),
     shapes: value.shapes.map(parseShape),
   };
@@ -502,7 +665,11 @@ export function parseProjectText(text: string): DrawicDocument {
     ...document.pages.flatMap((page) => [
       page.id,
       ...page.nodes.map((node) => node.id),
-      ...page.wires.map((wire) => wire.id),
+      ...page.nets.map((net) => net.id),
+      ...page.nets.flatMap((net) => net.wires.map((wire) => wire.id)),
+      ...page.nets.flatMap((net) =>
+        net.junctions.map((junction) => junction.id),
+      ),
       ...page.annotations.map((annotation) => annotation.id),
       ...page.shapes.map((shape) => shape.id),
     ]),

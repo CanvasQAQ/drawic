@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { createEmptyPage } from "../src/core/model";
+import { createEmptyPage, type SymbolDefinition } from "../src/core/model";
 import { exportSpice, importSpice } from "../src/core/spice";
-import { testLibrary, twoPinSymbol } from "./fixtures";
+import { addTestNet, addTestWire, testLibrary, twoPinSymbol } from "./fixtures";
 
 describe("SPICE interchange", () => {
   it("exports a deterministic golden netlist", () => {
@@ -67,5 +67,153 @@ describe("SPICE interchange", () => {
     const result = exportSpice(page, testLibrary);
     expect(result.unsupportedDevices).toEqual(["U1: Operational Amplifier"]);
     expect(result.text).toContain("* Not exported by Drawic 0.2:");
+  });
+
+  it("ties the bulk node of a three-terminal MOS symbol to its source", () => {
+    const nmos: SymbolDefinition = {
+      id: "nmos",
+      label: "NMOS",
+      category: "transistor",
+      electrical: true,
+      palette: true,
+      frame: { x: -24, y: -24, width: 48, height: 48 },
+      pins: [
+        { key: "D", role: "drain", side: "north" },
+        { key: "G", role: "gate", side: "west" },
+        { key: "S", role: "source", side: "south" },
+      ],
+      file: "nmos.svg",
+      svgBody: "",
+    };
+    const page = createEmptyPage("Three-terminal MOS");
+    page.nodes.push({
+      id: "m1",
+      symbolId: "nmos",
+      reference: "M1",
+      value: "NMOS",
+      x: 100,
+      y: 100,
+      rotation: 0,
+      mirrored: false,
+    });
+    addTestNet(page, "net_drain", "DRAIN");
+    addTestNet(page, "net_gate", "GATE");
+    addTestNet(page, "net_source", "SOURCE");
+    addTestWire(
+      page,
+      "net_drain",
+      "drain",
+      [{ x: 100, y: 76 }, { x: 100, y: 40 }],
+      { kind: "pin", deviceId: "m1", pinId: "D" },
+    );
+    addTestWire(
+      page,
+      "net_gate",
+      "gate",
+      [{ x: 76, y: 100 }, { x: 40, y: 100 }],
+      { kind: "pin", deviceId: "m1", pinId: "G" },
+    );
+    addTestWire(
+      page,
+      "net_source",
+      "source",
+      [{ x: 100, y: 124 }, { x: 100, y: 160 }],
+      { kind: "pin", deviceId: "m1", pinId: "S" },
+    );
+    page.annotations.push(
+      {
+        id: "d",
+        kind: "net",
+        text: "DRAIN",
+        x: 100,
+        y: 50,
+        size: 14,
+        netId: "net_drain",
+        wireId: "drain",
+      },
+      {
+        id: "g",
+        kind: "net",
+        text: "GATE",
+        x: 50,
+        y: 100,
+        size: 14,
+        netId: "net_gate",
+        wireId: "gate",
+      },
+      {
+        id: "s",
+        kind: "net",
+        text: "SOURCE",
+        x: 100,
+        y: 150,
+        size: 14,
+        netId: "net_source",
+        wireId: "source",
+      },
+    );
+
+    expect(exportSpice(page, [nmos]).text).toContain(
+      "M1 DRAIN GATE SOURCE SOURCE NMOS",
+    );
+  });
+
+  it("warns instead of failing when a four-terminal MOS netlist meets a three-terminal symbol", () => {
+    const nmos: SymbolDefinition = {
+      id: "nmos",
+      label: "NMOS",
+      category: "transistor",
+      electrical: true,
+      palette: true,
+      frame: { x: -24, y: -24, width: 48, height: 48 },
+      pins: [
+        { key: "D", role: "drain", side: "north" },
+        { key: "G", role: "gate", side: "west" },
+        { key: "S", role: "source", side: "south" },
+      ],
+      file: "nmos.svg",
+      svgBody: "",
+    };
+    const imported = importSpice("M1 DRAIN GATE SOURCE BULK NMOS\n.end\n", {
+      library: [nmos],
+    });
+    expect(imported.page.nodes).toHaveLength(1);
+    expect(imported.page.annotations).toHaveLength(3);
+    expect(imported.warnings).toEqual([
+      "M1: 1 terminal net(s) omitted because nmos is three-terminal.",
+    ]);
+  });
+
+  it("selects a four-terminal MOS variant when importing a bulk net", () => {
+    const nmos: SymbolDefinition = {
+      id: "nmos",
+      label: "NMOS",
+      category: "transistor",
+      electrical: true,
+      palette: true,
+      frame: { x: -24, y: -24, width: 48, height: 48 },
+      pins: [
+        { key: "D", role: "drain", side: "north" },
+        { key: "G", role: "gate", side: "west" },
+        { key: "S", role: "source", side: "south" },
+      ],
+      file: "nmos.svg",
+      svgBody: "",
+    };
+    const nmosBase: SymbolDefinition = {
+      ...nmos,
+      id: "nmos--base",
+      variantOf: "nmos",
+      variantId: "base",
+      label: "NMOS (4-terminal)",
+      pins: [...nmos.pins, { key: "B", role: "bulk", side: "east" }],
+      file: "variants/nmos--base.svg",
+    };
+    const imported = importSpice("M1 DRAIN GATE SOURCE BULK NMOS\n.end\n", {
+      library: [nmos, nmosBase],
+    });
+    expect(imported.page.nodes[0]?.symbolId).toBe("nmos--base");
+    expect(imported.page.annotations).toHaveLength(4);
+    expect(imported.warnings).toEqual([]);
   });
 });

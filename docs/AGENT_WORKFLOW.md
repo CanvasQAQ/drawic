@@ -15,7 +15,8 @@ Implemented:
 
 - multi-page documents with page create, rename, duplicate, delete, reorder, and
   switching;
-- searchable device library with 109 built-in device records;
+- searchable device library with 109 primary device records and 11 alternate
+  appearances;
 - component placement, marquee selection, multi-selection, movement, deletion,
   rotation, and mirroring;
 - pointer-centered zoom, panning, placement previews, exact port selection, and
@@ -28,6 +29,9 @@ Implemented:
   minimum pin escape that is reapplied on every automatic routing pass;
 - independently movable/hideable device labels plus directly editable text,
   rectangle, and ellipse objects with resize handles;
+- a built-in device pin direction audit with visible escape arrows and JSON
+  correction export;
+- a bottom session console for placement, file, import/export, and error logs;
 - pointer-centered wheel zoom and `F` fit-to-content;
 - project save/open, recovery, dirty-state close protection, SPICE import/export,
   ERC, and SVG/PNG/PDF export;
@@ -123,6 +127,11 @@ Relevant library API:
 - `deviceToMxLibraryEntry` converts one record for draw.io tooling.
 - `parseMxLibraryTitles` is a lightweight import inspection helper.
 
+Built-in pin directions can be reviewed in the **Pin audit** screen. Its
+correction export is described in
+[`DEVICE_PIN_AUDIT.md`](DEVICE_PIN_AUDIT.md). Apply reported changes to the
+source manifest and regenerate the library.
+
 Extend this API rather than parsing generated JSON independently in renderer
 components.
 
@@ -151,23 +160,49 @@ DrawingPage
   id
   name
   nodes[]
-  wires[]
-  junctions[]
+  nets[]
   annotations[]
   shapes[]
+```
+
+Each net owns:
+
+```text
+Net
+  id
+  name?
+  wires[]
+  junctions[]
+```
+
+Each wire is one polyline edge between two electrical endpoints:
+
+```text
+Wire
+  id
+  points[]
+  start: pin | junction | open
+  end:   pin | junction | open
 ```
 
 Important invariants:
 
 - at least one page always exists;
 - all stable IDs are unique within a document;
+- schema version 3 is the current format; version 2 is rejected;
 - page switching is view state and does not modify the document;
-- wire endpoints may bind to `{ deviceId, pinId }`;
+- every wire belongs to exactly one net;
+- a wire endpoint references a device pin, a junction in the same net, or an
+  explicit open end;
+- only genuine branch vertices are stored as junctions; degree-two joins are
+  normalized into one wire;
 - a crossing does not connect without an explicit junction;
-- wire-to-wire endpoint overlap connects only through an explicit junction;
+- wire-to-wire endpoint overlap connects only through an explicit junction or
+  shared net identity;
 - a device pin touching a wire is an electrical contact;
-- wire names and Net Labels merge networks by matching text;
+- net names and Net Labels merge nets by matching text;
 - every connected network exposes one canonical name to all member wires;
+- cross-net crossings render arcs but never create stored topology;
 - future schema versions are rejected;
 - retired preview formats are rejected without migration.
 
@@ -215,6 +250,14 @@ When adding a device definition:
 5. add a device-library test;
 6. check library preview contrast and pin hit targets;
 7. verify SVG/PNG/PDF and SPICE behavior where applicable.
+
+Terminal-variant artwork declares `3terminal` or `4terminal` in its root
+`data-variant` attribute. The source manifest's pin list is the electrical
+definition; a 3-terminal appearance hides its bulk pin, while the corresponding
+`base` appearance exposes D/G/S/B. The current library therefore ships both the
+six default three-terminal MOS symbols and six four-terminal `--base`
+alternates. Alternate appearances are separate stable symbol IDs and may be
+selected from the device library when eligible.
 
 ## 5. Parallel agent ownership
 
@@ -323,11 +366,13 @@ exactly one Windows x64 ZIP plus `SHA256SUMS.txt` and `UNSIGNED-RELEASE.txt`.
 - SPICE: `tests/spice.test.ts`
 - exports: `tests/export.test.ts`
 - device catalog and conversion: `tests/deviceLibrary.test.ts`
+- device pin audit and correction export: `tests/pinAudit.test.tsx`
+- session console and toolbar behavior: `tests/consolePanel.test.tsx`
 - page UI: `tests/pageBar.test.tsx`
 - canvas interactions: `tests/canvasInteraction.test.tsx`
 - wire endpoint resolution and movement plans: `tests/wireMotion.test.ts`
 - wire crossing hops: `tests/wireHops.test.ts`
-- collinear overlap normalization: `tests/wireMerge.test.ts`
+- Net graph canonicalization: `tests/netGraph.test.ts`
 - desktop close protection and files: `tests/closeGuard.test.ts`,
   `tests/fileStore.test.ts`
 - packaging and release-retention expectations: `tests/packaging.test.ts`,

@@ -1,10 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { buildConnectivity, pinGraphKey } from "../src/core/connectivity";
 import { createEmptyPage } from "../src/core/model";
-import { testLibrary, twoPinSymbol } from "./fixtures";
+import {
+  addTestJunction,
+  addTestNet,
+  addTestWire,
+  testLibrary,
+  twoPinSymbol,
+} from "./fixtures";
 
-describe("wire connectivity", () => {
-  it("connects a device pin to a wire", () => {
+describe("net graph connectivity", () => {
+  it("connects a pin endpoint to the wire's net", () => {
     const page = createEmptyPage("Connectivity");
     page.nodes.push({
       id: "r1",
@@ -16,87 +22,132 @@ describe("wire connectivity", () => {
       rotation: 0,
       mirrored: false,
     });
-    page.wires.push({
-      id: "w1",
-      points: [
+    addTestWire(
+      page,
+      "net_1",
+      "w1",
+      [
         { x: 100, y: 80 },
         { x: 180, y: 80 },
       ],
-    });
+      { kind: "pin", deviceId: "r1", pinId: "1" },
+    );
     const connectivity = buildConnectivity(page, testLibrary);
-    const firstPin = connectivity.networkIdByPin.get(pinGraphKey("r1", 0));
-    const wire = connectivity.networkIdByWire.get("w1");
-    expect(firstPin).toBe(wire);
-    expect(connectivity.networkIdByPin.get(pinGraphKey("r1", 1))).not.toBe(wire);
+    expect(connectivity.networkIdByPin.get(pinGraphKey("r1", 0))).toBe(
+      connectivity.networkIdByWire.get("w1"),
+    );
+    expect(connectivity.networkIdByPin.get(pinGraphKey("r1", 1))).not.toBe(
+      connectivity.networkIdByWire.get("w1"),
+    );
+  });
+
+  it("keeps geometry-only crossings in separate nets", () => {
+    const page = createEmptyPage("Crossing");
+    addTestWire(
+      page,
+      "net_h",
+      "horizontal",
+      [
+        { x: 0, y: 100 },
+        { x: 200, y: 100 },
+      ],
+    );
+    addTestWire(
+      page,
+      "net_v",
+      "vertical",
+      [
+        { x: 100, y: 0 },
+        { x: 100, y: 200 },
+      ],
+    );
+    const connectivity = buildConnectivity(page, testLibrary);
+    expect(connectivity.networkIdByWire.get("horizontal")).not.toBe(
+      connectivity.networkIdByWire.get("vertical"),
+    );
     expect(connectivity.junctionPoints).toEqual([]);
   });
 
-  it("keeps a crossing separate from a junction", () => {
-    const page = createEmptyPage("Crossing");
-    page.wires.push(
-      { id: "horizontal", points: [{ x: 0, y: 100 }, { x: 200, y: 100 }] },
-      { id: "vertical", points: [{ x: 100, y: 0 }, { x: 100, y: 200 }] },
+  it("treats all wires owned by one net as electrically connected", () => {
+    const page = createEmptyPage("Net ownership");
+    addTestWire(
+      page,
+      "net_1",
+      "a",
+      [
+        { x: 0, y: 0 },
+        { x: 50, y: 0 },
+      ],
     );
-    const crossing = buildConnectivity(page, testLibrary);
-    expect(crossing.networkIdByWire.get("horizontal")).not.toBe(
-      crossing.networkIdByWire.get("vertical"),
-    );
-
-    page.junctions.push({ x: 100, y: 100 });
-    const joined = buildConnectivity(page, testLibrary);
-    expect(joined.networkIdByWire.get("horizontal")).toBe(
-      joined.networkIdByWire.get("vertical"),
-    );
-  });
-
-  it("keeps passive endpoint overlap separate until a junction is added", () => {
-    const page = createEmptyPage("Endpoint");
-    page.wires.push(
-      { id: "a", points: [{ x: 0, y: 100 }, { x: 200, y: 100 }] },
-      { id: "b", points: [{ x: 100, y: 100 }, { x: 100, y: 180 }] },
+    addTestWire(
+      page,
+      "net_1",
+      "b",
+      [
+        { x: 500, y: 500 },
+        { x: 600, y: 500 },
+      ],
     );
     const connectivity = buildConnectivity(page, testLibrary);
-    expect(connectivity.networkIdByWire.get("a")).not.toBe(
+    expect(connectivity.networkIdByWire.get("a")).toBe(
       connectivity.networkIdByWire.get("b"),
     );
-    expect(connectivity.junctionPoints).toEqual([]);
-
-    page.junctions.push({ x: 100, y: 100 });
-    const joined = buildConnectivity(page, testLibrary);
-    expect(joined.networkIdByWire.get("a")).toBe(
-      joined.networkIdByWire.get("b"),
-    );
-    expect(joined.junctionPoints).toEqual([{ x: 100, y: 100 }]);
   });
 
-  it("merges nets that use the same named label", () => {
-    const page = createEmptyPage("Nets");
-    page.wires.push(
-      { id: "a", points: [{ x: 0, y: 0 }, { x: 50, y: 0 }] },
-      { id: "b", points: [{ x: 200, y: 0 }, { x: 250, y: 0 }] },
-    );
-    page.annotations.push(
-      { id: "la", kind: "net", text: "VOUT", x: 20, y: 0, size: 14 },
-      { id: "lb", kind: "net", text: "VOUT", x: 220, y: 0, size: 14 },
+  it("renders only explicit junction vertices as junction points", () => {
+    const page = createEmptyPage("Junctions");
+    addTestNet(page, "net_1");
+    addTestJunction(page, "net_1", "junction_1", 100, 100);
+    addTestWire(
+      page,
+      "net_1",
+      "a",
+      [
+        { x: 0, y: 100 },
+        { x: 100, y: 100 },
+      ],
+      { kind: "open" },
+      { kind: "junction", junctionId: "junction_1" },
     );
     const connectivity = buildConnectivity(page, testLibrary);
-    expect(connectivity.networkIdByWire.get("a")).toBe(connectivity.networkIdByWire.get("b"));
+    expect(connectivity.junctionPoints).toEqual([{ x: 100, y: 100 }]);
+    expect(connectivity.networkIdByJunction.get("junction_1")).toBe(
+      connectivity.networkIdByWire.get("a"),
+    );
   });
 
-  it("merges disconnected wires with the same explicit name", () => {
-    const page = createEmptyPage("Wire names");
-    page.wires.push(
-      {
-        id: "a",
-        name: "VREF",
-        points: [{ x: 0, y: 0 }, { x: 50, y: 0 }],
-      },
-      {
-        id: "b",
-        name: "VREF",
-        points: [{ x: 200, y: 0 }, { x: 250, y: 0 }],
-      },
+  it("merges structural names and visible labels into one network", () => {
+    const page = createEmptyPage("Names");
+    addTestNet(page, "net_a", "VOUT");
+    addTestNet(page, "net_b", "VOUT");
+    addTestWire(
+      page,
+      "net_a",
+      "a",
+      [
+        { x: 0, y: 0 },
+        { x: 50, y: 0 },
+      ],
     );
+    addTestWire(
+      page,
+      "net_b",
+      "b",
+      [
+        { x: 200, y: 0 },
+        { x: 250, y: 0 },
+      ],
+    );
+    page.annotations.push({
+      id: "label",
+      kind: "net",
+      text: "VOUT",
+      x: 20,
+      y: 0,
+      size: 14,
+      netId: "net_a",
+      wireId: "a",
+    });
     const connectivity = buildConnectivity(page, testLibrary);
     expect(connectivity.networkIdByWire.get("a")).toBe(
       connectivity.networkIdByWire.get("b"),
@@ -105,76 +156,32 @@ describe("wire connectivity", () => {
       connectivity.netNamesByGroup.get(
         connectivity.networkIdByWire.get("a")!,
       ),
-    ).toEqual(["VREF"]);
+    ).toEqual(["VOUT"]);
   });
 
-  it("marks intersections inside an already merged net", () => {
-    const page = createEmptyPage("Merged crossing");
-    page.wires.push(
-      {
-        id: "horizontal",
-        name: "VCC",
-        points: [{ x: 0, y: 100 }, { x: 200, y: 100 }],
-      },
-      {
-        id: "vertical",
-        name: "VCC",
-        points: [{ x: 100, y: 0 }, { x: 100, y: 200 }],
-      },
-    );
-    const connectivity = buildConnectivity(page, testLibrary);
-    expect(connectivity.junctionPoints).toContainEqual({ x: 100, y: 100 });
-  });
-
-  it("assigns one canonical name to every wire in a connected net", () => {
-    const page = createEmptyPage("Canonical names");
-    page.wires.push(
-      {
-        id: "named",
-        name: "VOUT",
-        points: [{ x: 0, y: 100 }, { x: 200, y: 100 }],
-      },
-      {
-        id: "unnamed",
-        points: [{ x: 100, y: 100 }, { x: 100, y: 180 }],
-      },
-    );
-    page.junctions.push({ x: 100, y: 100 });
-    const connectivity = buildConnectivity(page, testLibrary);
-    expect(connectivity.netNameByWire.get("named")).toBe("VOUT");
-    expect(connectivity.netNameByWire.get("unnamed")).toBe("VOUT");
-  });
-
-  it("gives connected unnamed wires the same generated net name", () => {
+  it("assigns one canonical generated name to every wire in a net", () => {
     const page = createEmptyPage("Generated names");
-    page.wires.push(
-      { id: "a", points: [{ x: 0, y: 100 }, { x: 200, y: 100 }] },
-      { id: "b", points: [{ x: 100, y: 100 }, { x: 100, y: 180 }] },
+    addTestWire(
+      page,
+      "net_1",
+      "a",
+      [
+        { x: 0, y: 100 },
+        { x: 200, y: 100 },
+      ],
     );
-    page.junctions.push({ x: 100, y: 100 });
+    addTestWire(
+      page,
+      "net_1",
+      "b",
+      [
+        { x: 100, y: 100 },
+        { x: 100, y: 180 },
+      ],
+    );
     const connectivity = buildConnectivity(page, testLibrary);
     expect(connectivity.netNameByWire.get("a")).toBe(
       connectivity.netNameByWire.get("b"),
     );
-  });
-
-  it("merges deliberately overlapping collinear wires without showing a redundant junction", () => {
-    const page = createEmptyPage("Collinear overlap");
-    page.wires.push(
-      {
-        id: "existing",
-        points: [{ x: 0, y: 100 }, { x: 200, y: 100 }],
-      },
-      {
-        id: "overlap",
-        points: [{ x: 100, y: 100 }, { x: 200, y: 100 }],
-      },
-    );
-    page.junctions.push({ x: 100, y: 100 });
-    const connectivity = buildConnectivity(page, testLibrary);
-    expect(connectivity.networkIdByWire.get("existing")).toBe(
-      connectivity.networkIdByWire.get("overlap"),
-    );
-    expect(connectivity.junctionPoints).toEqual([]);
   });
 });

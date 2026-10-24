@@ -1,3 +1,4 @@
+import React from "react";
 import type { SVGProps } from "react";
 
 export type IconName =
@@ -17,6 +18,7 @@ export type IconName =
   | "mirror"
   | "delete"
   | "export"
+  | "audit"
   | "check"
   | "close"
   | "chevron";
@@ -141,6 +143,14 @@ export function Icon({
       return (
         <svg {...common}>
           <path d="M12 15V3m-5 5 5-5 5 5M4 14v7h16v-7" />
+        </svg>
+      );
+    case "audit":
+      return (
+        <svg {...common}>
+          <circle cx="12" cy="12" r="4" />
+          <path d="M12 2v4M12 18v4M2 12h4M18 12h4" />
+          <path d="m12 2 2 2-2 2M12 22l-2-2 2-2M2 12l2-2 2 2M22 12l-2 2-2-2" />
         </svg>
       );
     case "check":

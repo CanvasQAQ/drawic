@@ -1,11 +1,11 @@
 {
-  "source": "analog-canvas-device-svg-20261023/device-svg-export",
+  "source": "analog-canvas-device-svg-20261024/device-svg-export",
   "suppliedBy": "CanvasQAQ",
-  "suppliedOn": "2026-10-23",
+  "suppliedOn": "2026-10-24",
   "usageBasis": "User-supplied static artwork and pin metadata; authorized for Drawic releases by the repository owner.",
   "copiedFonts": false,
   "entryCount": 109,
-  "svgCount": 109,
+  "svgCount": 126,
   "files": [
     {
       "path": "svg/adc.svg",
@@ -476,6 +476,91 @@
       "path": "svg/variable-resistor.svg",
       "sha256": "d4e20784243b5f93ee7353ab77d23d6af6c570695e21d2fb59a7723858a0a120",
       "bytes": 932
+    },
+    {
+      "path": "svg/variants/cccs--diamond.svg",
+      "sha256": "76307ab54d1529d0eb6929188a4517b6f0155880cc361f33bf285ccd8bfa9bd6",
+      "bytes": 1067
+    },
+    {
+      "path": "svg/variants/ccvs--diamond.svg",
+      "sha256": "7bec76cadf2f3c9da00b907e584e7e10d278f8d179b4e3d2448e51f016226c02",
+      "bytes": 1396
+    },
+    {
+      "path": "svg/variants/current-source--diamond.svg",
+      "sha256": "509e9f7af49ee620322ed491aaa0b416e32f133843f27afa13428c6812360c9b",
+      "bytes": 1070
+    },
+    {
+      "path": "svg/variants/depletion-nmos--base.svg",
+      "sha256": "34b9ffe34c530c6cb46be32aef01aa5d338f07b07e4ca7c71054a35ab5398e96",
+      "bytes": 1521
+    },
+    {
+      "path": "svg/variants/depletion-nmos--textbook-3terminal.svg",
+      "sha256": "07aba74ae2d50c94259e8a202788cb7db8740805b198dad17bf92ca58134908d",
+      "bytes": 1327
+    },
+    {
+      "path": "svg/variants/depletion-pmos--base.svg",
+      "sha256": "b323091aeeb5fbb7010078fd63677e608163dca9ee83f1e3ef588d69b3115519",
+      "bytes": 1417
+    },
+    {
+      "path": "svg/variants/depletion-pmos--textbook-3terminal.svg",
+      "sha256": "c4f56d2bc6dc3828494865c16f8a63c04cdc0286956cb75a980320e6d07ae16f",
+      "bytes": 1330
+    },
+    {
+      "path": "svg/variants/ndmos--base.svg",
+      "sha256": "bd1e0ab2ce6b7ee117f178d2a7b6721f92d3c8a0491a762909b93a4b5d7000e6",
+      "bytes": 1512
+    },
+    {
+      "path": "svg/variants/ndmos--standard-3terminal.svg",
+      "sha256": "cb565c6d0e8f91c8ce1ed48b6821aa4caa162bc8750849b31b9d3dadd421efe6",
+      "bytes": 1318
+    },
+    {
+      "path": "svg/variants/nmos--base.svg",
+      "sha256": "7ecc23c56ddb1df1935a534e0ff0231e86eba78f57612a8ff134324ecc930d05",
+      "bytes": 1370
+    },
+    {
+      "path": "svg/variants/nmos--textbook-3terminal.svg",
+      "sha256": "d0849fc2e07977152c43237f10e139a8a730739fed94c271fdc01faa615ae06c",
+      "bytes": 1176
+    },
+    {
+      "path": "svg/variants/pdmos--base.svg",
+      "sha256": "7397aeda994b01b96fb636b89be8cd549eb2a6e94f75e2409d23217f84c49aff",
+      "bytes": 1405
+    },
+    {
+      "path": "svg/variants/pdmos--standard-3terminal.svg",
+      "sha256": "c3836415e1f7c3cacec82b50c0fe2d4055d7059e4f3e6e73e84ec4ea6c2848ea",
+      "bytes": 1318
+    },
+    {
+      "path": "svg/variants/pmos--base.svg",
+      "sha256": "e4708f8f749d61a114b4c9c556b5aeb4b6aa49cd7ee2ce607275360a348253e2",
+      "bytes": 1266
+    },
+    {
+      "path": "svg/variants/pmos--textbook-3terminal.svg",
+      "sha256": "dc8c29cab360c91d0b1cf125a488c93cbdc081ba253b85044b991286533dcc41",
+      "bytes": 1179
+    },
+    {
+      "path": "svg/variants/vccs--diamond.svg",
+      "sha256": "5ef2485923e60c8bf4b27965b92304325e872702e7b6111a8b059ceb9fbadfd7",
+      "bytes": 1067
+    },
+    {
+      "path": "svg/variants/vcvs--diamond.svg",
+      "sha256": "cfc0aed8c6998ae47cd3c0568d1c5a84f0e69acefdc36837762bf3adeef97860",
+      "bytes": 1396
     },
     {
       "path": "svg/vccs.svg",

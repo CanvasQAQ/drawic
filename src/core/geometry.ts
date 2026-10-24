@@ -173,6 +173,34 @@ export function nodeBounds(node: ComponentNode, symbol: SymbolDefinition): {
   };
 }
 
+export function nodeSelectionBounds(node: ComponentNode, symbol: SymbolDefinition): {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+} {
+  const bounds = symbol.selectionBox ?? symbol.frame;
+  const centerX = symbol.frame.x + symbol.frame.width / 2;
+  const centerY = symbol.frame.y + symbol.frame.height / 2;
+  const corners = [
+    { x: bounds.x, y: bounds.y },
+    { x: bounds.x + bounds.width, y: bounds.y },
+    { x: bounds.x, y: bounds.y + bounds.height },
+    { x: bounds.x + bounds.width, y: bounds.y + bounds.height },
+  ].map((point) =>
+    transformLocalPoint(node, {
+      x: point.x - centerX,
+      y: point.y - centerY,
+    }),
+  );
+  return {
+    minX: Math.min(...corners.map((point) => point.x)),
+    minY: Math.min(...corners.map((point) => point.y)),
+    maxX: Math.max(...corners.map((point) => point.x)),
+    maxY: Math.max(...corners.map((point) => point.y)),
+  };
+}
+
 export function orthogonalPath(start: Point, end: Point): Point[] {
   if (pointsEqual(start, end)) {
     return [start, end];

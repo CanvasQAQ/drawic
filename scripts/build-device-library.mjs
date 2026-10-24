@@ -99,6 +99,332 @@ function numberAttribute(source, name) {
   return match ? Number(match[1]) : null;
 }
 
+function attributes(source) {
+  const result = {};
+  for (const match of source.matchAll(/([:\w-]+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g)) {
+    result[match[1]] = match[2] ?? match[3] ?? "";
+  }
+  return result;
+}
+
+function cubicValue(start, control1, control2, end, t) {
+  const inverse = 1 - t;
+  return (
+    inverse ** 3 * start +
+    3 * inverse ** 2 * t * control1 +
+    3 * inverse * t ** 2 * control2 +
+    t ** 3 * end
+  );
+}
+
+function cubicExtrema(start, control1, control2, end) {
+  const a = -start + 3 * control1 - 3 * control2 + end;
+  const b = 2 * (start - 2 * control1 + control2);
+  const c = control1 - start;
+  const roots = [];
+  const addRoot = (value) => {
+    if (Number.isFinite(value) && value > 0 && value < 1) {
+      roots.push(value);
+    }
+  };
+  if (Math.abs(a) < 1e-9) {
+    if (Math.abs(b) > 1e-9) {
+      addRoot(-c / b);
+    }
+  } else {
+    const discriminant = b * b - 4 * a * c;
+    if (discriminant >= 0) {
+      const root = Math.sqrt(discriminant);
+      addRoot((-b + root) / (2 * a));
+      addRoot((-b - root) / (2 * a));
+    }
+  }
+  const values = [start, end];
+  for (const t of roots) {
+    values.push(cubicValue(start, control1, control2, end, t));
+  }
+  return values;
+}
+
+function pathBounds(path) {
+  const tokens = path.match(
+    /[a-zA-Z]|[-+]?(?:\d*\.\d+|\d+\.?)(?:[eE][-+]?\d+)?/g,
+  );
+  if (!tokens) {
+    return null;
+  }
+  const xs = [];
+  const ys = [];
+  let index = 0;
+  let command = "";
+  let current = { x: 0, y: 0 };
+  let subpathStart = { x: 0, y: 0 };
+  let previousCubicControl = null;
+  let previousQuadraticControl = null;
+
+  const add = (point) => {
+    xs.push(point.x);
+    ys.push(point.y);
+  };
+  const readNumber = () => {
+    const value = Number(tokens[index]);
+    if (tokens[index] === undefined || !Number.isFinite(value)) {
+      throw new Error(`Invalid SVG path near token ${index}.`);
+    }
+    index += 1;
+    return value;
+  };
+
+  for (let iteration = 0; index < tokens.length; iteration += 1) {
+    if (iteration > 10000) {
+      throw new Error("SVG path contains too many commands.");
+    }
+    if (/^[a-zA-Z]$/.test(tokens[index])) {
+      command = tokens[index];
+      index += 1;
+      if (command === "Z" || command === "z") {
+        current = { ...subpathStart };
+        add(current);
+        previousCubicControl = null;
+        previousQuadraticControl = null;
+        continue;
+      }
+    }
+    if (!command) {
+      throw new Error("SVG path starts without a command.");
+    }
+
+    const relative = command === command.toLowerCase();
+    const origin = relative ? current : { x: 0, y: 0 };
+    const upper = command.toUpperCase();
+    if (upper === "M") {
+      const point = {
+        x: origin.x + readNumber(),
+        y: origin.y + readNumber(),
+      };
+      current = point;
+      subpathStart = { ...point };
+      add(point);
+      command = relative ? "l" : "L";
+      previousCubicControl = null;
+      previousQuadraticControl = null;
+    } else if (upper === "L") {
+      const point = {
+        x: origin.x + readNumber(),
+        y: origin.y + readNumber(),
+      };
+      add(point);
+      current = point;
+      previousCubicControl = null;
+      previousQuadraticControl = null;
+    } else if (upper === "H") {
+      current = { x: origin.x + readNumber(), y: current.y };
+      add(current);
+      previousCubicControl = null;
+      previousQuadraticControl = null;
+    } else if (upper === "V") {
+      current = { x: current.x, y: origin.y + readNumber() };
+      add(current);
+      previousCubicControl = null;
+      previousQuadraticControl = null;
+    } else if (upper === "C") {
+      const start = { ...current };
+      const first = {
+        x: origin.x + readNumber(),
+        y: origin.y + readNumber(),
+      };
+      const second = {
+        x: origin.x + readNumber(),
+        y: origin.y + readNumber(),
+      };
+      const end = {
+        x: origin.x + readNumber(),
+        y: origin.y + readNumber(),
+      };
+      xs.push(...cubicExtrema(start.x, first.x, second.x, end.x));
+      ys.push(...cubicExtrema(start.y, first.y, second.y, end.y));
+      current = end;
+      previousCubicControl = second;
+      previousQuadraticControl = null;
+    } else if (upper === "S") {
+      const start = { ...current };
+      const first = previousCubicControl
+        ? {
+            x: current.x * 2 - previousCubicControl.x,
+            y: current.y * 2 - previousCubicControl.y,
+          }
+        : start;
+      const second = {
+        x: origin.x + readNumber(),
+        y: origin.y + readNumber(),
+      };
+      const end = {
+        x: origin.x + readNumber(),
+        y: origin.y + readNumber(),
+      };
+      xs.push(...cubicExtrema(start.x, first.x, second.x, end.x));
+      ys.push(...cubicExtrema(start.y, first.y, second.y, end.y));
+      current = end;
+      previousCubicControl = second;
+      previousQuadraticControl = null;
+    } else if (upper === "Q") {
+      const start = { ...current };
+      const control = {
+        x: origin.x + readNumber(),
+        y: origin.y + readNumber(),
+      };
+      const end = {
+        x: origin.x + readNumber(),
+        y: origin.y + readNumber(),
+      };
+      xs.push(start.x, control.x, end.x);
+      ys.push(start.y, control.y, end.y);
+      current = end;
+      previousQuadraticControl = control;
+      previousCubicControl = null;
+    } else if (upper === "T") {
+      const start = { ...current };
+      const control = previousQuadraticControl
+        ? {
+            x: current.x * 2 - previousQuadraticControl.x,
+            y: current.y * 2 - previousQuadraticControl.y,
+          }
+        : start;
+      const end = {
+        x: origin.x + readNumber(),
+        y: origin.y + readNumber(),
+      };
+      xs.push(start.x, control.x, end.x);
+      ys.push(start.y, control.y, end.y);
+      current = end;
+      previousQuadraticControl = control;
+      previousCubicControl = null;
+    } else {
+      throw new Error(`Unsupported SVG path command ${command}.`);
+    }
+  }
+
+  if (xs.length === 0 || ys.length === 0) {
+    return null;
+  }
+  return {
+    minX: Math.min(...xs),
+    minY: Math.min(...ys),
+    maxX: Math.max(...xs),
+    maxY: Math.max(...ys),
+  };
+}
+
+function textBounds(attributesSource, content) {
+  const values = attributes(attributesSource);
+  const text = content
+    .replace(/<[^>]+>/g, "")
+    .replace(/&(?:#\d+|#x[\da-f]+|[a-z]+);/gi, " ")
+    .trim();
+  if (!text) {
+    return null;
+  }
+  const x = Number(values.x ?? 0);
+  const y = Number(values.y ?? 0);
+  const fontSize = Number(values["font-size"] ?? 10);
+  const width = Math.max(fontSize * 0.45, text.length * fontSize * 0.58);
+  const anchor = values["text-anchor"] ?? "start";
+  return {
+    minX: anchor === "middle" ? x - width / 2 : anchor === "end" ? x - width : x,
+    minY: y - fontSize * 0.82,
+    maxX: anchor === "middle" ? x + width / 2 : anchor === "end" ? x : x + width,
+    maxY: y + fontSize * 0.25,
+  };
+}
+
+function includeBounds(bounds, next) {
+  if (!next) {
+    return bounds;
+  }
+  if (!bounds) {
+    return { ...next };
+  }
+  bounds.minX = Math.min(bounds.minX, next.minX);
+  bounds.minY = Math.min(bounds.minY, next.minY);
+  bounds.maxX = Math.max(bounds.maxX, next.maxX);
+  bounds.maxY = Math.max(bounds.maxY, next.maxY);
+  return bounds;
+}
+
+export function svgContentBounds(markup) {
+  let bounds = null;
+  for (const match of markup.matchAll(/<(line|polyline|polygon|rect|circle|path)\b([^>]*)>/gi)) {
+    const kind = match[1].toLowerCase();
+    const values = attributes(match[2] ?? "");
+    if (kind === "line") {
+      const x1 = Number(values.x1);
+      const y1 = Number(values.y1);
+      const x2 = Number(values.x2);
+      const y2 = Number(values.y2);
+      if ([x1, y1, x2, y2].every(Number.isFinite)) {
+        bounds = includeBounds(bounds, {
+          minX: Math.min(x1, x2),
+          minY: Math.min(y1, y2),
+          maxX: Math.max(x1, x2),
+          maxY: Math.max(y1, y2),
+        });
+      }
+    } else if (kind === "polyline" || kind === "polygon") {
+      const points = [...(values.points ?? "").matchAll(/(-?[\d.]+)[,\s]+(-?[\d.]+)/g)]
+        .map((pair) => ({ x: Number(pair[1]), y: Number(pair[2]) }))
+        .filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y));
+      if (points.length > 0) {
+        bounds = includeBounds(bounds, {
+          minX: Math.min(...points.map((point) => point.x)),
+          minY: Math.min(...points.map((point) => point.y)),
+          maxX: Math.max(...points.map((point) => point.x)),
+          maxY: Math.max(...points.map((point) => point.y)),
+        });
+      }
+    } else if (kind === "rect") {
+      const x = Number(values.x ?? 0);
+      const y = Number(values.y ?? 0);
+      const width = Number(values.width);
+      const height = Number(values.height);
+      if ([x, y, width, height].every(Number.isFinite)) {
+        bounds = includeBounds(bounds, {
+          minX: x,
+          minY: y,
+          maxX: x + width,
+          maxY: y + height,
+        });
+      }
+    } else if (kind === "circle") {
+      const x = Number(values.cx ?? 0);
+      const y = Number(values.cy ?? 0);
+      const radius = Number(values.r);
+      if ([x, y, radius].every(Number.isFinite)) {
+        bounds = includeBounds(bounds, {
+          minX: x - radius,
+          minY: y - radius,
+          maxX: x + radius,
+          maxY: y + radius,
+        });
+      }
+    } else if (kind === "path" && values.d) {
+      bounds = includeBounds(bounds, pathBounds(values.d));
+    }
+  }
+  for (const match of markup.matchAll(/<text\b([^>]*)>([\s\S]*?)<\/text>/gi)) {
+    bounds = includeBounds(bounds, textBounds(match[1] ?? "", match[2] ?? ""));
+  }
+  if (!bounds) {
+    return null;
+  }
+  const padding = 2;
+  return {
+    minX: bounds.minX - padding,
+    minY: bounds.minY - padding,
+    maxX: bounds.maxX + padding,
+    maxY: bounds.maxY + padding,
+  };
+}
+
 function drawingEndpoints(markup) {
   const points = [];
   for (const match of markup.matchAll(/<line\b([^>]*)>/gi)) {
@@ -112,6 +438,13 @@ function drawingEndpoints(markup) {
     }
   }
   for (const match of markup.matchAll(/<polyline\b([^>]*)>/gi)) {
+    const attributes = match[1] ?? "";
+    const values = attributes.match(/\bpoints\s*=\s*["']([^"']+)["']/i)?.[1] ?? "";
+    for (const pair of values.matchAll(/(-?[\d.]+)[,\s]+(-?[\d.]+)/g)) {
+      points.push({ x: Number(pair[1]), y: Number(pair[2]) });
+    }
+  }
+  for (const match of markup.matchAll(/<polygon\b([^>]*)>/gi)) {
     const attributes = match[1] ?? "";
     const values = attributes.match(/\bpoints\s*=\s*["']([^"']+)["']/i)?.[1] ?? "";
     for (const pair of values.matchAll(/(-?[\d.]+)[,\s]+(-?[\d.]+)/g)) {
@@ -181,17 +514,62 @@ function labelAnchors(entry) {
   };
 }
 
-function searchTerms(entry) {
+function searchTerms(entry, variantId, variantOf) {
   return [
     entry.id,
     entry.label,
     entry.category,
+    variantId,
+    variantOf,
     ...entry.pins.map((pin) => pin.key),
     ...entry.pins.map((pin) => pin.role),
   ]
     .map((term) => String(term).trim().toLowerCase())
     .filter((term, index, all) => term && all.indexOf(term) === index)
     .sort();
+}
+
+function artworkVariant(markup) {
+  return markup.match(/\bdata-variant\s*=\s*["']([^"']+)["']/i)?.[1] ?? null;
+}
+
+function visiblePinsForVariant(entry, variant) {
+  return /(?:^|-)3terminal$/i.test(variant)
+    ? entry.pins.filter(
+        (pin) =>
+          String(pin.role).toLowerCase() !== "bulk" &&
+          String(pin.key).toUpperCase() !== "B",
+      )
+    : entry.pins;
+}
+
+function assertTerminalVariant(entry, pins, markup) {
+  const variant = markup.match(/\bdata-variant\s*=\s*["']([^"']+)["']/i)?.[1];
+  if (!variant) {
+    return;
+  }
+  const hasBulk = pins.some(
+    (pin) =>
+      String(pin.role).toLowerCase() === "bulk" ||
+      String(pin.key).toUpperCase() === "B",
+  );
+  if (/-3terminal\b/i.test(variant) && hasBulk) {
+    throw new Error(
+      `${entry.id} declares ${variant} artwork but includes a bulk pin.`,
+    );
+  }
+  if (/-4terminal\b/i.test(variant) && !hasBulk) {
+    throw new Error(
+      `${entry.id} declares ${variant} artwork but is missing its bulk pin.`,
+    );
+  }
+}
+
+function variantTitle(entry, variant, pins) {
+  if (variant === "base" && pins.some((pin) => pin.role === "bulk")) {
+    return `${entry.label} (4-terminal)`;
+  }
+  return `${entry.label} (${variant})`;
 }
 
 const referencePrefixes = {
@@ -243,27 +621,43 @@ function describeSpice(entry) {
   };
 }
 
-function createDevice(entry, markup, sourceManifest) {
+function createDevice(entry, markup, sourceManifest, options = {}) {
+  const variant = options.variant ?? entry.primaryVariant ?? artworkVariant(markup) ?? "base";
+  const visiblePins = visiblePinsForVariant(entry, variant);
+  assertTerminalVariant(entry, visiblePins, markup);
   const body = sanitizeSvgBody(markup);
-  const visualPins = visualPinPositions(entry, body);
+  const appearanceEntry = { ...entry, pins: visiblePins };
+  const visualPins = visualPinPositions(appearanceEntry, body);
   const { x, y, width, height } = entry.frame;
+  const artworkBounds = svgContentBounds(body);
+  const selectionBox = artworkBounds
+    ? {
+        x: Number(artworkBounds.minX.toFixed(6)),
+        y: Number(artworkBounds.minY.toFixed(6)),
+        width: Number((artworkBounds.maxX - artworkBounds.minX).toFixed(6)),
+        height: Number((artworkBounds.maxY - artworkBounds.minY).toFixed(6)),
+      }
+    : { x, y, width, height };
   return {
-    id: entry.id,
-    title: entry.label,
+    id: options.id ?? entry.id,
+    ...(options.variantOf ? { variantOf: options.variantOf } : {}),
+    variantId: variant,
+    title: options.title ?? entry.label,
     category: entry.category,
-    keywords: searchTerms(entry),
+    keywords: searchTerms(entry, variant, options.variantOf),
     electrical: Boolean(entry.electrical),
     palette: Boolean(entry.palette),
     frame: { x, y, width, height },
+    selectionBox,
     artwork: {
       type: "svg",
       viewBox: `${x} ${y} ${width} ${height}`,
       body,
-      source: entry.file,
+      source: options.sourceFile ?? entry.file,
       sourceSha256: createHash("sha256").update(markup).digest("hex"),
     },
-    pins: entry.pins.map((pin, index) => {
-      const point = visualPins.get(index) ?? fallbackPinPosition(entry, pin, index);
+    pins: visiblePins.map((pin, index) => {
+      const point = visualPins.get(index) ?? fallbackPinPosition(appearanceEntry, pin, index);
       return {
         id: String(pin.key),
         key: String(pin.key),
@@ -296,6 +690,25 @@ export async function buildDeviceLibrary() {
   for (const entry of manifest.entries) {
     const markup = await readFile(join(sourceRoot, "svg", basename(entry.file)), "utf8");
     devices.push(createDevice(entry, markup, manifest));
+    for (const variant of entry.variants ?? []) {
+      if (variant.default || variant.file === entry.file) {
+        continue;
+      }
+      const variantMarkup = await readFile(
+        join(sourceRoot, "svg", variant.file),
+        "utf8",
+      );
+      const pins = visiblePinsForVariant(entry, variant.id);
+      devices.push(
+        createDevice(entry, variantMarkup, manifest, {
+          id: `${entry.id}--${variant.id}`,
+          title: variantTitle(entry, variant.id, pins),
+          variant: variant.id,
+          variantOf: entry.id,
+          sourceFile: variant.file.replace(/^svg\//, ""),
+        }),
+      );
+    }
   }
   devices.sort((a, b) => a.id.localeCompare(b.id));
 

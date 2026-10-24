@@ -2,7 +2,12 @@ import {
   createDocument,
   createEmptyPage,
   type DrawicDocument,
+  type DrawingPage,
+  type Junction,
+  type Net,
   type SymbolDefinition,
+  type Wire,
+  type WireEndpoint,
 } from "../src/core/model";
 
 export const twoPinSymbol: SymbolDefinition = {
@@ -12,6 +17,7 @@ export const twoPinSymbol: SymbolDefinition = {
   electrical: true,
   palette: true,
   frame: { x: -10, y: -20, width: 20, height: 40 },
+  selectionBox: { x: -8, y: -18, width: 16, height: 36 },
   pins: [
     { key: "1", role: "passive", side: "north" },
     { key: "2", role: "passive", side: "south" },
@@ -107,4 +113,58 @@ export function nodePin(
     rotation,
     mirrored: false,
   };
+}
+
+export function addTestNet(
+  page: DrawingPage,
+  id: string,
+  name?: string,
+): Net {
+  const existing = page.nets.find((net) => net.id === id);
+  if (existing) {
+    return existing;
+  }
+  const net: Net = {
+    id,
+    ...(name ? { name } : {}),
+    wires: [],
+    junctions: [],
+  };
+  page.nets.push(net);
+  return net;
+}
+
+export function addTestWire(
+  page: DrawingPage,
+  netId: string,
+  id: string,
+  points: Wire["points"],
+  start: WireEndpoint = { kind: "open" },
+  end: WireEndpoint = { kind: "open" },
+): Wire {
+  const net = addTestNet(page, netId);
+  const wire: Wire = { id, points, start, end };
+  net.wires.push(wire);
+  return wire;
+}
+
+export function addTestJunction(
+  page: DrawingPage,
+  netId: string,
+  id: string,
+  x: number,
+  y: number,
+): Junction {
+  const net = addTestNet(page, netId);
+  const junction: Junction = { id, point: { x, y } };
+  net.junctions.push(junction);
+  return junction;
+}
+
+export function wireInPage(page: DrawingPage, wireId: string): Wire | undefined {
+  return page.nets.flatMap((net) => net.wires).find((wire) => wire.id === wireId);
+}
+
+export function allTestWires(page: DrawingPage): Wire[] {
+  return page.nets.flatMap((net) => net.wires);
 }

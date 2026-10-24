@@ -4,7 +4,12 @@ import {
   symbolLabelPosition,
   symbolTransform,
 } from "../geometry";
-import type { DrawingPage, SymbolDefinition } from "../model";
+import {
+  allJunctions,
+  allWires,
+  type DrawingPage,
+  type SymbolDefinition,
+} from "../model";
 import { buildConnectivity } from "../connectivity";
 import { resolveWirePoints } from "../wireMotion";
 import { wireHops, wireOverlaps, wirePathData } from "../wireHops";
@@ -43,8 +48,10 @@ export function buildSchematicSvg(
     .filter((value): value is { minX: number; minY: number; maxX: number; maxY: number } => value !== null);
 
   const allPoints = [
-    ...page.wires.flatMap((wire) => resolveWirePoints(page, library, wire) ?? []),
-    ...page.junctions,
+    ...allWires(page).flatMap(
+      ({ wire }) => resolveWirePoints(page, library, wire) ?? [],
+    ),
+    ...allJunctions(page).map(({ junction }) => junction.point),
     ...page.annotations.map((annotation) => ({ x: annotation.x, y: annotation.y })),
     ...page.shapes.flatMap((shape) => [
       { x: shape.x, y: shape.y },
@@ -74,8 +81,8 @@ export function buildSchematicSvg(
   const width = maxX - minX;
   const height = maxY - minY;
 
-  const wireMarkup = page.wires
-    .flatMap((wire) => {
+  const wireMarkup = allWires(page)
+    .flatMap(({ wire }) => {
       const points = resolveWirePoints(page, library, wire);
       return points
         ? [

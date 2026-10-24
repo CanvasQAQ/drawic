@@ -9,8 +9,12 @@ import type {
   SelectionRef,
 } from "../../core/model";
 import {
-  junctionPointFromSelectionId,
-  wireDisplayName,
+  allJunctions,
+  allWires,
+  defaultNetName,
+  findJunction,
+  findWire,
+  junctionIdFromSelectionId,
 } from "../../core/model";
 import { Icon } from "./Icons";
 
@@ -79,7 +83,7 @@ interface PropertiesPanelProps {
     shapeId: string,
     patch: Partial<Pick<DrawingShape, "x" | "y" | "width" | "height" | "text">>,
   ) => void;
-  onUpdateWireName: (wireId: string, name: string) => void;
+  onUpdateNetName: (wireId: string, name: string) => void;
   onRotate: () => void;
   onMirror: () => void;
   onDelete: () => void;
@@ -110,7 +114,7 @@ export function PropertiesPanel({
   onUpdateNodeLabel,
   onUpdateAnnotation,
   onUpdateShape,
-  onUpdateWireName,
+  onUpdateNetName,
   onRotate,
   onMirror,
   onDelete,
@@ -123,14 +127,15 @@ export function PropertiesPanel({
       : undefined;
   const selectedWire =
     selection.length === 1 && selection[0]?.kind === "wire"
-      ? page.wires.find((wire) => wire.id === selection[0]?.id)
+      ? findWire(page, selection[0]?.id ?? "")?.wire
       : undefined;
-  const selectedWireIndex = selectedWire
-    ? page.wires.findIndex((wire) => wire.id === selectedWire.id)
-    : -1;
   const selectedWireNetName = selectedWire
     ? netNameByWire.get(selectedWire.id) ??
-      wireDisplayName(selectedWire, Math.max(0, selectedWireIndex))
+      defaultNetName(
+        Math.max(0, page.nets.findIndex((net) =>
+          net.wires.some((wire) => wire.id === selectedWire.id),
+        )),
+      )
     : "";
   const selectedNodeLabel =
     selection.length === 1 && selection[0]?.kind === "node-label"
@@ -142,7 +147,7 @@ export function PropertiesPanel({
       : undefined;
   const selectedAnnotationWire =
     selectedAnnotation?.wireId
-      ? page.wires.find((wire) => wire.id === selectedAnnotation.wireId)
+      ? findWire(page, selectedAnnotation.wireId)?.wire
       : undefined;
   const selectedShape: DrawingShape | undefined =
     selection.length === 1 && selection[0]?.kind === "shape"
@@ -150,7 +155,10 @@ export function PropertiesPanel({
       : undefined;
   const selectedJunction =
     selection.length === 1 && selection[0]?.kind === "junction"
-      ? junctionPointFromSelectionId(selection[0].id)
+      ? findJunction(
+          page,
+          junctionIdFromSelectionId(selection[0].id) ?? "",
+        )?.junction
       : null;
 
   return (
@@ -273,7 +281,7 @@ export function PropertiesPanel({
           <CommitField
             label="Net name"
             value={selectedWireNetName}
-            onCommit={(name) => onUpdateWireName(selectedWire.id, name)}
+            onCommit={(name) => onUpdateNetName(selectedWire.id, name)}
           />
           <dl className="property-grid">
             <div>
@@ -315,12 +323,16 @@ export function PropertiesPanel({
           {selectedAnnotation.kind === "net" ? (
             <p className="property-hint">
               {selectedAnnotationWire
-                ? `Attached to ${
+                  ? `Attached to ${
                     netNameByWire.get(selectedAnnotationWire.id) ??
-                    wireDisplayName(
-                      selectedAnnotationWire,
-                      page.wires.findIndex(
-                        (wire) => wire.id === selectedAnnotationWire.id,
+                    defaultNetName(
+                      Math.max(
+                        0,
+                        page.nets.findIndex((net) =>
+                          net.wires.some(
+                            (wire) => wire.id === selectedAnnotationWire.id,
+                          ),
+                        ),
                       ),
                     )
                   }.`
@@ -403,7 +415,7 @@ export function PropertiesPanel({
             <div>
               <dt>Position</dt>
               <dd>
-                {selectedJunction.x}, {selectedJunction.y}
+                {selectedJunction.point.x}, {selectedJunction.point.y}
               </dd>
             </div>
           </dl>
@@ -449,7 +461,7 @@ export function PropertiesPanel({
               </div>
               <div>
                 <dt>Wires</dt>
-                <dd>{page.wires.length}</dd>
+                <dd>{allWires(page).length}</dd>
               </div>
               <div>
                 <dt>Labels</dt>

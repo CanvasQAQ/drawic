@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { buildSchematicSvg } from "../src/core/export/svg";
 import { buildBitmapPdf } from "../src/core/export/pdf";
 import { createEmptyPage } from "../src/core/model";
-import { testLibrary, twoPinSymbol } from "./fixtures";
+import { addTestWire, testLibrary, twoPinSymbol } from "./fixtures";
 
 describe("export formats", () => {
   it("produces deterministic standalone SVG", () => {
@@ -17,13 +17,15 @@ describe("export formats", () => {
       rotation: 0,
       mirrored: false,
     });
-    page.wires.push({
-      id: "wire",
-      points: [
+    addTestWire(
+      page,
+      "net_1",
+      "wire",
+      [
         { x: 100, y: 80 },
         { x: 180, y: 80 },
       ],
-    });
+    );
     const first = buildSchematicSvg(page, testLibrary);
     const second = buildSchematicSvg(page, testLibrary);
     expect(first).toBe(second);
@@ -34,21 +36,23 @@ describe("export formats", () => {
 
   it("exports arc hops for electrically separate wire crossings", () => {
     const page = createEmptyPage("Crossing export");
-    page.wires.push(
-      {
-        id: "horizontal",
-        points: [
+    addTestWire(
+      page,
+      "net_horizontal",
+      "horizontal",
+      [
           { x: 20, y: 100 },
           { x: 220, y: 100 },
-        ],
-      },
-      {
-        id: "vertical",
-        points: [
+      ],
+    );
+    addTestWire(
+      page,
+      "net_vertical",
+      "vertical",
+      [
           { x: 120, y: 20 },
           { x: 120, y: 180 },
-        ],
-      },
+      ],
     );
     const svg = buildSchematicSvg(page, testLibrary);
     expect(svg).toContain("Q 120 90");

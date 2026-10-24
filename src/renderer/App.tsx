@@ -32,10 +32,13 @@ import {
   type HistoryState,
 } from "../core/history";
 import {
+  allJunctions,
+  allWires,
   createDocument,
   createEmptyPage,
   createIdentifier,
   defaultNetName,
+  findWire,
   junctionSelectionId,
   pageById,
   parseProjectText,
@@ -57,19 +60,26 @@ import {
   renamePage,
 } from "../core/project";
 import { exportSpice, importSpice } from "../core/spice";
-import { normalizeDocumentWireOverlaps } from "../core/wireMerge";
+import { canonicalizeDocumentNetGraph } from "../core/netGraph";
 import type { AppCommand, OpenProjectPayload } from "../shared/bridge";
 import builtInDeviceLibraryJson from "./assets/device-libraries/drawic-built-in.drawiclib.json";
 import { PageBar } from "./components/PageBar";
+import {
+  ConsolePanel,
+  type ConsoleLevel,
+  type EditorLogEntry,
+} from "./components/ConsolePanel";
 import { ExportDialog, NameDialog, UnsavedDialog } from "./components/Dialogs";
 import { ErcPanel } from "./components/ErcPanel";
 import { Icon } from "./components/Icons";
 import { LibraryPanel } from "./components/LibraryPanel";
 import { PropertiesPanel } from "./components/PropertiesPanel";
+import { PinAuditScreen } from "./components/PinAuditScreen";
 import { SchematicCanvas } from "./components/SchematicCanvas";
 import { Toolbar, type EditorTool } from "./components/Toolbar";
 
-const library = loadDeviceLibrary(parseDeviceLibrary(builtInDeviceLibraryJson)).symbols;
+const builtInLibrary = loadDeviceLibrary(parseDeviceLibrary(builtInDeviceLibraryJson));
+const library = builtInLibrary.symbols;
 
 type NameDialogState =
   | { kind: "new-page"; initial: string }
@@ -119,16 +129,19 @@ export function App() {
   const [libraryVisible, setLibraryVisible] = useState(true);
   const [propertiesVisible, setPropertiesVisible] = useState(true);
   const [diagnostics, setDiagnostics] = useState<Diagnostic[] | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [logs, setLogs] = useState<EditorLogEntry[]>([]);
+  const [consoleOpen, setConsoleOpen] = useState(false);
   const [nameDialog, setNameDialog] = useState<NameDialogState>(null);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
+  const [pinAuditOpen, setPinAuditOpen] = useState(false);
   const [recovery, setRecovery] = useState<{
     content: string;
     savedAt: string;
   } | null>(null);
   const launchChecked = useRef(false);
   const recoveryChecked = useRef(false);
+  const logSequence = useRef(0);
 
   const document = history.present;
   const page = useMemo(
@@ -153,6 +166,28 @@ export function App() {
   const commitMutation = useCallback((mutation: (current: DrawicDocument) => DrawicDocument) => {
     setHistory((current) => commitHistory(current, mutation(current.present)));
   }, []);
+
+  const appendLog = useCallback(
+    (message: string, level: ConsoleLevel = "info") => {
+      logSequence.current += 1;
+      const entry: EditorLogEntry = {
+        id: `log_${logSequence.current}`,
+        at: new Date().toLocaleTimeString(undefined, {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: false,
+        }),
+        level,
+        message,
+      };
+      setLogs((current) => [...current.slice(-199), entry]);
+      if (level === "error" || level === "warning") {
+        setConsoleOpen(true);
+      }
+    },
+    [],
+  );
 
   const replaceDocument = useCallback(
     (next: DrawicDocument, saved: string | null, path: string | null, resetHistory = true) => {
@@ -190,28 +225,28 @@ export function App() {
         setFilePath(result.path);
         setSavedText(content);
         await window.drawic.clearRecovery(history.present.id);
-        setNotice(`Saved ${projectNameFromPath(result.path)}.drawic.json`);
+        appendLog(`Saved ${projectNameFromPath(result.path)}.drawic.json`, "success");
         return true;
       } catch (error) {
-        setNotice(`Save failed: ${errorMessage(error)}`);
+        appendLog(`Save failed: ${errorMessage(error)}`, "error");
         return false;
       }
     },
-    [filePath, history.present],
+    [appendLog, filePath, history.present],
   );
 
   const loadOpenPayload = useCallback(
     (payload: OpenProjectPayload) => {
       try {
         const parsed = parseProjectText(payload.content);
-        const normalized = normalizeDocumentWireOverlaps(parsed);
+        const normalized = canonicalizeDocumentNetGraph(parsed);
         replaceDocument(normalized, serializeProject(parsed), payload.path);
-        setNotice(`Opened ${projectNameFromPath(payload.path)}.drawic.json`);
+        appendLog(`Opened ${projectNameFromPath(payload.path)}.drawic.json`, "success");
       } catch (error) {
-        setNotice(`Could not open project: ${errorMessage(error)}`);
+        appendLog(`Could not open project: ${errorMessage(error)}`, "error");
       }
     },
-    [replaceDocument],
+    [appendLog, replaceDocument],
   );
 
   const guardUnsaved = useCallback(
@@ -229,9 +264,9 @@ export function App() {
     guardUnsaved(() => {
       const next = createDocument();
       replaceDocument(next, serializeProject(next), null);
-      setNotice("Started a new Drawic project.");
+      appendLog("Started a new Drawic project.");
     });
-  }, [guardUnsaved, replaceDocument]);
+  }, [appendLog, guardUnsaved, replaceDocument]);
 
   const openProject = useCallback(() => {
     guardUnsaved(async () => {
@@ -241,10 +276,10 @@ export function App() {
           loadOpenPayload(payload);
         }
       } catch (error) {
-        setNotice(`Open failed: ${errorMessage(error)}`);
+        appendLog(`Open failed: ${errorMessage(error)}`, "error");
       }
     });
-  }, [guardUnsaved, loadOpenPayload]);
+  }, [appendLog, guardUnsaved, loadOpenPayload]);
 
   const importSpiceFile = useCallback(async () => {
     try {
@@ -266,13 +301,14 @@ export function App() {
       setTool("select");
       const warningText =
         imported.warnings.length > 0 ? ` ${imported.warnings.length} warning(s).` : "";
-      setNotice(
+      appendLog(
         `Imported ${imported.page.nodes.length} SPICE element(s) into ${imported.page.name}.${warningText}`,
+        imported.warnings.length > 0 ? "warning" : "success",
       );
     } catch (error) {
-      setNotice(`SPICE import failed: ${errorMessage(error)}`);
+      appendLog(`SPICE import failed: ${errorMessage(error)}`, "error");
     }
-  }, [commitMutation]);
+  }, [appendLog, commitMutation]);
 
   const exportDiagram = useCallback(
     async (kind: ExportKind) => {
@@ -286,15 +322,16 @@ export function App() {
           svg,
         });
         if (!result.canceled && result.path) {
-          setNotice(
+          appendLog(
             `Exported ${kind.toUpperCase()} (${result.bytes?.toLocaleString() ?? "?"} bytes).`,
+            "success",
           );
         }
       } catch (error) {
-        setNotice(`Export failed: ${errorMessage(error)}`);
+        appendLog(`Export failed: ${errorMessage(error)}`, "error");
       }
     },
-    [activePageId, filePath, history.present],
+    [activePageId, appendLog, filePath, history.present],
   );
 
   const saveSpiceFile = useCallback(async () => {
@@ -310,12 +347,12 @@ export function App() {
           result.unsupportedDevices.length > 0
             ? ` ${result.unsupportedDevices.length} device(s) were explicitly omitted.`
             : "";
-        setNotice(`Exported SPICE netlist.${unsupported}`);
+        appendLog(`Exported SPICE netlist.${unsupported}`, "success");
       }
     } catch (error) {
-      setNotice(`SPICE export failed: ${errorMessage(error)}`);
+      appendLog(`SPICE export failed: ${errorMessage(error)}`, "error");
     }
-  }, [activePageId, filePath, history.present]);
+  }, [activePageId, appendLog, filePath, history.present]);
 
   const runErc = useCallback(() => {
     setDiagnostics(runElectricalRules(pageById(history.present, activePageId), library));
@@ -326,7 +363,7 @@ export function App() {
       const active = pageById(history.present, activePageId);
       if (active.nodes.some((node) => node.id === itemId)) {
         setSelection([{ kind: "node", id: itemId }]);
-      } else if (active.wires.some((wire) => wire.id === itemId)) {
+      } else if (allWires(active).some(({ wire }) => wire.id === itemId)) {
         setSelection([{ kind: "wire", id: itemId }]);
       } else if (active.annotations.some((annotation) => annotation.id === itemId)) {
         setSelection([{ kind: "annotation", id: itemId }]);
@@ -389,9 +426,9 @@ export function App() {
         }),
       );
       setSelection([{ kind: "node", id }]);
-      setNotice(`Placed ${reference}. Placement remains active.`);
+      appendLog(`Placed ${reference}. Placement remains active.`);
     },
-    [activePageId, commitMutation, history.present, placementSymbol],
+    [activePageId, appendLog, commitMutation, history.present, placementSymbol],
   );
 
   const addWire = useCallback(
@@ -423,10 +460,10 @@ export function App() {
   const addJunctionPoint = useCallback(
     (point: Point) => {
       commitMutation((current) => addJunction(current, activePageId, point));
-      setNotice("Junction added. Crossing wires now share a net at this point.");
+      appendLog("Junction added. Crossing wires now share a net at this point.");
       setDiagnostics(null);
     },
-    [activePageId, commitMutation],
+    [activePageId, appendLog, commitMutation],
   );
 
   const updateWire = useCallback(
@@ -459,10 +496,14 @@ export function App() {
       const active = pageById(history.present, activePageId);
       let text = "Text";
       if (kind === "net") {
+        const wires = allWires(active);
         text =
           (wireId && pageConnectivity.netNameByWire.get(wireId)) ??
           defaultNetName(
-            Math.max(0, active.wires.findIndex((wire) => wire.id === wireId)),
+            Math.max(
+              0,
+              wires.findIndex(({ wire }) => wire.id === wireId),
+            ),
           );
       }
       const id = createIdentifier("annotation");
@@ -477,33 +518,27 @@ export function App() {
       );
       setSelection([{ kind: "annotation", id }]);
       setDiagnostics(null);
-      setNotice(
+      appendLog(
         kind === "net"
           ? "Net label added to the wire. Edit its name in Properties."
           : "Text added. Edit it in Properties.",
       );
     },
-    [activePageId, commitMutation, history.present, pageConnectivity],
+    [activePageId, appendLog, commitMutation, history.present, pageConnectivity],
   );
 
-  const updateWireName = useCallback(
+  const updateNetName = useCallback(
     (wireId: string, name: string) => {
       const active = pageById(history.present, activePageId);
-      const networkId = pageConnectivity.networkIdByWire.get(wireId);
-      if (!networkId) {
+      const located = findWire(active, wireId);
+      if (!located) {
         return;
       }
-      const wireIds = active.wires
-        .filter(
-          (wire) =>
-            pageConnectivity.networkIdByWire.get(wire.id) === networkId,
-        )
-        .map((wire) => wire.id);
+      const wireIds = located.net.wires.map((wire) => wire.id);
       const annotationIds = active.annotations
         .filter(
           (annotation) =>
-            pageConnectivity.networkIdByAnnotation.get(annotation.id) ===
-            networkId,
+            annotation.netId === located.net.id,
         )
         .map((annotation) => annotation.id);
       commitMutation((current) =>
@@ -544,17 +579,17 @@ export function App() {
       setPlacementSymbol(null);
     }
     if (nextTool === "net-label") {
-      setNotice("Net Label: click a wire to attach a visible network name.");
+      appendLog("Net Label: click a wire to attach a visible network name.");
     } else if (nextTool === "junction") {
-      setNotice("Junction: click where wires should become one network.");
+      appendLog("Junction: click where wires should become one network.");
     }
-  }, []);
+  }, [appendLog]);
 
   const chooseSymbol = useCallback((symbol: SymbolDefinition) => {
     setPlacementSymbol(symbol);
     setTool("place");
-    setNotice(`Placement mode: ${symbol.label}. Escape finishes continuous placement.`);
-  }, []);
+    appendLog(`Placement mode: ${symbol.label}. Escape finishes continuous placement.`);
+  }, [appendLog]);
 
   const createPageWithName = useCallback(
     (name: string) => {
@@ -564,9 +599,9 @@ export function App() {
       setSelection([]);
       setTool("select");
       setNameDialog(null);
-      setNotice(`Created page ${name}.`);
+      appendLog(`Created page ${name}.`);
     },
-    [commitMutation],
+    [appendLog, commitMutation],
   );
 
   const renameActivePage = useCallback(
@@ -585,8 +620,8 @@ export function App() {
     setActivePageId(pageId);
     setSelection([]);
     setDiagnostics(null);
-    setNotice("Page duplicated.");
-  }, [activePageId, commitMutation]);
+    appendLog("Page duplicated.");
+  }, [activePageId, appendLog, commitMutation]);
 
   const deleteActivePage = useCallback(() => {
     if (document.pages.length <= 1) {
@@ -611,6 +646,13 @@ export function App() {
 
   const exportOpenHandler = useCallback(() => setExportOpen(true), []);
 
+  const savePinAudit = useCallback(async (content: string) => {
+    return window.drawic.savePinAudit({
+      suggestedName: "drawic-pin-direction-audit",
+      content,
+    });
+  }, []);
+
   useEffect(() => {
     window.drawic.setDocumentDirty(dirty);
   }, [dirty]);
@@ -622,10 +664,12 @@ export function App() {
     const timer = window.setTimeout(() => {
       void window.drawic
         .checkpoint({ projectId: document.id, content: serialized })
-        .catch((error) => setNotice(`Recovery checkpoint failed: ${errorMessage(error)}`));
+        .catch((error) =>
+          appendLog(`Recovery checkpoint failed: ${errorMessage(error)}`, "error"),
+        );
     }, 1200);
     return () => window.clearTimeout(timer);
-  }, [dirty, document.id, serialized]);
+  }, [appendLog, dirty, document.id, serialized]);
 
   useEffect(() => {
     if (launchChecked.current) {
@@ -639,8 +683,10 @@ export function App() {
           loadOpenPayload(payload);
         }
       })
-      .catch((error) => setNotice(`Launch file failed: ${errorMessage(error)}`));
-  }, [loadOpenPayload]);
+      .catch((error) =>
+        appendLog(`Launch file failed: ${errorMessage(error)}`, "error"),
+      );
+  }, [appendLog, loadOpenPayload]);
 
   useEffect(() => {
     if (recoveryChecked.current) {
@@ -672,11 +718,11 @@ export function App() {
           return active.nodes.some((node) => node.id === item.id);
         }
         if (item.kind === "wire") {
-          return active.wires.some((wire) => wire.id === item.id);
+          return allWires(active).some(({ wire }) => wire.id === item.id);
         }
         if (item.kind === "junction") {
-          return active.junctions.some(
-            (junction) => junctionSelectionId(junction) === item.id,
+          return allJunctions(active).some(
+            ({ junction }) => junctionSelectionId(junction) === item.id,
           );
         }
         if (item.kind === "annotation") {
@@ -696,16 +742,26 @@ export function App() {
         target?.tagName === "SELECT" ||
         target?.isContentEditable;
       if (event.key === "Escape") {
+        if (pinAuditOpen) {
+          setPinAuditOpen(false);
+          return;
+        }
         setPlacementSymbol(null);
         setTool("select");
         setExportOpen(false);
         setNameDialog(null);
         return;
       }
+      if (pinAuditOpen) {
+        return;
+      }
       if (isTyping) {
         return;
       }
-      if (event.key.toLowerCase() === "v") {
+      if (event.key === "`") {
+        event.preventDefault();
+        setConsoleOpen((open) => !open);
+      } else if (event.key.toLowerCase() === "v") {
         event.preventDefault();
         changeTool("select");
       } else if (event.key.toLowerCase() === "w") {
@@ -715,7 +771,7 @@ export function App() {
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [changeTool]);
+  }, [changeTool, pinAuditOpen]);
 
   const handleCommand = useCallback(
     (command: AppCommand) => {
@@ -814,11 +870,11 @@ export function App() {
       const parsed = parseProjectText(recovery.content);
       replaceDocument(parsed, "", null);
       setRecovery(null);
-      setNotice("Recovered unsaved work. Save it to a project file when ready.");
+      appendLog("Recovered unsaved work. Save it to a project file when ready.", "success");
     } catch (error) {
-      setNotice(`Recovery data is invalid: ${errorMessage(error)}`);
+      appendLog(`Recovery data is invalid: ${errorMessage(error)}`, "error");
     }
-  }, [recovery, replaceDocument]);
+  }, [appendLog, recovery, replaceDocument]);
 
   const dismissRecovery = useCallback(async () => {
     if (!recovery) {
@@ -861,7 +917,6 @@ export function App() {
         canDelete={hasSelection}
         canRotate={hasNodeSelection || hasShapeSelection}
         canMirror={hasNodeSelection}
-        placementLabel={placementSymbol?.label ?? null}
         onNew={newProject}
         onOpen={openProject}
         onSave={() => void saveProject(false)}
@@ -872,6 +927,10 @@ export function App() {
         onRotate={rotateSelected}
         onMirror={mirrorSelected}
         onExport={exportOpenHandler}
+        onAuditPins={() => {
+          setExportOpen(false);
+          setPinAuditOpen(true);
+        }}
       />
 
       {recovery ? (
@@ -888,15 +947,6 @@ export function App() {
               Restore
             </button>
           </div>
-        </div>
-      ) : null}
-
-      {notice ? (
-        <div className="notice-bar" role="status">
-          <span>{notice}</span>
-          <button type="button" aria-label="Dismiss message" onClick={() => setNotice(null)}>
-            <Icon name="close" />
-          </button>
         </div>
       ) : null}
 
@@ -1007,7 +1057,7 @@ export function App() {
             onUpdateShape={(shapeId, patch) =>
               commitMutation((current) => updateShape(current, page.id, shapeId, patch))
             }
-            onUpdateWireName={updateWireName}
+            onUpdateNetName={updateNetName}
             onRotate={rotateSelected}
             onMirror={mirrorSelected}
             onDelete={deleteSelection}
@@ -1029,12 +1079,20 @@ export function App() {
         )}
       </div>
 
+      {consoleOpen ? (
+        <ConsolePanel
+          entries={logs}
+          onClear={() => setLogs([])}
+          onClose={() => setConsoleOpen(false)}
+        />
+      ) : null}
+
       <footer className="status-bar">
         <div>
           <span className="status-led" aria-hidden="true" />
           <span>{page.name}</span>
           <span>{page.nodes.length} devices</span>
-          <span>{page.wires.length} wires</span>
+          <span>{allWires(page).length} wires</span>
           <span>{page.annotations.length} labels</span>
         </div>
         <div>
@@ -1049,10 +1107,30 @@ export function App() {
           <button type="button" onClick={runErc}>
             Run ERC
           </button>
+          <button
+            type="button"
+            className="console-toggle"
+            aria-pressed={consoleOpen}
+            aria-label="Toggle console"
+            title="Toggle session console (`)"
+            onClick={() => setConsoleOpen((open) => !open)}
+          >
+            Log {logs.length > 0 ? `(${logs.length})` : ""}
+          </button>
           <span>{dirty ? "Modified" : "Local file synced"}</span>
           <span>Preview 0.2.0</span>
         </div>
       </footer>
+
+      {pinAuditOpen ? (
+        <PinAuditScreen
+          symbols={library}
+          libraryId={builtInLibrary.id}
+          libraryRevision={builtInLibrary.revision}
+          onClose={() => setPinAuditOpen(false)}
+          onExport={savePinAudit}
+        />
+      ) : null}
 
       {diagnostics ? (
         <ErcPanel

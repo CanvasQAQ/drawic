@@ -28,30 +28,32 @@ tag such as `v1.0.0` is treated as a formal release.
 
 ## Implemented in 0.2
 
-- Searchable, category-filtered symbol library with 109 bundled symbols and
-  continuous placement mode. All device records are stored in one
+- Searchable, category-filtered symbol library with 109 primary symbols, 11
+  alternate appearances, and continuous placement mode. All device records are
+  stored in one
   `.drawiclib.json` file, with sanitized themeable artwork, exact pin positions,
   label anchors, search terms, and SPICE metadata.
 - Selection, Shift multi-selection, marquee selection, grid movement, deletion,
   rotation, and mirroring.
+- A compact, hidden-by-default session console for editor activity and errors.
 - Wheel zoom centered on the pointer, `F` fit-to-content, Ctrl+0 reset,
   Space-drag panning, and visible placement previews.
 - Point-to-point wiring by clicking one device port and then another, with exact
-  port snapping and anchor-backed connectivity.
+  port snapping and typed electrical endpoint references.
 - Shared wire endpoint resolution and movement planning, with rigid internal
   paths, locally stretched boundary wires, live previews, one undo entry per
   gesture, and fixed electrical endpoints.
+- Schema v3 stores explicit Net graphs: each net owns stable wire edges and
+  junctions, and each wire spans exactly two electrical endpoints.
 - Obstacle-aware orthogonal routing when creating new wires, plus handles on
   every wire segment. Automatic routes keep a two-grid-step pin escape and
   preserve endpoint devices as obstacles.
 - Distinct crossing and explicit-junction semantics, with connected-network
   highlighting and arc hops over electrically separate crossings.
-- Hidden editable wire names such as `N001`, plus visible wire-attached Net
-  Labels. Connected wires share one canonical net name, and renaming it updates
-  the entire net.
-- Explicit junctions are selectable and deletable. Same-net T/crossing points
-  use one merged connection indicator, and duplicate collinear wire sections
-  are rendered once.
+- Net-owned canonical names such as `N001`, plus visible Net Labels. Renaming a
+  net updates all of its labels without duplicating names on wires.
+- Junctions have stable IDs, are selectable and deletable, and are the only
+  persisted branch vertices. Degree-two joins are normalized into one wire.
 - Wire snapping uses a 10-unit grid. Starting a new wire along an
   existing wire merges the shared conductor without a redundant junction or
   hop.

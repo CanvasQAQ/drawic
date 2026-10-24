@@ -11,6 +11,7 @@ import {
   GRID_SIZE,
   distance,
   nodeBounds,
+  nodeSelectionBounds,
   nodeLabelVisible,
   nodePinPosition,
   pointsEqual,
@@ -32,6 +33,7 @@ import type {
   ConnectionAnchor,
   DrawingPage,
   DrawingShape,
+  Junction,
   NodeLabelKind,
   Point,
   SelectionRef,
@@ -39,7 +41,11 @@ import type {
   SymbolDefinition,
   Wire,
 } from "../../core/model";
-import { junctionSelectionId } from "../../core/model";
+import {
+  allJunctions,
+  allWires,
+  junctionSelectionId,
+} from "../../core/model";
 import type { EditorTool } from "./Toolbar";
 
 const BASE_WIDTH = 1600;
@@ -226,9 +232,9 @@ export function dragSegment(wire: Wire, segmentIndex: number, delta: Point): Poi
   if (!start || !end) {
     return points;
   }
-  const startAnchored = segmentIndex === 0 && Boolean(wire.startAnchor);
+  const startAnchored = segmentIndex === 0 && wire.start.kind !== "open";
   const endAnchored =
-    segmentIndex === wire.points.length - 2 && Boolean(wire.endAnchor);
+    segmentIndex === wire.points.length - 2 && wire.end.kind !== "open";
   if (start.y === end.y) {
     const y = roundToGrid(start.y + delta.y);
     if (startAnchored && endAnchored) {
@@ -332,13 +338,13 @@ function pageBounds(
     return symbol ? [nodeBounds(node, symbol)] : [];
   });
   const shapeBoxes = page.shapes.map(rotatedShapeBounds);
-  const wireBoxes = page.wires.flatMap((wire) => {
+  const wireBoxes = allWires(page).flatMap(({ wire }) => {
     const points = resolveWirePoints(page, library, wire);
     const bounds = points ? pathInkBounds(points) : null;
     return bounds ? [bounds] : [];
   });
   const points = [
-    ...page.junctions,
+    ...allJunctions(page).map(({ junction }) => junction.point),
     ...page.annotations.map((annotation) => ({ x: annotation.x, y: annotation.y })),
     ...page.annotations.flatMap((annotation) => [
       { x: annotation.x - annotation.size, y: annotation.y - annotation.size },
@@ -1001,7 +1007,7 @@ export function SchematicCanvas({
 
   function beginJunctionPointer(
     event: ReactPointerEvent<SVGGElement>,
-    point: Point,
+    junction: Junction,
   ): void {
     if (event.button !== 0 || spacePressed || tool !== "select") {
       return;
@@ -1009,7 +1015,7 @@ export function SchematicCanvas({
     event.stopPropagation();
     const item: SelectionRef = {
       kind: "junction",
-      id: junctionSelectionId(point),
+      id: junctionSelectionId(junction),
     };
     onSelectionChange(selectionWith(selection, item, event.shiftKey));
   }
@@ -1349,12 +1355,12 @@ export function SchematicCanvas({
       if (!symbol) {
         continue;
       }
-      const bounds = nodeBounds(node, symbol);
+      const bounds = nodeSelectionBounds(node, symbol);
       if (bounds.maxX >= minX && bounds.minX <= maxX && bounds.maxY >= minY && bounds.minY <= maxY) {
         add({ kind: "node", id: node.id });
       }
     }
-    for (const wire of page.wires) {
+    for (const { wire } of allWires(page)) {
       const points = resolveWirePoints(page, library, wire);
       if (
         points?.some(
@@ -1364,12 +1370,12 @@ export function SchematicCanvas({
         add({ kind: "wire", id: wire.id });
       }
     }
-    for (const junction of page.junctions) {
+    for (const { junction } of allJunctions(page)) {
       if (
-        junction.x >= minX &&
-        junction.x <= maxX &&
-        junction.y >= minY &&
-        junction.y <= maxY
+        junction.point.x >= minX &&
+        junction.point.x <= maxX &&
+        junction.point.y >= minY &&
+        junction.point.y <= maxY
       ) {
         add({ kind: "junction", id: junctionSelectionId(junction) });
       }
@@ -1585,7 +1591,7 @@ export function SchematicCanvas({
         </g>
 
         <g className="wire-layer">
-          {displayPage.wires.map((wire) => {
+          {allWires(displayPage).map(({ wire }) => {
             const points = resolveWirePoints(displayPage, library, wire);
             if (!points) {
               return null;
@@ -1594,7 +1600,7 @@ export function SchematicCanvas({
             const highlighted = networkId ? highlightedNetworks.has(networkId) : false;
             const selected = isSelected(selection, "wire", wire.id);
             const previewPoints =
-              segmentDrag?.wire.id === wire.id
+              segmentDrag && segmentDrag.wire.id === wire.id
                 ? dragSegment(
                     { ...segmentDrag.wire, points },
                     segmentDrag.segmentIndex,
@@ -1702,7 +1708,7 @@ export function SchematicCanvas({
             }
             const moving = drag?.nodeIds.includes(node.id) ?? false;
             const selected = isSelected(selection, "node", node.id);
-            const bounds = nodeBounds(node, symbol);
+            const bounds = nodeSelectionBounds(node, symbol);
             const reference = symbolLabelPosition(node, symbol, "reference");
             const value = symbolLabelPosition(node, symbol, "value");
             const referenceVisible = nodeLabelVisible(node, "reference");
@@ -1879,54 +1885,35 @@ export function SchematicCanvas({
         </g>
 
         <g className="junction-layer">
-          {connectivity.junctionPoints.map((point, index) => {
-            const explicit = displayPage.junctions.some((junction) =>
-              pointsEqual(junction, point, 0.5),
+          {allJunctions(displayPage).map(({ junction }) => {
+            const point = junction.point;
+            const selected = isSelected(
+              selection,
+              "junction",
+              junctionSelectionId(junction),
             );
-            const selected =
-              explicit &&
-              isSelected(
-                selection,
-                "junction",
-                junctionSelectionId(point),
-              );
             return (
               <g
-                key={`${point.x}_${point.y}_${index}`}
+                key={junction.id}
                 className={`junction${selected ? " is-selected" : ""}`}
-                data-junction-id={
-                  explicit ? junctionSelectionId(point) : undefined
-                }
-                onPointerDown={
-                  explicit
-                    ? (event) => beginJunctionPointer(event, point)
-                    : undefined
+                data-junction-id={junctionSelectionId(junction)}
+                onPointerDown={(event) =>
+                  beginJunctionPointer(event, junction)
                 }
               >
-                {explicit ? (
-                  <>
-                    <circle
-                      className="junction-hit"
-                      cx={point.x}
-                      cy={point.y}
-                      r="9"
-                    />
-                    <circle className="junction-ring" cx={point.x} cy={point.y} r="5.5" />
-                    <circle
-                      cx={point.x}
-                      cy={point.y}
-                      r="3.2"
-                      className="junction-explicit"
-                    />
-                  </>
-                ) : (
-                  <circle
-                    cx={point.x}
-                    cy={point.y}
-                    r="2.6"
-                    className="junction-auto"
-                  />
-                )}
+                <circle className="junction-ring" cx={point.x} cy={point.y} r="5.5" />
+                <circle
+                  className="junction-hit"
+                  cx={point.x}
+                  cy={point.y}
+                  r="9"
+                />
+                <circle
+                  cx={point.x}
+                  cy={point.y}
+                  r="3.2"
+                  className="junction-dot junction-explicit"
+                />
               </g>
             );
           })}

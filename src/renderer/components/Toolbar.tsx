@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import React, { type ReactNode } from "react";
 import { Icon, type IconName } from "./Icons";
 
 export type EditorTool =
@@ -58,7 +58,6 @@ interface ToolbarProps {
   canDelete: boolean;
   canRotate: boolean;
   canMirror: boolean;
-  placementLabel: string | null;
   onNew: () => void;
   onOpen: () => void;
   onSave: () => void;
@@ -69,6 +68,7 @@ interface ToolbarProps {
   onRotate: () => void;
   onMirror: () => void;
   onExport: () => void;
+  onAuditPins: () => void;
 }
 
 function Separator() {
@@ -84,7 +84,6 @@ export function Toolbar({
   canDelete,
   canRotate,
   canMirror,
-  placementLabel,
   onNew,
   onOpen,
   onSave,
@@ -95,6 +94,7 @@ export function Toolbar({
   onRotate,
   onMirror,
   onExport,
+  onAuditPins,
 }: ToolbarProps): ReactNode {
   return (
     <header className="app-toolbar">
@@ -197,14 +197,14 @@ export function Toolbar({
         </div>
         <Separator />
         <ToolButton label="Export" icon="export" onClick={onExport} />
+        <ToolButton
+          label="Pin audit"
+          icon="audit"
+          onClick={onAuditPins}
+          description="Review device pin escape directions"
+        />
       </nav>
 
-      {placementLabel ? (
-        <div className="placement-banner" role="status">
-          Placing <strong>{placementLabel}</strong>
-          <span>Click canvas to place · Esc to finish</span>
-        </div>
-      ) : null}
     </header>
   );
 }

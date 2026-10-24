@@ -55,6 +55,11 @@ export interface ExportResult {
   bytes?: number;
 }
 
+export interface PinAuditExportRequest {
+  suggestedName: string;
+  content: string;
+}
+
 export interface RecoveryPayload {
   path: string;
   content: string;
@@ -69,6 +74,7 @@ export interface DrawicBridge {
   exportSchematic: (request: ExportRequest) => Promise<ExportResult>;
   importSpice: () => Promise<OpenProjectPayload | null>;
   saveSpice: (suggestedName: string, content: string) => Promise<ExportResult>;
+  savePinAudit: (request: PinAuditExportRequest) => Promise<ExportResult>;
   checkpoint: (request: { projectId: string; content: string }) => Promise<void>;
   clearRecovery: (projectId: string) => Promise<void>;
   getRecovery: () => Promise<RecoveryPayload | null>;
