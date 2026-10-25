@@ -89,11 +89,18 @@ export function symbolLabelPosition(
       ? { x: 8, y: -2, anchor: "start" as const }
       : { x: 8, y: 13, anchor: "start" as const };
   const configured = symbol.labelAnchors?.[kind] ?? fallback;
-  const offset = node.labelLayout?.[kind]?.offset ?? { x: 0, y: 0 };
+  const layout = node.labelLayout?.[kind];
+  if (layout?.position) {
+    return {
+      point: { ...layout.position },
+      anchor: layout.anchor ?? configured.anchor,
+    };
+  }
+  const offset = layout?.offset ?? { x: 0, y: 0 };
   const point = transformLocalPoint(node, { x: configured.x, y: configured.y });
   return {
     point: { x: point.x + offset.x, y: point.y + offset.y },
-    anchor: configured.anchor,
+    anchor: layout?.anchor ?? configured.anchor,
   };
 }
 
@@ -101,15 +108,21 @@ export function nodeLabelVisible(
   node: ComponentNode,
   kind: NodeLabelKind,
 ): boolean {
+  if (kind === "reference" && !node.reference.trim()) {
+    return false;
+  }
+  if (kind === "value" && !node.value.trim()) {
+    return false;
+  }
   return !node.labelLayout?.[kind]?.hidden;
 }
 
 export function transformLocalPoint(
-  node: Pick<ComponentNode, "x" | "y" | "rotation" | "mirrored">,
+  node: Pick<ComponentNode, "x" | "y" | "rotation" | "mirrored" | "mirroredVertically">,
   point: Point,
 ): Point {
   const mirroredX = node.mirrored ? -point.x : point.x;
-  const mirroredY = point.y;
+  const mirroredY = node.mirroredVertically ? -point.y : point.y;
   switch (node.rotation) {
     case 0:
       return { x: node.x + mirroredX, y: node.y + mirroredY };
@@ -139,8 +152,39 @@ export function nodePinPosition(
 export function symbolTransform(node: ComponentNode, symbol: SymbolDefinition): string {
   const centerX = symbol.frame.x + symbol.frame.width / 2;
   const centerY = symbol.frame.y + symbol.frame.height / 2;
-  const mirror = node.mirrored ? " scale(-1 1)" : "";
+  const mirror =
+    node.mirrored || node.mirroredVertically
+      ? ` scale(${node.mirrored ? -1 : 1} ${node.mirroredVertically ? -1 : 1})`
+      : "";
   return `translate(${node.x} ${node.y}) rotate(${node.rotation})${mirror} translate(${-centerX} ${-centerY})`;
+}
+
+export function nodeInkBounds(node: ComponentNode, symbol: SymbolDefinition): {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+} {
+  const box = symbol.labelBounds ?? symbol.selectionBox ?? symbol.frame;
+  const centerX = symbol.frame.x + symbol.frame.width / 2;
+  const centerY = symbol.frame.y + symbol.frame.height / 2;
+  const corners = [
+    { x: box.x, y: box.y },
+    { x: box.x + box.width, y: box.y },
+    { x: box.x, y: box.y + box.height },
+    { x: box.x + box.width, y: box.y + box.height },
+  ].map((point) =>
+    transformLocalPoint(node, {
+      x: point.x - centerX,
+      y: point.y - centerY,
+    }),
+  );
+  return {
+    minX: Math.min(...corners.map((point) => point.x)),
+    minY: Math.min(...corners.map((point) => point.y)),
+    maxX: Math.max(...corners.map((point) => point.x)),
+    maxY: Math.max(...corners.map((point) => point.y)),
+  };
 }
 
 export function nodeBounds(node: ComponentNode, symbol: SymbolDefinition): {

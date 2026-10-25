@@ -35,7 +35,7 @@ jobs:
       - run: npm run build
 
   package-windows:
-    name: Package Windows x64 ZIP
+    name: Package Windows x64
     needs: validate
     runs-on: windows-2022
     steps:
@@ -52,11 +52,11 @@ jobs:
       - name: Package smoke test
         shell: bash
         run: npm run smoke:packaged
-      - name: Collect Windows ZIP
+      - name: Collect Windows artifacts
         shell: bash
         run: |
           mkdir -p artifacts
-          find release -maxdepth 1 -type f -name '*.zip' -exec cp {} artifacts/ \;
+          find release -maxdepth 1 -type f -name 'Drawic-*-windows-x64.zip' -exec cp {} artifacts/ \;
           test "$(find artifacts -maxdepth 1 -type f -name '*.zip' | wc -l)" -eq 1
       - uses: actions/upload-artifact@v4
         with:
@@ -64,9 +64,66 @@ jobs:
           path: artifacts/*.zip
           if-no-files-found: error
 
+  package-macos:
+    name: Package macOS x64 and arm64
+    needs: validate
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Build unsigned macOS DMGs and ZIPs
+        run: npx electron-builder --mac dmg zip --x64 --arm64 --publish never
+      - name: Package smoke test
+        run: npm run smoke:packaged
+      - name: Collect macOS artifacts
+        run: |
+          mkdir -p artifacts
+          find release -maxdepth 1 -type f \( -name 'Drawic-*-macos-*.dmg' -o -name 'Drawic-*-macos-*.zip' \) -exec cp {} artifacts/ \;
+          test "$(find artifacts -maxdepth 1 -type f | wc -l)" -eq 4
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-x64-arm64
+          path: artifacts/*
+          if-no-files-found: error
+
+  package-linux:
+    name: Package Linux x64
+    needs: validate
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Build Linux AppImage and DEB
+        run: npx electron-builder --linux AppImage deb --x64 --publish never
+      - name: Package smoke test
+        run: xvfb-run -a npm run smoke:packaged
+      - name: Collect Linux artifacts
+        run: |
+          mkdir -p artifacts
+          find release -maxdepth 1 -type f \( -name 'Drawic-*-linux-x64.AppImage' -o -name 'Drawic-*-linux-x64.deb' \) -exec cp {} artifacts/ \;
+          test "$(find artifacts -maxdepth 1 -type f | wc -l)" -eq 2
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-x64
+          path: artifacts/*
+          if-no-files-found: error
+
   release:
     name: Publish verified release
-    needs: package-windows
+    needs:
+      - package-windows
+      - package-macos
+      - package-linux
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
@@ -78,17 +135,29 @@ jobs:
         with:
           name: windows-x64
           path: downloads/windows-x64
+      - uses: actions/download-artifact@v4
+        with:
+          name: macos-x64-arm64
+          path: downloads/macos-x64-arm64
+      - uses: actions/download-artifact@v4
+        with:
+          name: linux-x64
+          path: downloads/linux-x64
       - name: Assemble release files
         run: |
           mkdir -p release
-          find downloads/windows-x64 -type f -name '*.zip' -exec cp {} release/ \;
+          find downloads -maxdepth 3 -type f -exec cp {} release/ \;
           cat > release/UNSIGNED-RELEASE.txt <<EOF
           Drawic ${GITHUB_REF_NAME} is unsigned.
 
-          This release provides one Windows x64 application ZIP.
-          Windows SmartScreen warnings are expected because no code-signing
-          certificate is configured.
-          Verify the downloaded ZIP against SHA256SUMS.txt before running it.
+          This release provides:
+          - Windows x64 ZIP
+          - macOS x64 and arm64 DMG/ZIP
+          - Linux x64 AppImage/DEB
+
+          Windows SmartScreen and macOS Gatekeeper warnings are expected because
+          no code-signing identities are configured. Verify downloaded files
+          against SHA256SUMS.txt before running them.
           EOF
           node scripts/generate-checksums.mjs
           node scripts/verify-release-assets.mjs
@@ -122,23 +191,22 @@ jobs:
           else
             gh release create "$tag" release/* "${args[@]}"
           fi
-      - name: Verify downloaded checksum and uploaded state
+      - name: Verify downloaded checksums and uploaded state
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           tag="${GITHUB_REF_NAME}"
           mkdir -p verify
-          archive="$(ls release/Drawic-*-windows-x64.zip | head -1)"
-          name="$(basename "$archive")"
-          gh release download "$tag" --pattern "$name" --dir verify
-          expected="$(grep "  ${name}$" release/SHA256SUMS.txt | cut -d' ' -f1)"
-          actual="$(sha256sum "verify/${name}" | cut -d' ' -f1)"
-          test "$expected" = "$actual"
+          gh release download "$tag" --dir verify
+          (
+            cd verify
+            sha256sum -c SHA256SUMS.txt
+          )
           gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${tag}" \
             --jq '.assets[] | "\(.name)\t\(.state)"' > asset-states.txt
           grep -q "	uploaded$" asset-states.txt
-          grep -q "${name}" asset-states.txt
-          test "$(wc -l < asset-states.txt)" -eq 3
+          package_count="$(wc -l < release/SHA256SUMS.txt)"
+          test "$(wc -l < asset-states.txt)" -eq "$((package_count + 2))"
           cat asset-states.txt
       - name: Prune older previews and formal releases
         env:

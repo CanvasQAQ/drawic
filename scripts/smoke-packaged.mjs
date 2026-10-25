@@ -1,15 +1,30 @@
 import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
 const platform = process.platform;
+const macCandidates =
+  process.arch === "arm64"
+    ? [
+        resolve("release/mac-arm64/Drawic.app/Contents/MacOS/Drawic"),
+        resolve("release/mac/Drawic.app/Contents/MacOS/Drawic"),
+      ]
+    : [
+        resolve("release/mac/Drawic.app/Contents/MacOS/Drawic"),
+        resolve("release/mac-arm64/Drawic.app/Contents/MacOS/Drawic"),
+      ];
+const macExecutable = macCandidates.find((candidate) => existsSync(candidate));
 const executable =
   platform === "win32"
     ? resolve("release/win-unpacked/Drawic.exe")
     : platform === "darwin"
-      ? resolve("release/mac/Drawic.app/Contents/MacOS/Drawic")
+      ? macExecutable
       : resolve("release/linux-unpacked/drawic");
+if (!executable) {
+  throw new Error(`No packaged executable was found for ${platform}.`);
+}
 const temporary = await mkdtemp(join(tmpdir(), "drawic-smoke-"));
 const reportPath = join(temporary, "report.json");
 const userData = join(temporary, "user-data");

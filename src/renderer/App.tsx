@@ -7,23 +7,30 @@ import {
 } from "../core/library";
 import {
   addComponent,
+  duplicateNode,
   addAnnotation as addAnnotationOperation,
   addShape as addShapeOperation,
   addWire as addWireOperation,
   mirrorSelection,
+  mirrorSelectionVertical,
   moveNodes,
   removeSelection,
   renameNet,
+  resetNodeLabelStyle,
   rotateSelection,
   updateAnnotation,
   updateNode,
   updateNodeLabel,
   updateShape,
+  updateNetColorForWire,
+  updateDocumentTypography,
+  updateNodeReferenceLabel,
   updateWirePoints,
 } from "../core/editor";
 import { buildConnectivity } from "../core/connectivity";
 import { runElectricalRules } from "../core/erc";
 import { buildSchematicSvg } from "../core/export/svg";
+import { symbolLabelPosition } from "../core/geometry";
 import {
   commitHistory,
   createHistory,
@@ -77,6 +84,13 @@ import { PropertiesPanel } from "./components/PropertiesPanel";
 import { PinAuditScreen } from "./components/PinAuditScreen";
 import { SchematicCanvas } from "./components/SchematicCanvas";
 import { Toolbar, type EditorTool } from "./components/Toolbar";
+import { TitleBar } from "./components/TitleBar";
+import {
+  applyThemeToDocument,
+  persistTheme,
+  resolveInitialTheme,
+  type Theme,
+} from "./theme";
 
 const builtInLibrary = loadDeviceLibrary(parseDeviceLibrary(builtInDeviceLibraryJson));
 const library = builtInLibrary.symbols;
@@ -135,6 +149,7 @@ export function App() {
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
   const [pinAuditOpen, setPinAuditOpen] = useState(false);
+  const [theme, setTheme] = useState<Theme>(() => resolveInitialTheme());
   const [recovery, setRecovery] = useState<{
     content: string;
     savedAt: string;
@@ -155,10 +170,6 @@ export function App() {
   );
   const dirty = serialized !== savedText;
   const visiblePathName = filePath ?? `${document.title}.drawic.json`;
-  const hasSelection = selection.length > 0;
-  const hasNodeSelection = selection.some((item) => item.kind === "node");
-  const hasShapeSelection = selection.some((item) => item.kind === "shape");
-
   const commitDocument = useCallback((next: DrawicDocument) => {
     setHistory((current) => commitHistory(current, next));
   }, []);
@@ -315,7 +326,11 @@ export function App() {
       setExportOpen(false);
       try {
         const activePage = pageById(history.present, activePageId);
-        const svg = buildSchematicSvg(activePage, library);
+        const svg = buildSchematicSvg(activePage, library, {
+          ...(document.typography
+            ? { typography: document.typography }
+            : {}),
+        });
         const result = await window.drawic.exportSchematic({
           kind,
           suggestedName: `${projectNameFromPath(filePath)}-${activePage.name}`,
@@ -331,7 +346,7 @@ export function App() {
         appendLog(`Export failed: ${errorMessage(error)}`, "error");
       }
     },
-    [activePageId, appendLog, filePath, history.present],
+    [activePageId, appendLog, document.typography, filePath, history.present],
   );
 
   const saveSpiceFile = useCallback(async () => {
@@ -405,8 +420,15 @@ export function App() {
     setDiagnostics(null);
   }, [activePageId, commitMutation, selection]);
 
+  const mirrorSelectedVertical = useCallback(() => {
+    commitMutation((current) =>
+      mirrorSelectionVertical(current, activePageId, selection, library),
+    );
+    setDiagnostics(null);
+  }, [activePageId, commitMutation, selection]);
+
   const placeAt = useCallback(
-    (point: Point) => {
+    (point: Point, rotation: 0 | 90 | 180 | 270 = 0) => {
       if (!placementSymbol) {
         return;
       }
@@ -423,6 +445,8 @@ export function App() {
           value: defaultDeviceValue(placementSymbol.id, placementSymbol),
           point,
           id,
+          library,
+          rotation,
         }),
       );
       setSelection([{ kind: "node", id }]);
@@ -464,6 +488,35 @@ export function App() {
       setDiagnostics(null);
     },
     [activePageId, appendLog, commitMutation],
+  );
+
+  const duplicateDevice = useCallback(
+    (
+      nodeId: string,
+      delta: Point,
+      rotation: 0 | 90 | 180 | 270 = 0,
+    ) => {
+      const id = createIdentifier("node");
+      commitMutation((current) =>
+        duplicateNode(
+          current,
+          activePageId,
+          nodeId,
+          delta,
+          library,
+          id,
+          undefined,
+          rotation,
+        ),
+      );
+      setSelection([{ kind: "node", id }]);
+      setDiagnostics(null);
+      appendLog("Device duplicated.");
+      if (tool === "duplicate") {
+        setTool("select");
+      }
+    },
+    [activePageId, appendLog, commitMutation, tool],
   );
 
   const updateWire = useCallback(
@@ -560,6 +613,59 @@ export function App() {
     ],
   );
 
+  const updateNetColor = useCallback(
+    (wireId: string, color: string | null) => {
+      commitMutation((current) =>
+        updateNetColorForWire(current, activePageId, wireId, color),
+      );
+      setDiagnostics(null);
+    },
+    [activePageId, commitMutation],
+  );
+
+  const updateTypography = useCallback(
+    (patch: Parameters<typeof updateDocumentTypography>[1]) => {
+      commitMutation((current) =>
+        updateDocumentTypography(current, patch),
+      );
+    },
+    [commitMutation],
+  );
+
+  const resetNodeLabelAppearance = useCallback(
+    (nodeId: string, label: "reference" | "value") => {
+      commitMutation((current) =>
+        resetNodeLabelStyle(
+          current,
+          page.id,
+          nodeId,
+          label,
+          library,
+        ),
+      );
+    },
+    [commitMutation, page.id],
+  );
+
+  const updateReferenceLabel = useCallback(
+    (
+      nodeId: string,
+      reference: string,
+      runs: Parameters<typeof updateNodeReferenceLabel>[4],
+    ) => {
+      commitMutation((current) =>
+        updateNodeReferenceLabel(
+          current,
+          page.id,
+          nodeId,
+          reference,
+          runs,
+        ),
+      );
+    },
+    [commitMutation, page.id],
+  );
+
   const moveSelected = useCallback(
     (delta: Point) => {
       const ids = selection.filter((item) => item.kind === "node").map((item) => item.id);
@@ -582,6 +688,8 @@ export function App() {
       appendLog("Net Label: click a wire to attach a visible network name.");
     } else if (nextTool === "junction") {
       appendLog("Junction: click where wires should become one network.");
+    } else if (nextTool === "duplicate") {
+      appendLog("Duplicate: click a device to copy it.");
     }
   }, [appendLog]);
 
@@ -656,6 +764,11 @@ export function App() {
   useEffect(() => {
     window.drawic.setDocumentDirty(dirty);
   }, [dirty]);
+
+  useEffect(() => {
+    applyThemeToDocument(theme);
+    persistTheme(theme);
+  }, [theme]);
 
   useEffect(() => {
     if (!dirty) {
@@ -761,17 +874,33 @@ export function App() {
       if (event.key === "`") {
         event.preventDefault();
         setConsoleOpen((open) => !open);
+      } else if (
+        !event.ctrlKey &&
+        !event.metaKey &&
+        !event.altKey &&
+        event.key.toLowerCase() === "u"
+      ) {
+        event.preventDefault();
+        undo();
       } else if (event.key.toLowerCase() === "v") {
         event.preventDefault();
         changeTool("select");
       } else if (event.key.toLowerCase() === "w") {
         event.preventDefault();
         changeTool("wire");
+      } else if (
+        !event.ctrlKey &&
+        !event.metaKey &&
+        !event.altKey &&
+        event.key.toLowerCase() === "c"
+      ) {
+        event.preventDefault();
+        changeTool("duplicate");
       }
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [changeTool, pinAuditOpen]);
+  }, [changeTool, pinAuditOpen, undo]);
 
   const handleCommand = useCallback(
     (command: AppCommand) => {
@@ -908,29 +1037,25 @@ export function App() {
 
   return (
     <div className="app-shell">
-      <Toolbar
+      <TitleBar
         documentTitle={`${projectNameFromPath(filePath)}${dirty ? " •" : ""}`}
-        dirty={dirty}
+        platform={window.drawic.platform}
+        theme={theme}
+        onToggleTheme={() =>
+          setTheme((current) => (current === "dark" ? "light" : "dark"))
+        }
+      />
+      <Toolbar
         tool={tool}
         canUndo={history.past.length > 0}
         canRedo={history.future.length > 0}
-        canDelete={hasSelection}
-        canRotate={hasNodeSelection || hasShapeSelection}
-        canMirror={hasNodeSelection}
         onNew={newProject}
         onOpen={openProject}
         onSave={() => void saveProject(false)}
         onTool={changeTool}
         onUndo={undo}
         onRedo={redo}
-        onDelete={deleteSelection}
-        onRotate={rotateSelected}
-        onMirror={mirrorSelected}
         onExport={exportOpenHandler}
-        onAuditPins={() => {
-          setExportOpen(false);
-          setPinAuditOpen(true);
-        }}
       />
 
       {recovery ? (
@@ -993,12 +1118,14 @@ export function App() {
           />
           <SchematicCanvas
             page={page}
+            typography={document.typography}
             library={library}
             tool={tool}
             placementSymbol={placementSymbol}
             selection={selection}
             onSelectionChange={setSelection}
             onPlace={placeAt}
+            onDuplicateNode={duplicateDevice}
             onAddWire={addWire}
             onUpdateWire={updateWire}
             onUpdateNode={(nodeId, patch) =>
@@ -1008,15 +1135,32 @@ export function App() {
             }
             onMoveNodeLabel={(nodeId, label, delta) =>
               commitMutation((current) => {
-                const node = pageById(current, page.id).nodes.find(
+                const activePage = pageById(current, page.id);
+                const node = activePage.nodes.find(
                   (candidate) => candidate.id === nodeId,
                 );
-                return updateNodeLabel(current, page.id, nodeId, label, {
-                  offset: {
-                    x: (node?.labelLayout?.[label]?.offset.x ?? 0) + delta.x,
-                    y: (node?.labelLayout?.[label]?.offset.y ?? 0) + delta.y,
+                const symbol = node
+                  ? library.find((candidate) => candidate.id === node.symbolId)
+                  : undefined;
+                if (!node || !symbol) {
+                  return current;
+                }
+                const position = symbolLabelPosition(node, symbol, label);
+                return updateNodeLabel(
+                  current,
+                  page.id,
+                  nodeId,
+                  label,
+                  {
+                    position: {
+                      x: position.point.x + delta.x,
+                      y: position.point.y + delta.y,
+                    },
+                    anchor: position.anchor,
+                    placement: "manual",
                   },
-                });
+                  library,
+                );
               })
             }
             onAddJunction={addJunctionPoint}
@@ -1037,6 +1181,7 @@ export function App() {
         {propertiesVisible ? (
           <PropertiesPanel
             page={page}
+            typography={document.typography}
             selection={selection}
             netNameByWire={pageConnectivity.netNameByWire}
             onUpdateNode={(nodeId, patch) =>
@@ -1046,9 +1191,19 @@ export function App() {
             }
             onUpdateNodeLabel={(nodeId, label, patch) =>
               commitMutation((current) =>
-                updateNodeLabel(current, page.id, nodeId, label, patch),
+                updateNodeLabel(
+                  current,
+                  page.id,
+                  nodeId,
+                  label,
+                  patch,
+                  library,
+                ),
               )
             }
+            onUpdateReferenceLabel={updateReferenceLabel}
+            onResetNodeLabelStyle={resetNodeLabelAppearance}
+            onUpdateTypography={updateTypography}
             onUpdateAnnotation={(annotationId, patch) =>
               commitMutation((current) =>
                 updateAnnotation(current, page.id, annotationId, patch),
@@ -1058,8 +1213,10 @@ export function App() {
               commitMutation((current) => updateShape(current, page.id, shapeId, patch))
             }
             onUpdateNetName={updateNetName}
+            onUpdateNetColor={updateNetColor}
             onRotate={rotateSelected}
             onMirror={mirrorSelected}
+            onMirrorVertical={mirrorSelectedVertical}
             onDelete={deleteSelection}
             onCollapse={() => setPropertiesVisible(false)}
             onRenamePage={() =>
@@ -1118,7 +1275,7 @@ export function App() {
             Log {logs.length > 0 ? `(${logs.length})` : ""}
           </button>
           <span>{dirty ? "Modified" : "Local file synced"}</span>
-          <span>Preview 0.2.0</span>
+          <span>Preview 0.3.0</span>
         </div>
       </footer>
 
@@ -1212,6 +1369,17 @@ export function App() {
               <span className="export-format">ERC</span>
               <strong>Check active page</strong>
               <small>References, dangling pins, and wire geometry</small>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setExportOpen(false);
+                setPinAuditOpen(true);
+              }}
+            >
+              <span className="export-format">PINS</span>
+              <strong>Audit pin directions</strong>
+              <small>Review and export device pin escape data</small>
             </button>
           </div>
           <p className="dialog-footnote">

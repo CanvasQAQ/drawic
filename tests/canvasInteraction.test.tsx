@@ -11,8 +11,10 @@ import {
 import {
   SchematicCanvas,
   dragSegment,
+  fitViewportToAspect,
   fitViewportToBounds,
   focusViewportToMarquee,
+  resizeViewportToElement,
   zoomViewport,
 } from "../src/renderer/components/SchematicCanvas";
 import {
@@ -78,10 +80,11 @@ function pointerEvent(type: string, clientX: number, clientY: number, extra = {}
 
 interface RenderOptions {
   page?: DrawingPage;
-  tool?: "select" | "wire" | "net-label";
+  tool?: "select" | "duplicate" | "wire" | "net-label";
   placementSymbol?: typeof twoPinSymbol | null;
   selection?: Array<{ kind: "node" | "node-label" | "wire" | "junction" | "annotation" | "shape"; id: string }>;
   onSelectionChange?: (selection: Array<{ kind: "node" | "node-label" | "wire" | "junction" | "annotation" | "shape"; id: string }>) => void;
+  onPlace?: (point: Point, rotation: 0 | 90 | 180 | 270) => void;
   onAddWire?: (points: Point[], anchors?: unknown) => void;
   onUpdateWire?: (wireId: string, points: Point[]) => void;
   onMoveNodeLabel?: (
@@ -91,6 +94,7 @@ interface RenderOptions {
   ) => void;
   onUpdateShape?: (shapeId: string, patch: Record<string, unknown>) => void;
   onMoveSelected?: (delta: Point) => void;
+  onDuplicateNode?: (nodeId: string, delta: Point) => void;
   onAddAnnotation?: (kind: "text" | "net", point: Point, wireId?: string) => void;
 }
 
@@ -112,7 +116,8 @@ function renderCanvas(options: RenderOptions = {}): {
         placementSymbol={options.placementSymbol ?? null}
         selection={options.selection ?? []}
         onSelectionChange={options.onSelectionChange ?? vi.fn()}
-        onPlace={vi.fn()}
+        onPlace={options.onPlace ?? vi.fn()}
+        onDuplicateNode={options.onDuplicateNode ?? vi.fn()}
         onAddWire={options.onAddWire ?? vi.fn()}
         onUpdateWire={options.onUpdateWire ?? vi.fn()}
         onUpdateNode={vi.fn()}
@@ -157,6 +162,99 @@ describe("canvas interactions", () => {
     expect(container.querySelector(".placement-ghost")).not.toBeNull();
     expect(container.querySelector(".placement-ghost text")?.textContent).toBe("Resistor");
     root.unmount();
+  });
+
+  it("rotates a placement preview with R before committing the device", () => {
+    const onPlace = vi.fn();
+    const { container, root } = renderCanvas({
+      placementSymbol: twoPinSymbol,
+      onPlace,
+    });
+    const svg = container.querySelector<SVGSVGElement>("svg.schematic-canvas")!;
+    flushSync(() => svg.dispatchEvent(pointerEvent("pointermove", 400, 250)));
+    flushSync(() =>
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "r", bubbles: true })),
+    );
+    expect(
+      container.querySelector(".placement-ghost [transform]")?.getAttribute(
+        "transform",
+      ),
+    ).toContain("rotate(90)");
+    flushSync(() => svg.dispatchEvent(pointerEvent("pointerdown", 400, 250)));
+    expect(onPlace).toHaveBeenCalledWith({ x: 400, y: 250 }, 90);
+    root.unmount();
+  });
+
+  it("snaps a device pin onto an existing Wire during placement", () => {
+    const page = createEmptyPage("Pin snap");
+    addTestWire(
+      page,
+      "net_wire",
+      "wire_target",
+      [
+        { x: 20, y: 100 },
+        { x: 220, y: 100 },
+      ],
+    );
+    const onPlace = vi.fn();
+    const { container, root } = renderCanvas({
+      page,
+      placementSymbol: twoPinSymbol,
+      onPlace,
+    });
+    const svg = container.querySelector<SVGSVGElement>("svg.schematic-canvas")!;
+    flushSync(() => svg.dispatchEvent(pointerEvent("pointermove", 103, 125)));
+    flushSync(() => svg.dispatchEvent(pointerEvent("pointerdown", 103, 125)));
+    expect(onPlace).toHaveBeenCalledWith({ x: 100, y: 120 }, 0);
+    root.unmount();
+  });
+
+  it("snaps a device pin onto another Net only when its drag is released", async () => {
+    const page = createEmptyPage("Pin drag snap");
+    addResistor(page, "r1", 100, 100);
+    addTestWire(
+      page,
+      "net_target",
+      "wire_target",
+      [
+        { x: 20, y: 160 },
+        { x: 220, y: 160 },
+      ],
+    );
+    const onMoveSelected = vi.fn();
+    const { container, root } = renderCanvas({
+      page,
+      onMoveSelected,
+    });
+    const node = container.querySelector<SVGElement>('[data-node-id="r1"]')!;
+    flushSync(() => node.dispatchEvent(pointerEvent("pointerdown", 100, 100)));
+    flushSync(() => node.dispatchEvent(pointerEvent("pointermove", 100, 130)));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(container.querySelector(".component-node")?.classList).toContain(
+      "is-moving",
+    );
+    expect(onMoveSelected).not.toHaveBeenCalled();
+    const svg = container.querySelector<SVGSVGElement>("svg.schematic-canvas")!;
+    flushSync(() => svg.dispatchEvent(pointerEvent("pointerup", 100, 130)));
+    expect(onMoveSelected).toHaveBeenCalledWith({ x: 0, y: 40 });
+    root.unmount();
+  });
+
+  it("keeps the viewBox matched to the canvas when its element size changes", () => {
+    const resized = resizeViewportToElement(
+      { x: 100, y: 50, width: 1600, height: 1000 },
+      { width: 800, height: 500 },
+      { width: 1000, height: 400 },
+    );
+    expect(resized.width / resized.height).toBeCloseTo(2.5);
+    expect(resized.x + resized.width / 2).toBeCloseTo(900);
+    expect(resized.y + resized.height / 2).toBeCloseTo(550);
+
+    const fitted = fitViewportToAspect(
+      { x: 0, y: 0, width: 1600, height: 1000 },
+      2,
+    );
+    expect(fitted).toEqual({ x: 0, y: 100, width: 1600, height: 800 });
   });
 
   it("supports direct wheel zoom and F fit without a modifier key", async () => {
@@ -411,6 +509,59 @@ describe("canvas interactions", () => {
     root.unmount();
   });
 
+  it("applies the containing net color to every wire group", () => {
+    const page = createEmptyPage("Colored net");
+    addTestNet(page, "net_color", "VOUT").color = "#1d4ed8";
+    addTestWire(
+      page,
+      "net_color",
+      "wire_a",
+      [
+        { x: 0, y: 100 },
+        { x: 100, y: 100 },
+      ],
+    );
+    addTestWire(
+      page,
+      "net_color",
+      "wire_b",
+      [
+        { x: 200, y: 100 },
+        { x: 300, y: 100 },
+      ],
+    );
+    const { container, root } = renderCanvas({ page });
+    const groups = container.querySelectorAll<SVGGElement>(".wire-group");
+    expect(groups).toHaveLength(2);
+    for (const group of groups) {
+      expect(group.style.getPropertyValue("--net-color")).toBe("#1d4ed8");
+    }
+    root.unmount();
+  });
+
+  it("keeps exactly one Name node when a hidden Name is shown again", () => {
+    const page = createEmptyPage("Show Name");
+    addResistor(page, "r1", 100, 100);
+    page.nodes[0]!.labelLayout = {
+      reference: {
+        offset: { x: 0, y: 0 },
+        hidden: true,
+        position: { x: 115, y: 105 },
+        anchor: "start",
+        placement: "default",
+        side: "east",
+      },
+    };
+    const hidden = renderCanvas({ page });
+    expect(hidden.container.querySelectorAll(".component-reference")).toHaveLength(0);
+    hidden.root.unmount();
+
+    page.nodes[0]!.labelLayout!.reference!.hidden = false;
+    const shown = renderCanvas({ page });
+    expect(shown.container.querySelectorAll(".component-reference")).toHaveLength(1);
+    shown.root.unmount();
+  });
+
   it("selects an explicit junction from its hit target", () => {
     const onSelectionChange = vi.fn();
     const page = createEmptyPage("Junction selection");
@@ -463,12 +614,42 @@ describe("canvas interactions", () => {
     expect(container.querySelectorAll(".junction")).toHaveLength(1);
     expect(container.querySelectorAll(".junction-explicit")).toHaveLength(1);
     expect(container.querySelectorAll(".junction-auto")).toHaveLength(0);
-    for (const ring of container.querySelectorAll(".junction-ring")) {
-      expect(ring.getAttribute("r")).toBe("5.5");
-    }
+    expect(container.querySelectorAll(".junction-ring")).toHaveLength(0);
     for (const dot of container.querySelectorAll(".junction-dot")) {
       expect(dot.getAttribute("r")).toBe("3.2");
     }
+    root.unmount();
+  });
+
+  it("renders the junction halo only for the selected junction", () => {
+    const page = createEmptyPage("Junction halo");
+    const junction = addTestJunction(
+      page,
+      "net_1",
+      "junction_1",
+      100,
+      100,
+    );
+    const { container, root } = renderCanvas({
+      page,
+      selection: [{ kind: "junction", id: junctionSelectionId(junction) }],
+    });
+    const rings = container.querySelectorAll(".junction-ring");
+    expect(rings).toHaveLength(1);
+    expect(rings[0]?.getAttribute("r")).toBe("5.5");
+    root.unmount();
+  });
+
+  it("applies the owning Net color to its junction", () => {
+    const page = createEmptyPage("Colored junction");
+    addTestNet(page, "net_color", "VOUT").color = "#0f766e";
+    addTestJunction(page, "net_color", "junction_color", 100, 100);
+    const { container, root } = renderCanvas({ page });
+    expect(
+      container
+        .querySelector<SVGGElement>(".junction")!
+        .style.getPropertyValue("--junction-color"),
+    ).toBe("#0f766e");
     root.unmount();
   });
 
@@ -586,6 +767,7 @@ describe("canvas interactions", () => {
           selection={[{ kind: "node", id: "r1" }]}
           onSelectionChange={vi.fn()}
           onPlace={vi.fn()}
+          onDuplicateNode={vi.fn()}
           onAddWire={vi.fn()}
           onUpdateWire={vi.fn()}
           onUpdateNode={vi.fn()}
@@ -615,6 +797,79 @@ describe("canvas interactions", () => {
     ).not.toBe(initialHitX);
     const previewPath = container.querySelector(".wire-visible")?.getAttribute("d");
     expect(previewPath).not.toBe(initialPath);
+    expect(onMoveSelected).not.toHaveBeenCalled();
+    root.unmount();
+  });
+
+  it("shows duplicate preview before the placing click in duplicate mode", async () => {
+    const onDuplicateNode = vi.fn();
+    const page = createEmptyPage("Duplicate mode");
+    addResistor(page, "r1", 100, 100);
+    const { container, root } = renderCanvas({
+      page,
+      tool: "duplicate",
+      selection: [{ kind: "node", id: "r1" }],
+      onDuplicateNode,
+    });
+    const svg = container.querySelector<SVGSVGElement>("svg.schematic-canvas")!;
+    flushSync(() => svg.dispatchEvent(pointerEvent("pointermove", 160, 140)));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(container.querySelectorAll(".is-duplicate-preview")).toHaveLength(0);
+    const node = container.querySelector<SVGElement>('[data-node-id="r1"]')!;
+    flushSync(() => node.dispatchEvent(pointerEvent("pointerdown", 100, 100)));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    flushSync(() => svg.dispatchEvent(pointerEvent("pointermove", 160, 140)));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(container.querySelectorAll(".is-duplicate-preview")).toHaveLength(1);
+    expect(onDuplicateNode).not.toHaveBeenCalled();
+    flushSync(() => svg.dispatchEvent(pointerEvent("pointerdown", 160, 140)));
+    expect(onDuplicateNode).toHaveBeenCalledWith(
+      "r1",
+      { x: 60, y: 40 },
+      0,
+    );
+    root.unmount();
+  });
+
+  it("arms duplicate preview from a device click when nothing is selected", () => {
+    const onDuplicateNode = vi.fn();
+    const page = createEmptyPage("Arm duplicate");
+    addResistor(page, "r1", 100, 100);
+    const { container, root } = renderCanvas({
+      page,
+      tool: "duplicate",
+      onDuplicateNode,
+    });
+    const node = container.querySelector<SVGElement>('[data-node-id="r1"]')!;
+    flushSync(() => node.dispatchEvent(pointerEvent("pointerdown", 100, 100)));
+    expect(onDuplicateNode).not.toHaveBeenCalled();
+    root.unmount();
+  });
+
+  it("duplicates instead of moving when Ctrl-dragging a device", () => {
+    const onDuplicateNode = vi.fn();
+    const onMoveSelected = vi.fn();
+    const page = createEmptyPage("Ctrl drag duplicate");
+    addResistor(page, "r1", 100, 100);
+    const { container, root } = renderCanvas({
+      page,
+      onDuplicateNode,
+      onMoveSelected,
+    });
+    const svg = container.querySelector<SVGSVGElement>("svg.schematic-canvas")!;
+    const node = container.querySelector<SVGElement>('[data-node-id="r1"]')!;
+    flushSync(() =>
+      node.dispatchEvent(pointerEvent("pointerdown", 100, 100, { ctrlKey: true })),
+    );
+    flushSync(() => svg.dispatchEvent(pointerEvent("pointermove", 150, 140, { ctrlKey: true })));
+    expect(container.querySelectorAll(".component-node")).toHaveLength(2);
+    expect(container.querySelector(".is-duplicate-preview")).not.toBeNull();
+    flushSync(() => svg.dispatchEvent(pointerEvent("pointerup", 150, 140, { ctrlKey: true })));
+    expect(onDuplicateNode).toHaveBeenCalledWith(
+      "r1",
+      { x: 50, y: 40 },
+      0,
+    );
     expect(onMoveSelected).not.toHaveBeenCalled();
     root.unmount();
   });

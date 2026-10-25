@@ -25,6 +25,7 @@ import {
   type LocatedJunction,
   type LocatedWire,
 } from "./model";
+import { translateNodeLabelLayouts } from "./labels";
 
 type EndpointSide = "start" | "end";
 
@@ -396,7 +397,10 @@ function movedPage(
     ...page,
     nodes: page.nodes.map((node) =>
       nodeIds.has(node.id)
-        ? { ...node, x: node.x + delta.x, y: node.y + delta.y }
+        ? translateNodeLabelLayouts(
+            { ...node, x: node.x + delta.x, y: node.y + delta.y },
+            delta,
+          )
         : node,
     ),
   };
@@ -625,6 +629,7 @@ function transformInternalWire(
   wire: Wire,
   nodeIds: ReadonlySet<string>,
   groupTransform: PointTransform,
+  rigidInternal = true,
 ): Wire {
   const startSelected = endpointMovesInTarget(
     source,
@@ -645,7 +650,7 @@ function transformInternalWire(
   if (!oldPoints) {
     return wire;
   }
-  if (startSelected && endSelected) {
+  if (startSelected && endSelected && rigidInternal) {
     const newStart = pointForEndpoint(transformed, library, wire.start);
     const newEnd = pointForEndpoint(transformed, library, wire.end);
     if (newStart && newEnd) {
@@ -772,12 +777,16 @@ export function planNodeRotation(
     nodeIds,
     groupTransform,
   );
+  const rigidInternal = nodeIds.size > 1;
   const transformedWithJunctions: DrawingPage = {
     ...transformed,
     nets: transformed.nets.map((net) => ({
       ...net,
       junctions: net.junctions.map(
-        (junction) => transformedJunctions.get(junction.id) ?? junction,
+        (junction) =>
+          rigidInternal
+            ? transformedJunctions.get(junction.id) ?? junction
+            : junction,
       ),
     })),
   };
@@ -786,14 +795,17 @@ export function planNodeRotation(
     nets: transformedWithJunctions.nets.map((net) => ({
       ...net,
       wires: net.wires.map((wire) =>
-        transformInternalWire(
-          page,
-          transformedWithJunctions,
-          library,
-          wire,
-          nodeIds,
-          groupTransform,
-        ),
+        rigidInternal
+          ? transformInternalWire(
+              page,
+              transformedWithJunctions,
+              library,
+              wire,
+              nodeIds,
+              groupTransform,
+              true,
+            )
+          : wire,
       ),
     })),
   };
@@ -831,6 +843,75 @@ export function planNodeMirror(
             ...node,
             x: centerX - (node.x - centerX),
             mirrored: !node.mirrored,
+          }
+        : node,
+    ),
+  };
+  const transformedJunctions = transformInternalJunctions(
+    page,
+    library,
+    nodeIds,
+    groupTransform,
+  );
+  const transformedWithJunctions: DrawingPage = {
+    ...transformed,
+    nets: transformed.nets.map((net) => ({
+      ...net,
+      junctions: net.junctions.map(
+        (junction) => transformedJunctions.get(junction.id) ?? junction,
+      ),
+    })),
+  };
+  const planned: DrawingPage = {
+    ...transformedWithJunctions,
+    nets: transformedWithJunctions.nets.map((net) => ({
+      ...net,
+      wires: net.wires.map((wire) =>
+        transformInternalWire(
+          page,
+          transformedWithJunctions,
+          library,
+          wire,
+          nodeIds,
+          groupTransform,
+        ),
+      ),
+    })),
+  };
+  return {
+    ...planned,
+    annotations: moveAttachedAnnotations(page, planned, library),
+  };
+}
+
+export function planNodeMirrorVertical(
+  page: DrawingPage,
+  library: readonly SymbolDefinition[],
+  nodeIds: ReadonlySet<string>,
+): DrawingPage {
+  if (nodeIds.size === 0) {
+    return page;
+  }
+  const selected = page.nodes.filter((node) => nodeIds.has(node.id));
+  const centerY =
+    selected.reduce((total, node) => total + node.y, 0) /
+    Math.max(1, selected.length);
+  const groupTransform: PointTransform = {
+    apply(point: Point): Point {
+      return {
+        x: point.x,
+        y: centerY - (point.y - centerY),
+      };
+    },
+  };
+  const transformed: DrawingPage = {
+    ...page,
+    nodes: page.nodes.map((node) =>
+      nodeIds.has(node.id)
+        ? {
+            ...node,
+            y: centerY - (node.y - centerY),
+            mirroredVertically: !node.mirroredVertically,
           }
         : node,
     ),

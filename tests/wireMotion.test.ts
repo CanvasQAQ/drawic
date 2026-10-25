@@ -215,9 +215,34 @@ describe("wire movement plans", () => {
       { kind: "pin", deviceId: "left", pinId: "R" },
     );
     const rotated = planNodeRotation(page, library, new Set(["left"]));
-    const points = wireInPage(rotated, "wire_rotation")!.points;
+    const points = resolveWirePoints(
+      rotated,
+      library,
+      wireInPage(rotated, "wire_rotation")!,
+    )!;
     expect(points[0]).toEqual({ x: 100, y: 120 });
     expect(points[1]?.y).toBeGreaterThan(points[0]!.y);
+  });
+
+  it("does not accumulate a wire loop after four single-device rotations", () => {
+    const page = boundaryPage();
+    const original = wireInPage(page, "wire_boundary")!.points;
+    let rotated = page;
+    for (let index = 0; index < 4; index += 1) {
+      rotated = planNodeRotation(
+        rotated,
+        library,
+        new Set(["left"]),
+      );
+    }
+    const result = wireInPage(rotated, "wire_boundary")!;
+    expect(
+      result.points.length,
+      JSON.stringify(result.points),
+    ).toBeLessThanOrEqual(original.length + 2);
+    expect(wireInPage(rotated, "wire_boundary")!.points.at(-1)).toEqual(
+      original.at(-1),
+    );
   });
 
   it("reapplies the outward escape when a connected endpoint moves", () => {

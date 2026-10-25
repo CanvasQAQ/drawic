@@ -27,6 +27,8 @@ application where required by that package.
 
 - Electron — MIT — https://github.com/electron/electron
 - React and React DOM — MIT — https://github.com/facebook/react
+- Lexical, `@lexical/react`, and `@lexical/rich-text` — MIT —
+  https://github.com/facebook/lexical
 - Chromium and its bundled third-party components — notices are shipped with
   Electron's distributable.
 - Vite — MIT — https://github.com/vitejs/vite

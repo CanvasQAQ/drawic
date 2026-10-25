@@ -7,9 +7,12 @@ const documents = [
   "CLEAN_ROOM.md",
   "PROVENANCE.md",
   "docs/AGENT_WORKFLOW.md",
+  "docs/COMPONENT_NAME_LABELS.md",
   "docs/DEVICE_PIN_AUDIT.md",
   "docs/adr/005-pages-and-single-file-device-library.md",
   "docs/adr/009-net-owned-wire-graph.md",
+  "docs/adr/010-desktop-chrome-themes-and-net-colors.md",
+  "docs/adr/011-component-name-labels.md",
 ];
 
 const forbiddenPatterns = [

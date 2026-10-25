@@ -7,15 +7,31 @@ import {
 import {
   allJunctions,
   allWires,
+  type DocumentTypography,
   type DrawingPage,
   type SymbolDefinition,
 } from "../model";
 import { buildConnectivity } from "../connectivity";
 import { resolveWirePoints } from "../wireMotion";
 import { wireHops, wireOverlaps, wirePathData } from "../wireHops";
+import {
+  DEFAULT_TYPOGRAPHY,
+  SUBSCRIPT_BASELINE_DROP,
+  SUBSCRIPT_HORIZONTAL_GAP,
+  SUBSCRIPT_SCALE,
+  effectiveNameFontSize,
+  effectiveValueFontSize,
+  fontStack,
+  parseReferenceAppearance,
+} from "../labels";
+import {
+  richTextRunMetrics,
+  richTextRunsForReference,
+} from "../richText";
 
 export interface SvgExportOptions {
   includeBackground?: boolean;
+  typography?: DocumentTypography;
 }
 
 function xmlEscape(value: string): string {
@@ -31,12 +47,95 @@ function numberOf(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
 }
 
+function referenceLabelMarkup(
+  node: DrawingPage["nodes"][number],
+  symbol: SymbolDefinition,
+  typography: DocumentTypography,
+): string {
+  if (
+    symbol.referenceLabel === false ||
+    !node.reference.trim() ||
+    !nodeLabelVisible(node, "reference")
+  ) {
+    return "";
+  }
+  const label = symbolLabelPosition(node, symbol, "reference");
+  const layout = node.labelLayout?.reference;
+  const fontSize = effectiveNameFontSize(layout, typography);
+  const custom =
+    layout?.fontStyle !== undefined ||
+    layout?.fontWeight !== undefined ||
+    layout?.script !== undefined;
+  const segments = custom
+    ? [{ text: node.reference, role: "plain" as const }]
+    : parseReferenceAppearance(node.reference);
+  const customShift =
+    layout?.script === "superscript"
+      ? -SUBSCRIPT_BASELINE_DROP * fontSize
+      : layout?.script === "subscript"
+        ? SUBSCRIPT_BASELINE_DROP * fontSize
+        : 0;
+  const richRuns = layout?.richText
+    ? richTextRunsForReference(node.reference, layout.richText)
+    : null;
+  let baselineOffset = 0;
+  const tspans = richRuns
+    ? richRuns
+        .map((run, index) => {
+          const metrics = richTextRunMetrics(run, fontSize);
+          const dy = metrics.dy - baselineOffset;
+          baselineOffset = metrics.dy;
+          const role =
+            run.script === "normal"
+              ? index === 0
+                ? "base"
+                : "plain"
+              : run.script;
+          return `<tspan data-rich-role="${role}" font-weight="${run.bold ? 700 : 400}" font-style="${run.italic ? "italic" : "normal"}" font-size="${numberOf(metrics.fontSize)}"${metrics.dx ? ` dx="${numberOf(metrics.dx)}"` : ""}${dy ? ` dy="${numberOf(dy)}"` : ""}${run.color ? ` fill="${xmlEscape(run.color)}"` : ""}>${xmlEscape(run.text)}</tspan>`;
+        })
+        .join("")
+    : segments
+    .map((segment) => {
+      const subscript = segment.role === "subscript";
+      const weight =
+        layout?.fontWeight ??
+        (subscript || segment.role === "base" ? 700 : 400);
+      const style =
+        layout?.fontStyle ??
+        (subscript ? "normal" : segment.role === "base" ? "italic" : "normal");
+      const size = subscript ? fontSize * SUBSCRIPT_SCALE : fontSize;
+      const dx = subscript ? fontSize * SUBSCRIPT_HORIZONTAL_GAP : 0;
+      const dy = subscript
+        ? fontSize * SUBSCRIPT_BASELINE_DROP
+        : custom
+          ? customShift
+          : 0;
+      return `<tspan data-rich-role="${segment.role}" font-weight="${weight}" font-style="${style}" font-size="${numberOf(size)}"${dx ? ` dx="${numberOf(dx)}"` : ""}${dy ? ` dy="${numberOf(dy)}"` : ""}>${xmlEscape(segment.text)}</tspan>`;
+    })
+    .join("");
+  return `    <text class="component-reference" data-label-kind="reference" data-label-placement="${layout?.placement ?? "legacy"}" x="${numberOf(label.point.x)}" y="${numberOf(label.point.y)}" text-anchor="${label.anchor}" fill="${xmlEscape(layout?.color ?? "#15323d")}" font-family="${xmlEscape(fontStack(typography))}" font-size="${numberOf(fontSize)}" style="font-synthesis:style weight">${tspans}</text>`;
+}
+
+function valueLabelMarkup(
+  node: DrawingPage["nodes"][number],
+  symbol: SymbolDefinition,
+  typography: DocumentTypography,
+): string {
+  if (!node.value.trim() || !nodeLabelVisible(node, "value")) {
+    return "";
+  }
+  const label = symbolLabelPosition(node, symbol, "value");
+  const layout = node.labelLayout?.value;
+  return `    <text class="component-value" data-label-kind="value" data-label-placement="${layout?.placement ?? "legacy"}" x="${numberOf(label.point.x)}" y="${numberOf(label.point.y)}" text-anchor="${label.anchor}" fill="${xmlEscape(layout?.color ?? "#425866")}" font-family="${xmlEscape(fontStack(typography))}" font-size="${numberOf(effectiveValueFontSize(layout, typography))}">${xmlEscape(node.value)}</text>`;
+}
+
 export function buildSchematicSvg(
   page: DrawingPage,
   library: readonly SymbolDefinition[],
   options: SvgExportOptions = {},
 ): string {
   const symbols = new Map(library.map((symbol) => [symbol.id, symbol]));
+  const typography = options.typography ?? DEFAULT_TYPOGRAPHY;
   const connectivity = buildConnectivity(page, library);
   const hopPositions = wireHops(connectivity);
   const overlapRanges = wireOverlaps(connectivity);
@@ -82,11 +181,11 @@ export function buildSchematicSvg(
   const height = maxY - minY;
 
   const wireMarkup = allWires(page)
-    .flatMap(({ wire }) => {
+    .flatMap(({ net, wire }) => {
       const points = resolveWirePoints(page, library, wire);
       return points
         ? [
-            `    <path class="wire" d="${wirePathData(points, hopPositions.get(wire.id), overlapRanges.get(wire.id))}" fill="none" stroke="#1a2833" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`,
+            `    <path class="wire" d="${wirePathData(points, hopPositions.get(wire.id), overlapRanges.get(wire.id))}" fill="none" stroke="${xmlEscape(net.color ?? "#1a2833")}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`,
           ]
         : [];
     })
@@ -98,22 +197,12 @@ export function buildSchematicSvg(
       if (!symbol) {
         return "";
       }
-      const reference = nodeLabelVisible(node, "reference")
-        ? xmlEscape(node.reference || "?")
-        : "";
-      const value = nodeLabelVisible(node, "value") ? xmlEscape(node.value) : "";
-      const referenceLabel = symbolLabelPosition(node, symbol, "reference");
-      const valueLabel = symbolLabelPosition(node, symbol, "value");
       return [
         `    <g class="component" data-symbol="${xmlEscape(symbol.id)}" transform="${symbolTransform(node, symbol)}">`,
         `      ${symbol.svgBody.trim()}`,
         `    </g>`,
-        reference
-          ? `    <text x="${numberOf(referenceLabel.point.x)}" y="${numberOf(referenceLabel.point.y)}" text-anchor="${referenceLabel.anchor}" fill="#15323d" font-family="Arial, sans-serif" font-size="13" font-weight="700">${reference}</text>`
-          : "",
-        value
-          ? `    <text x="${numberOf(valueLabel.point.x)}" y="${numberOf(valueLabel.point.y)}" text-anchor="${valueLabel.anchor}" fill="#425866" font-family="Arial, sans-serif" font-size="12">${value}</text>`
-          : "",
+        referenceLabelMarkup(node, symbol, typography),
+        valueLabelMarkup(node, symbol, typography),
       ]
         .filter(Boolean)
         .join("\n");
@@ -128,10 +217,10 @@ export function buildSchematicSvg(
     })
     .join("\n");
 
-  const junctionMarkup = connectivity.junctionPoints
+  const junctionMarkup = allJunctions(page)
     .map(
-      (junction) =>
-        `    <circle cx="${numberOf(junction.x)}" cy="${numberOf(junction.y)}" r="4" fill="#1a2833"/>`,
+      ({ net, junction }) =>
+        `    <circle class="junction" cx="${numberOf(junction.point.x)}" cy="${numberOf(junction.point.y)}" r="4" fill="${xmlEscape(net.color ?? "#1a2833")}"/>`,
     )
     .join("\n");
 

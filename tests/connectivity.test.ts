@@ -10,6 +10,33 @@ import {
 } from "./fixtures";
 
 describe("net graph connectivity", () => {
+  it("joins a pin touching a Wire without requiring a stored wire endpoint", () => {
+    const page = createEmptyPage("Pin contact");
+    page.nodes.push({
+      id: "r1",
+      symbolId: twoPinSymbol.id,
+      reference: "R1",
+      value: "1k",
+      x: 100,
+      y: 120,
+      rotation: 0,
+      mirrored: false,
+    });
+    addTestWire(
+      page,
+      "net_target",
+      "wire_target",
+      [
+        { x: 20, y: 100 },
+        { x: 220, y: 100 },
+      ],
+    );
+    const connectivity = buildConnectivity(page, testLibrary);
+    expect(connectivity.networkIdByPin.get(pinGraphKey("r1", 0))).toBe(
+      connectivity.networkIdByWire.get("wire_target"),
+    );
+  });
+
   it("connects a pin endpoint to the wire's net", () => {
     const page = createEmptyPage("Connectivity");
     page.nodes.push({

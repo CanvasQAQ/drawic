@@ -18,7 +18,7 @@ Implemented:
 - searchable device library with 109 primary device records and 11 alternate
   appearances;
 - component placement, marquee selection, multi-selection, movement, deletion,
-  rotation, and mirroring;
+  rotation, horizontal/vertical mirroring, duplicate mode, and Ctrl-drag copying;
 - pointer-centered zoom, panning, placement previews, exact port selection, and
   port-to-port wiring;
 - shared endpoint resolution and movement plans for connected wires, including
@@ -29,6 +29,13 @@ Implemented:
   minimum pin escape that is reapplied on every automatic routing pass;
 - independently movable/hideable device labels plus directly editable text,
   rectangle, and ellipse objects with resize handles;
+- component Reference Name labels with persisted default/automatic placement,
+  rich typographic suffixes, GUI/Agent collision policies, and document-level
+  sans/serif scaling, plus a Lexical-based direct segment rich-text editor;
+- a custom cross-platform window title bar with native macOS traffic lights,
+  local light/dark theme switching, and responsive canvas viewBox sizing;
+- persisted per-Net wire colors shared by every wire and preserved in SVG
+  export;
 - a built-in device pin direction audit with visible escape arrows and JSON
   correction export;
 - a bottom session console for placement, file, import/export, and error logs;
@@ -165,12 +172,30 @@ DrawingPage
   shapes[]
 ```
 
+Each component owns:
+
+```text
+ComponentNode
+  id
+  symbolId
+  reference
+  value
+  transform
+  mirroredVertically?
+  labelLayout?
+```
+
+`labelLayout` stores rendered label position, alignment, visibility,
+default/manual placement, and visual typography. It does not replace the
+electrical `reference`.
+
 Each net owns:
 
 ```text
 Net
   id
   name?
+  color?
   wires[]
   junctions[]
 ```
@@ -192,6 +217,10 @@ Important invariants:
 - schema version 3 is the current format; version 2 is rejected;
 - page switching is view state and does not modify the document;
 - every wire belongs to exactly one net;
+- a Net color is optional `#rrggbb` visual metadata and applies to every wire in
+  that Net;
+- a component Name is a bound visual label derived from its electrical
+  Reference; visual styling never changes connectivity;
 - a wire endpoint references a device pin, a junction in the same net, or an
   explicit open end;
 - only genuine branch vertices are stored as junctions; degree-two joins are
@@ -225,6 +254,8 @@ Required record data:
 - view box/frame;
 - sanitized SVG artwork;
 - pin ID, name, role, direction, and canonical local coordinates;
+- unpadded visible-ink bounds including visible pins, plus an optional explicit
+  Reference-label policy;
 - reference/value label anchors;
 - SPICE prefix, default value, and support state;
 - source hash and provenance metadata.
@@ -343,9 +374,9 @@ Run this once after dependency installation or a `node_modules` rebuild. It is
 not needed after `npm run build`, which uses the default permissions for
 `dist/`.
 
-Tagged distribution packages are currently produced only on a native Windows
-runner as the Windows x64 ZIP. The Windows package smoke test runs in CI before
-publishing.
+Tagged distribution packages are produced on native Windows, macOS, and Linux
+runners: Windows x64 ZIP, macOS x64/arm64 DMG/ZIP, and Linux x64 AppImage/DEB.
+Each platform package smoke test runs in CI before publishing.
 
 Release assembly:
 
@@ -355,7 +386,8 @@ npm run verify:release
 ```
 
 `verify:release` expects a fully assembled `release/` directory containing
-exactly one Windows x64 ZIP plus `SHA256SUMS.txt` and `UNSIGNED-RELEASE.txt`.
+Windows x64, macOS x64/arm64, and Linux x64 packages plus `SHA256SUMS.txt` and
+`UNSIGNED-RELEASE.txt`.
 
 ## 8. Test placement
 
@@ -370,6 +402,8 @@ exactly one Windows x64 ZIP plus `SHA256SUMS.txt` and `UNSIGNED-RELEASE.txt`.
 - session console and toolbar behavior: `tests/consolePanel.test.tsx`
 - page UI: `tests/pageBar.test.tsx`
 - canvas interactions: `tests/canvasInteraction.test.tsx`
+- component Name layout, typography, and collision behavior:
+  `tests/labels.test.ts`, `tests/componentLabel.test.tsx`
 - wire endpoint resolution and movement plans: `tests/wireMotion.test.ts`
 - wire crossing hops: `tests/wireHops.test.ts`
 - Net graph canonicalization: `tests/netGraph.test.ts`
@@ -410,16 +444,16 @@ Run the provided audits before committing security-sensitive changes.
 7. Create and push an annotated tag: `vX.Y.Z-preview` for previews and
    `vX.Y.Z` for formal releases.
 8. Wait for the tag-driven GitHub Actions workflow to succeed.
-9. Confirm the Windows x64 ZIP, checksum file, and unsigned notice are uploaded.
+9. Confirm Windows, macOS, and Linux packages, checksum file, and unsigned notice
+   are uploaded.
 10. Download at least one final asset and verify its SHA-256 against the
     published checksum file.
 
 Never publish a release when any build, test, packaged smoke test, or audit has
 failed. Do not describe unsigned artifacts as signed.
 
-The temporary Windows release profile contains one application ZIP. A ZIP can
-avoid direct-binary download friction but does not remove SmartScreen warnings
-for the unsigned executable inside.
+Unsigned Windows and macOS artifacts still trigger SmartScreen and Gatekeeper
+warnings until trusted signing identities and notarization are configured.
 
 After a successful publish, CI retains only the newest Preview release and the
 newest formal release. Older Release entries and their tags are removed

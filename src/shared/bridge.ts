@@ -81,8 +81,13 @@ export interface DrawicBridge {
   getLaunchProject: () => Promise<OpenProjectPayload | null>;
   setDocumentDirty: (dirty: boolean) => void;
   finishClose: () => void;
+  isWindowMaximized: () => Promise<boolean>;
+  minimizeWindow: () => void;
+  toggleWindowMaximize: () => void;
+  closeWindow: () => void;
   onCommand: (listener: (command: AppCommand) => void) => () => void;
   onProjectOpen: (listener: (payload: OpenProjectPayload) => void) => () => void;
+  onWindowMaximizedChange: (listener: (maximized: boolean) => void) => () => void;
   platform: string;
   version: string;
 }

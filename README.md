@@ -13,20 +13,20 @@ Local implementation agents must begin with [AGENTS.md](AGENTS.md) and
 
 ## Preview status
 
-Version 0.2.1 is an **Unsigned Preview**. The editor uses independent drawing
+Version 0.3.0 is an **Unsigned Preview**. The editor uses independent drawing
 pages and a single-file device library, and can produce project, SPICE, SVG, PNG,
 and PDF files. User-editable libraries, Spectre/SCS, and local MCP are explicitly
 not implemented.
 
-Tagged Preview releases currently publish one Windows x64 ZIP named
-`Unsigned-Preview`. Windows SmartScreen warnings are expected because no signing
-certificate is configured. macOS and Linux release packages remain paused until
-the Windows preview workflow is stable.
+Tagged Preview releases publish Windows x64, macOS x64/arm64, and Linux x64
+packages. Windows SmartScreen and macOS Gatekeeper warnings are expected because
+no signing identities are configured. Verify downloads against
+`SHA256SUMS.txt`.
 
-Use tags such as `v0.2.1-preview` for Preview releases. A plain semantic version
+Use tags such as `v0.3.0-preview` for Preview releases. A plain semantic version
 tag such as `v1.0.0` is treated as a formal release.
 
-## Implemented in 0.2
+## Implemented in 0.3
 
 - Searchable, category-filtered symbol library with 109 primary symbols, 11
   alternate appearances, and continuous placement mode. All device records are
@@ -37,7 +37,8 @@ tag such as `v1.0.0` is treated as a formal release.
   rotation, and mirroring.
 - A compact, hidden-by-default session console for editor activity and errors.
 - Wheel zoom centered on the pointer, `F` fit-to-content, Ctrl+0 reset,
-  Space-drag panning, and visible placement previews.
+  Space-drag panning, and visible placement previews. `R` rotates a placement
+  or duplicate preview before it is committed.
 - Point-to-point wiring by clicking one device port and then another, with exact
   port snapping and typed electrical endpoint references.
 - Shared wire endpoint resolution and movement planning, with rigid internal
@@ -52,6 +53,8 @@ tag such as `v1.0.0` is treated as a formal release.
   highlighting and arc hops over electrically separate crossings.
 - Net-owned canonical names such as `N001`, plus visible Net Labels. Renaming a
   net updates all of its labels without duplicating names on wires.
+- Per-Net wire colors edited from the wire inspector and applied consistently to
+  every wire and Junction in the Net, including SVG export.
 - Junctions have stable IDs, are selectable and deletable, and are the only
   persisted branch vertices. Degree-two joins are normalized into one wire.
 - Wire snapping uses a 10-unit grid. Starting a new wire along an
@@ -62,6 +65,10 @@ tag such as `v1.0.0` is treated as a formal release.
   continuous wire object.
 - Independently movable and hideable component labels, plus in-place editing and
   dragging for free text, named net labels, rectangles, and ellipses.
+- Component placement assigns Reference Names from electrical prefixes, places
+  rich typographic Name labels using device ink bounds, hides Value by default,
+  and supports manual styling, sans/serif typography, and Agent collision
+  avoidance.
 - Independent drawing pages with creation, rename, duplicate, delete, reorder,
   and tab switching. Page switching is view state and does not mark a document
   dirty.
@@ -77,6 +84,8 @@ tag such as `v1.0.0` is treated as a formal release.
   the rasterized diagram.
 - Basic ERC for empty/duplicate references, dangling pins, invalid wire
   geometry, missing symbols, and conflicting labels.
+- A frameless Windows/Linux shell with custom window controls, native macOS
+  traffic lights, and a locally persisted light/dark theme switch.
 
 ## Development
 
@@ -111,14 +120,14 @@ npm run dist:dir
 npm run smoke:packaged
 ```
 
-Linux directory-package smoke uses `xvfb-run`. Tagged releases are built on a
-native Windows runner and publish only the Windows x64 ZIP. The workflow keeps
-the newest Preview and newest formal release, then removes superseded Release
-entries and tags.
+Linux directory-package smoke uses `xvfb-run`. Tagged releases are built on
+native Windows, macOS, and Linux runners and publish all three platform package
+sets. The workflow verifies downloaded checksums, keeps the newest Preview and
+newest formal release, then removes superseded Release entries and tags.
 
 ## Project files and local data
 
-Projects use the `.drawic.json` extension. Schema version 2 is strict: a document
+Projects use the `.drawic.json` extension. Schema version 3 is strict: a document
 with an unknown future version is rejected rather than guessed at. The retired
 Cell-oriented preview format is explicitly rejected and is not migrated. IDs are
 stable UUIDs. Project saves write a temporary sibling file, flush it, and
@@ -148,11 +157,31 @@ service, sync, account, telemetry, or update-check request.
   device port before and after creates a wire bound to both ports.
 - The wheel zooms around the pointer. `F` fits the drawing, Ctrl+0 resets the
   view, and holding Space while dragging pans.
+- The title-bar theme button switches between light and dark appearance, and the
+  choice is remembered locally.
+- Select any wire and use the Net color control in Properties to recolor the
+  complete Net.
 - Select a wire to reveal a routing handle on every orthogonal segment. Handles
   remain available on pin-bound segments and add doglegs without detaching the
   electrical endpoint.
 - Double-click text, a net label, a shape label, or a component reference/value
   to edit it in place. Labels and shapes can be dragged directly.
+- New components show their Reference Name and hide Value. Select a component
+  label to edit its font scale, weight, style, script, color, visibility, or
+  manual position. Agent callers can request collision-avoiding placement.
+- Name labels use one compact Lexical rich-text editor: click a base or
+  subscript directly, select text, and apply bold, italic, sub/superscript
+  formatting with a live preview. The same renderer is available for future
+  TEXT and Note annotations.
+- Press `C`, then left-click a device to choose the copy source and reveal its
+  preview. A second left-click places the copy and exits Duplicate mode.
+  Ctrl-dragging a device copies it directly at the drag destination.
+- Device pins snap to nearby Wires during placement and at drag release; a pin
+  that lands on a Wire joins that Net, while pins merely crossed during a drag
+  do not connect until release.
+- `U` and `Ctrl+Z`/`Cmd+Z` undo; `U` is ignored while typing in a field.
+- The Mirror toolbar action flips horizontally; Flip V flips vertically and
+  repositions default Name labels from the transformed world-space ink bounds.
 - A new wire endpoint deliberately snapped onto another wire creates an explicit
   junction. Passive crossing or endpoint overlap stays separate and renders as a
   hop.
@@ -183,12 +212,9 @@ service, sync, account, telemetry, or update-check request.
   omitted on SPICE export.
 - Page artwork is independent; electrical connectivity is never inferred
   between pages.
-- All 0.2 packages are unsigned.
-
-The temporary Windows release profile publishes only an unpacked application
-ZIP. The unsigned executable inside still triggers Windows SmartScreen on first
-launch. Installer and other-platform packaging can return after the preview
-workflow is stable.
+- All 0.3 packages are unsigned.
+- Windows SmartScreen and macOS Gatekeeper warnings remain until trusted signing
+  identities and notarization are configured.
 
 ## License
 

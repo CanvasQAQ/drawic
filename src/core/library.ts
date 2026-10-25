@@ -35,8 +35,10 @@ export interface DeviceLibraryRecord {
   keywords: string[];
   electrical: boolean;
   palette: boolean;
+  referenceLabel?: boolean;
   frame: { x: number; y: number; width: number; height: number };
   selectionBox?: { x: number; y: number; width: number; height: number };
+  labelBounds?: { x: number; y: number; width: number; height: number };
   artwork: {
     type: "svg";
     viewBox: string;
@@ -191,6 +193,19 @@ function parseDevice(value: unknown, index: number): DeviceLibraryRecord {
         : (() => {
             throw new Error(`${field}.selectionBox must be an object.`);
           })();
+  const labelBounds =
+    value.labelBounds === undefined
+      ? undefined
+      : isRecord(value.labelBounds)
+        ? {
+            x: expectNumber(value.labelBounds.x, `${field}.labelBounds.x`),
+            y: expectNumber(value.labelBounds.y, `${field}.labelBounds.y`),
+            width: expectNumber(value.labelBounds.width, `${field}.labelBounds.width`),
+            height: expectNumber(value.labelBounds.height, `${field}.labelBounds.height`),
+          }
+        : (() => {
+            throw new Error(`${field}.labelBounds must be an object.`);
+          })();
   const variantOf =
     value.variantOf === undefined
       ? undefined
@@ -210,8 +225,17 @@ function parseDevice(value: unknown, index: number): DeviceLibraryRecord {
     ),
     electrical: expectBoolean(value.electrical, `${field}.electrical`),
     palette: expectBoolean(value.palette, `${field}.palette`),
+    ...(value.referenceLabel === undefined
+      ? {}
+      : {
+          referenceLabel: expectBoolean(
+            value.referenceLabel,
+            `${field}.referenceLabel`,
+          ),
+        }),
     frame: parsedFrame,
     ...(selectionBox ? { selectionBox } : {}),
+    ...(labelBounds ? { labelBounds } : {}),
     artwork: {
       type: "svg",
       viewBox: expectString(value.artwork.viewBox, `${field}.artwork.viewBox`),
@@ -309,8 +333,12 @@ export function loadDeviceLibrary(value: DeviceLibraryFile): LoadedDeviceLibrary
         category: device.category,
         electrical: device.electrical,
         palette: device.palette,
+        ...(device.referenceLabel === false
+          ? { referenceLabel: false }
+          : {}),
         frame: device.frame,
         ...(device.selectionBox ? { selectionBox: device.selectionBox } : {}),
+        ...(device.labelBounds ? { labelBounds: device.labelBounds } : {}),
         pins: device.pins,
         file: device.artwork.source,
         svgBody: device.artwork.body,

@@ -3,6 +3,19 @@ export const DOCUMENT_KIND = "drawic-drawing" as const;
 
 export type Rotation = 0 | 90 | 180 | 270;
 export type SymbolSide = "north" | "east" | "south" | "west";
+export type LabelSide = SymbolSide;
+export type LabelTextAnchor = "start" | "middle" | "end";
+export type LabelPlacement = "default" | "manual";
+export type LabelScript = "normal" | "subscript" | "superscript";
+
+export interface RichTextRun {
+  text: string;
+  bold: boolean;
+  italic: boolean;
+  script: LabelScript;
+  color?: string;
+  fontSizeScale?: number;
+}
 
 export interface Point {
   x: number;
@@ -34,13 +47,20 @@ export interface SymbolDefinition {
   palette: boolean;
   frame: SymbolFrame;
   selectionBox?: SymbolFrame;
+  labelBounds?: SymbolFrame;
+  referenceLabel?: boolean;
   pins: SymbolPin[];
   file: string;
   svgBody: string;
   viewBox?: string;
   labelAnchors?: {
-    reference: { x: number; y: number; anchor: "start" | "middle" | "end" };
-    value: { x: number; y: number; anchor: "start" | "middle" | "end" };
+    reference: { x: number; y: number; anchor: LabelTextAnchor };
+    value: { x: number; y: number; anchor: LabelTextAnchor };
+  };
+  spice?: {
+    prefix: string;
+    defaultValue: string;
+    supported: boolean;
   };
 }
 
@@ -53,6 +73,7 @@ export interface ComponentNode {
   y: number;
   rotation: Rotation;
   mirrored: boolean;
+  mirroredVertically?: boolean;
   labelLayout?: Partial<Record<NodeLabelKind, NodeLabelLayout>>;
 }
 
@@ -61,6 +82,21 @@ export type NodeLabelKind = "reference" | "value";
 export interface NodeLabelLayout {
   offset: Point;
   hidden: boolean;
+  position?: Point;
+  anchor?: LabelTextAnchor;
+  placement?: LabelPlacement;
+  side?: LabelSide;
+  fontSizeScale?: number;
+  color?: string;
+  fontWeight?: 400 | 700;
+  fontStyle?: "normal" | "italic";
+  script?: LabelScript;
+  richText?: RichTextRun[];
+}
+
+export interface DocumentTypography {
+  family: "sans" | "serif";
+  scale: number;
 }
 
 export interface ConnectionAnchor {
@@ -112,6 +148,7 @@ export interface Junction {
 export interface Net {
   id: string;
   name?: string;
+  color?: string;
   wires: Wire[];
   junctions: Junction[];
 }
@@ -159,6 +196,7 @@ export interface DrawicDocument {
   createdAt: string;
   modifiedAt: string;
   pages: DrawingPage[];
+  typography?: DocumentTypography;
 }
 
 export type SelectionKind =
@@ -219,13 +257,21 @@ export function defaultNetName(index: number): string {
   return `N${String(Math.max(1, index + 1)).padStart(3, "0")}`;
 }
 
+export function normalizeNetColor(value: string): string | undefined {
+  const color = value.trim().toLowerCase();
+  return /^#[0-9a-f]{6}$/.test(color) ? color : undefined;
+}
+
 export function createEmptyNet(
   id = createIdentifier("net"),
   name?: string,
+  color?: string,
 ): Net {
+  const normalizedColor = color ? normalizeNetColor(color) : undefined;
   return {
     id,
     ...(name ? { name } : {}),
+    ...(normalizedColor ? { color: normalizedColor } : {}),
     wires: [],
     junctions: [],
   };
@@ -419,6 +465,12 @@ function parseNode(value: unknown, index: number): ComponentNode {
   if (typeof value.mirrored !== "boolean") {
     throw new ProjectFormatError("invalid-field", `${field}.mirrored must be boolean.`);
   }
+  if (value.mirroredVertically !== undefined && typeof value.mirroredVertically !== "boolean") {
+    throw new ProjectFormatError(
+      "invalid-field",
+      `${field}.mirroredVertically must be boolean.`,
+    );
+  }
   const labelLayout = parseNodeLabelLayout(value.labelLayout, `${field}.labelLayout`);
   return {
     id: expectString(value.id, `${field}.id`),
@@ -429,6 +481,9 @@ function parseNode(value: unknown, index: number): ComponentNode {
     y: expectFinite(value.y, `${field}.y`),
     rotation: expectRotation(value.rotation, `${field}.rotation`),
     mirrored: value.mirrored,
+    ...(value.mirroredVertically === true
+      ? { mirroredVertically: true }
+      : {}),
     ...(labelLayout ? { labelLayout } : {}),
   };
 }
@@ -464,9 +519,173 @@ function parseNodeLabelLayout(
     result[kind] = {
       offset: parsePoint(candidate.offset, `${field}.${kind}.offset`),
       hidden: candidate.hidden,
+      ...(candidate.position === undefined
+        ? {}
+        : {
+            position: parsePoint(
+              candidate.position,
+              `${field}.${kind}.position`,
+            ),
+          }),
+      ...(candidate.anchor === undefined
+        ? {}
+        : parseLabelAnchor(candidate.anchor, `${field}.${kind}.anchor`)),
+      ...(candidate.placement === undefined
+        ? {}
+        : parseLabelPlacement(candidate.placement, `${field}.${kind}.placement`)),
+      ...(candidate.side === undefined
+        ? {}
+        : { side: parseLabelSide(candidate.side, `${field}.${kind}.side`) }),
+      ...(candidate.fontSizeScale === undefined
+        ? {}
+        : {
+            fontSizeScale: expectPositiveFinite(
+              candidate.fontSizeScale,
+              `${field}.${kind}.fontSizeScale`,
+            ),
+          }),
+      ...(candidate.color === undefined
+        ? {}
+        : { color: expectColor(candidate.color, `${field}.${kind}.color`) }),
+      ...(candidate.fontWeight === undefined
+        ? {}
+        : { fontWeight: parseLabelWeight(candidate.fontWeight, `${field}.${kind}.fontWeight`) }),
+      ...(candidate.fontStyle === undefined
+        ? {}
+        : parseLabelFontStyle(candidate.fontStyle, `${field}.${kind}.fontStyle`)),
+      ...(candidate.script === undefined
+        ? {}
+        : parseLabelScript(candidate.script, `${field}.${kind}.script`)),
+      ...(candidate.richText === undefined
+        ? {}
+        : {
+            richText: parseRichTextRuns(
+              candidate.richText,
+              `${field}.${kind}.richText`,
+            ),
+          }),
     };
   }
   return Object.keys(result).length > 0 ? result : undefined;
+}
+
+function parseRichTextRuns(value: unknown, field: string): RichTextRun[] {
+  if (!Array.isArray(value) || value.length === 0) {
+    throw new ProjectFormatError(
+      "invalid-field",
+      `${field} must be a non-empty array.`,
+    );
+  }
+  return value.map((run, index) => {
+    const runField = `${field}[${index}]`;
+    if (
+      !isRecord(run) ||
+      typeof run.text !== "string" ||
+      typeof run.bold !== "boolean" ||
+      typeof run.italic !== "boolean" ||
+      (run.script !== "normal" &&
+        run.script !== "subscript" &&
+        run.script !== "superscript")
+    ) {
+      throw new ProjectFormatError(
+        "invalid-field",
+        `${runField} is not a valid rich-text run.`,
+      );
+    }
+    return {
+      text: run.text,
+      bold: run.bold,
+      italic: run.italic,
+      script: run.script,
+      ...(run.color === undefined
+        ? {}
+        : { color: expectColor(run.color, `${runField}.color`) }),
+      ...(run.fontSizeScale === undefined
+        ? {}
+        : {
+            fontSizeScale: expectPositiveFinite(
+              run.fontSizeScale,
+              `${runField}.fontSizeScale`,
+            ),
+          }),
+    };
+  });
+}
+
+function expectPositiveFinite(
+  value: unknown,
+  field: string,
+): number {
+  const finite = expectFinite(value, field);
+  if (finite <= 0) {
+    throw new ProjectFormatError("invalid-field", `${field} must be positive.`);
+  }
+  return finite;
+}
+
+function expectColor(value: unknown, field: string): string {
+  const color = normalizeNetColor(expectString(value, field));
+  if (!color) {
+    throw new ProjectFormatError(
+      "invalid-field",
+      `${field} must be a six-digit hexadecimal color.`,
+    );
+  }
+  return color;
+}
+
+function parseLabelAnchor(
+  value: unknown,
+  field: string,
+): { anchor: LabelTextAnchor } {
+  if (value !== "start" && value !== "middle" && value !== "end") {
+    throw new ProjectFormatError("invalid-field", `${field} is not supported.`);
+  }
+  return { anchor: value };
+}
+
+function parseLabelPlacement(
+  value: unknown,
+  field: string,
+): { placement: LabelPlacement } {
+  if (value !== "default" && value !== "manual") {
+    throw new ProjectFormatError("invalid-field", `${field} is not supported.`);
+  }
+  return { placement: value };
+}
+
+function parseLabelSide(value: unknown, field: string): LabelSide {
+  if (value !== "north" && value !== "east" && value !== "south" && value !== "west") {
+    throw new ProjectFormatError("invalid-field", `${field} is not supported.`);
+  }
+  return value;
+}
+
+function parseLabelWeight(value: unknown, field: string): 400 | 700 {
+  if (value !== 400 && value !== 700) {
+    throw new ProjectFormatError("invalid-field", `${field} must be 400 or 700.`);
+  }
+  return value;
+}
+
+function parseLabelFontStyle(
+  value: unknown,
+  field: string,
+): { fontStyle: "normal" | "italic" } {
+  if (value !== "normal" && value !== "italic") {
+    throw new ProjectFormatError("invalid-field", `${field} is not supported.`);
+  }
+  return { fontStyle: value };
+}
+
+function parseLabelScript(
+  value: unknown,
+  field: string,
+): { script: LabelScript } {
+  if (value !== "normal" && value !== "subscript" && value !== "superscript") {
+    throw new ProjectFormatError("invalid-field", `${field} is not supported.`);
+  }
+  return { script: value };
 }
 
 function parseWire(value: unknown, index: number): Wire {
@@ -545,9 +764,20 @@ function parseNet(value: unknown, index: number): Net {
     value.name === undefined
       ? undefined
       : expectString(value.name, `${field}.name`).trim();
+  const color =
+    value.color === undefined
+      ? undefined
+      : normalizeNetColor(expectString(value.color, `${field}.color`));
+  if (value.color !== undefined && !color) {
+    throw new ProjectFormatError(
+      "invalid-field",
+      `${field}.color must be a six-digit hexadecimal color.`,
+    );
+  }
   return {
     id: expectString(value.id, `${field}.id`),
     ...(name ? { name } : {}),
+    ...(color ? { color } : {}),
     wires,
     junctions: value.junctions.map(parseJunction),
   };
@@ -619,6 +849,25 @@ function parsePage(value: unknown, index: number): DrawingPage {
   };
 }
 
+function parseTypography(
+  value: unknown,
+  field: string,
+): DocumentTypography | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (!isRecord(value) || (value.family !== "sans" && value.family !== "serif")) {
+    throw new ProjectFormatError(
+      "invalid-field",
+      `${field} must select the sans or serif family.`,
+    );
+  }
+  return {
+    family: value.family,
+    scale: expectPositiveFinite(value.scale, `${field}.scale`),
+  };
+}
+
 export function parseProjectText(text: string): DrawicDocument {
   let raw: unknown;
   try {
@@ -657,6 +906,9 @@ export function parseProjectText(text: string): DrawicDocument {
     createdAt: expectString(raw.createdAt, "createdAt"),
     modifiedAt: expectString(raw.modifiedAt, "modifiedAt"),
     pages: raw.pages.map(parsePage),
+    ...(raw.typography === undefined
+      ? {}
+      : { typography: parseTypography(raw.typography, "typography")! }),
   };
 
   const ids = new Set<string>();

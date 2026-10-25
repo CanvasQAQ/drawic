@@ -8,6 +8,12 @@ import {
   parseMxLibraryTitles,
   parseDeviceLibrary,
 } from "../src/core/library";
+import {
+  NAME_BASE_FONT_SIZE,
+  layoutNodeLabels,
+} from "../src/core/labels";
+import { symbolLabelPosition } from "../src/core/geometry";
+import { createEmptyPage } from "../src/core/model";
 
 async function readBuiltInLibrary() {
   const text = await readFile(
@@ -75,6 +81,45 @@ describe("single-file device library", () => {
         expect(centerY + pin.y).toBeLessThanOrEqual(box.y + box.height + 0.001);
       }
     }
+  });
+
+  it("stores unpadded ink bounds for the accepted NMOS and Resistor label samples", async () => {
+    const library = loadDeviceLibrary(await readBuiltInLibrary());
+    const nmos = library.byId.get("nmos")!;
+    const resistor = library.byId.get("resistor")!;
+    expect(nmos.labelBounds).toEqual({
+      x: -20,
+      y: -20,
+      width: 30.581395,
+      height: 40,
+    });
+    expect(resistor.labelBounds).toEqual({
+      x: -4.988372,
+      y: -20,
+      width: 10.360465,
+      height: 40,
+    });
+
+    const page = createEmptyPage("Built-in labels");
+    const nmosNode = {
+      id: "m1",
+      symbolId: "nmos",
+      reference: "M1",
+      value: "NMOS",
+      x: 100,
+      y: 100,
+      rotation: 0 as const,
+      mirrored: false,
+    };
+    const nmosLayout = layoutNodeLabels(nmosNode, nmos, page, {
+      showValue: false,
+    });
+    expect(
+      symbolLabelPosition({ ...nmosNode, labelLayout: nmosLayout }, nmos, "reference"),
+    ).toEqual({
+      point: { x: 115, y: Math.round(100 + NAME_BASE_FONT_SIZE * 0.72 / 2) },
+      anchor: "start",
+    });
   });
 
   it("keeps the bundled three-terminal MOS symbols free of bulk pins", async () => {

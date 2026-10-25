@@ -543,6 +543,7 @@ function canonicalizeNetGraph(net: Net): Net {
   const next: Net = {
     id: net.id,
     ...(net.name ? { name: net.name } : {}),
+    ...(net.color ? { color: net.color } : {}),
     wires: canonicalWires,
     junctions,
   };
@@ -616,12 +617,14 @@ function mergeNets(page: DrawingPage): DrawingPage {
   const nets = [...groups.values()].map((group) => {
     const primary = group[0]!;
     const name = group.map((net) => net.name?.trim()).find(Boolean);
+    const color = group.map((net) => net.color).find(Boolean);
     for (const net of group) {
       netIdMap.set(net.id, primary.id);
     }
     return {
       id: primary.id,
       ...(name ? { name } : {}),
+      ...(color ? { color } : {}),
       wires: group.flatMap((net) => net.wires),
       junctions: group.flatMap((net) => net.junctions),
     };

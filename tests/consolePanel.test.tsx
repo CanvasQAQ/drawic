@@ -53,29 +53,27 @@ describe("editor console", () => {
     const noop = vi.fn();
     const { container, root } = mount(
       <Toolbar
-        documentTitle="netcheck"
-        dirty={false}
         tool="place"
         canUndo={false}
         canRedo={false}
-        canDelete={false}
-        canRotate={false}
-        canMirror={false}
         onNew={noop}
         onOpen={noop}
         onSave={noop}
         onTool={noop}
         onUndo={noop}
         onRedo={noop}
-        onDelete={noop}
-        onRotate={noop}
-        onMirror={noop}
         onExport={noop}
-        onAuditPins={noop}
       />,
     );
     expect(container.querySelector(".placement-banner")).toBeNull();
     expect(container.textContent).not.toContain("Click canvas to place");
+    expect(container.textContent).not.toContain("Drawic");
+    expect(
+      container.querySelector('button[aria-label="Duplicate"]'),
+    ).not.toBeNull();
+    expect(
+      container.querySelector('button[aria-label="Rotate"]'),
+    ).toBeNull();
     root.unmount();
   });
 });

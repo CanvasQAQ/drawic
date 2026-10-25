@@ -351,7 +351,7 @@ function includeBounds(bounds, next) {
   return bounds;
 }
 
-export function svgContentBounds(markup) {
+export function svgContentBounds(markup, padding = 2) {
   let bounds = null;
   for (const match of markup.matchAll(/<(line|polyline|polygon|rect|circle|path)\b([^>]*)>/gi)) {
     const kind = match[1].toLowerCase();
@@ -416,7 +416,6 @@ export function svgContentBounds(markup) {
   if (!bounds) {
     return null;
   }
-  const padding = 2;
   return {
     minX: bounds.minX - padding,
     minY: bounds.minY - padding,
@@ -636,8 +635,37 @@ function createDevice(entry, markup, sourceManifest, options = {}) {
         y: Number(artworkBounds.minY.toFixed(6)),
         width: Number((artworkBounds.maxX - artworkBounds.minX).toFixed(6)),
         height: Number((artworkBounds.maxY - artworkBounds.minY).toFixed(6)),
-      }
+    }
     : { x, y, width, height };
+  const unpaddedBounds = svgContentBounds(body, 0);
+  const labelBoundsSource =
+    unpaddedBounds ?? { minX: x, minY: y, maxX: x + width, maxY: y + height };
+  const allPinPositions = visiblePins.map(
+    (pin, index) =>
+      visualPins.get(index) ?? fallbackPinPosition(appearanceEntry, pin, index),
+  );
+  const labelMinX = Math.min(
+    labelBoundsSource.minX,
+    ...allPinPositions.map((pin) => pin.x),
+  );
+  const labelMinY = Math.min(
+    labelBoundsSource.minY,
+    ...allPinPositions.map((pin) => pin.y),
+  );
+  const labelMaxX = Math.max(
+    labelBoundsSource.maxX,
+    ...allPinPositions.map((pin) => pin.x),
+  );
+  const labelMaxY = Math.max(
+    labelBoundsSource.maxY,
+    ...allPinPositions.map((pin) => pin.y),
+  );
+  const labelBounds = {
+    x: Number(labelMinX.toFixed(6)),
+    y: Number(labelMinY.toFixed(6)),
+    width: Number((labelMaxX - labelMinX).toFixed(6)),
+    height: Number((labelMaxY - labelMinY).toFixed(6)),
+  };
   return {
     id: options.id ?? entry.id,
     ...(options.variantOf ? { variantOf: options.variantOf } : {}),
@@ -647,8 +675,10 @@ function createDevice(entry, markup, sourceManifest, options = {}) {
     keywords: searchTerms(entry, variant, options.variantOf),
     electrical: Boolean(entry.electrical),
     palette: Boolean(entry.palette),
+    ...(entry.referenceLabel === false ? { referenceLabel: false } : {}),
     frame: { x, y, width, height },
     selectionBox,
+    labelBounds,
     artwork: {
       type: "svg",
       viewBox: `${x} ${y} ${width} ${height}`,

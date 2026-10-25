@@ -71,9 +71,58 @@ describe("Drawic drawing format", () => {
     expect(parsed).toEqual(document);
   });
 
+  it("round-trips component label placement, styling, and diagram typography", () => {
+    const document = createDocument({ pageId: "page_style_labels" });
+    document.typography = { family: "serif", scale: 1.25 };
+    document.pages[0]!.nodes.push({
+      id: "r1",
+      symbolId: "resistor",
+      reference: "R12",
+      value: "1k",
+      x: 100,
+      y: 100,
+      rotation: 90,
+      mirrored: true,
+      mirroredVertically: true,
+      labelLayout: {
+        reference: {
+          offset: { x: 0, y: 0 },
+          hidden: false,
+          position: { x: 140, y: 160 },
+          anchor: "end",
+          placement: "manual",
+          side: "west",
+          fontSizeScale: 1.1,
+          color: "#1d4ed8",
+          fontWeight: 700,
+          fontStyle: "italic",
+          script: "superscript",
+          richText: [
+            { text: "R", bold: true, italic: true, script: "normal" },
+            { text: "12", bold: true, italic: false, script: "subscript" },
+          ],
+        },
+        value: {
+          offset: { x: 0, y: 0 },
+          hidden: true,
+        },
+      },
+    });
+    const parsed = parseProjectText(serializeProject(document));
+    expect(parsed).toEqual(document);
+    let index = 0;
+    const duplicated = duplicatePage(parsed, "page_style_labels", {
+      pageId: "page_style_labels_copy",
+      idFactory: (prefix) => `${prefix}_copy_${++index}`,
+    });
+    expect(duplicated.pages[1]?.nodes[0]?.labelLayout).toEqual(
+      document.pages[0]?.nodes[0]?.labelLayout,
+    );
+  });
+
   it("round-trips net-owned wires and attached net labels", () => {
     const document = createDocument({ pageId: "page_wire_mode" });
-    addTestNet(document.pages[0]!, "net_vout", "VOUT");
+    addTestNet(document.pages[0]!, "net_vout", "VOUT").color = "#0f766e";
     addTestNet(document.pages[0]!, "net_gnd", "GND");
     addTestWire(
       document.pages[0]!,
@@ -115,12 +164,21 @@ describe("Drawic drawing format", () => {
       "VOUT",
       "GND",
     ]);
+    expect(duplicated.pages[1]?.nets[0]?.color).toBe("#0f766e");
     expect(duplicated.pages[1]?.annotations[0]?.wireId).toBe("wire_copy_3");
     expect(duplicated.pages[1]?.nets[0]?.id).toBe("net_copy_1");
     expect(allTestWires(duplicated.pages[1]!).map((wire) => wire.id)).toEqual([
       "wire_copy_3",
       "wire_copy_4",
     ]);
+  });
+
+  it("rejects malformed persisted net colors", () => {
+    const document = createDocument({ pageId: "page_bad_color" });
+    addTestNet(document.pages[0]!, "net_bad", "BAD").color = "teal";
+    expect(() => parseProjectText(serializeProject(document))).toThrow(
+      /six-digit hexadecimal color/,
+    );
   });
 
   it("rejects future schema versions instead of guessing", () => {

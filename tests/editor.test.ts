@@ -1,15 +1,19 @@
 import { describe, expect, it } from "vitest";
 import { buildConnectivity, pinGraphKey } from "../src/core/connectivity";
+import { resolveWirePoints } from "../src/core/wireMotion";
 import {
   addComponent,
   addWire,
+  duplicateNode,
   mirrorSelection,
   moveNodes,
   removeSelection,
   renameNet,
   rotateSelection,
   updateNode,
+  updateNodeLabel,
   updateWirePoints,
+  updateNetColorForWire,
   updateNetNameForWire,
 } from "../src/core/editor";
 import {
@@ -73,6 +77,53 @@ describe("page-scoped net editing", () => {
     expect(pageById(document, "page_b").nodes).toHaveLength(0);
   });
 
+  it("duplicates a device with a new ID, unique Reference, and shifted labels", () => {
+    let document = createDocument({ pageId: "page_duplicate_node" });
+    document = addComponent(document, "page_duplicate_node", {
+      symbol: twoPinSymbol,
+      reference: "R1",
+      value: "1k",
+      point: { x: 100, y: 100 },
+      id: "r1",
+      library: testLibrary,
+    });
+    document = updateNodeLabel(
+      document,
+      "page_duplicate_node",
+      "r1",
+      "reference",
+      { color: "#1d4ed8", fontStyle: "italic" },
+      testLibrary,
+    );
+    const sourceLabel = pageById(document, "page_duplicate_node").nodes[0]!
+      .labelLayout!.reference!.position!;
+    document = duplicateNode(
+      document,
+      "page_duplicate_node",
+      "r1",
+      { x: 30, y: 20 },
+      testLibrary,
+      "r2",
+      "2026-10-25T00:00:00.000Z",
+    );
+    const duplicate = pageById(document, "page_duplicate_node").nodes[1]!;
+    expect(duplicate).toMatchObject({
+      id: "r2",
+      reference: "R2",
+      value: "1k",
+      x: 130,
+      y: 120,
+    });
+    expect(duplicate.labelLayout?.reference?.position).toEqual({
+      x: sourceLabel.x + 30,
+      y: sourceLabel.y + 20,
+    });
+    expect(duplicate.labelLayout?.reference).toMatchObject({
+      color: "#1d4ed8",
+      fontStyle: "italic",
+    });
+  });
+
   it("connects pin endpoint references even when stored geometry is displaced", () => {
     const document = twoAnchorDocument();
     const page = pageById(document, "page_a");
@@ -116,7 +167,9 @@ describe("page-scoped net editing", () => {
       "2026-10-23T00:00:05.000Z",
     );
     let wire = findWire(pageById(document, "page_a"), "w1")!.wire;
-    expect(wire.points[0]).toEqual({ x: 80, y: 100 });
+    expect(
+      resolveWirePoints(pageById(document, "page_a"), testLibrary, wire)![0],
+    ).toEqual({ x: 80, y: 100 });
     expect(wire.start).toEqual({ kind: "pin", deviceId: "r1", pinId: "2" });
 
     document = mirrorSelection(
@@ -127,7 +180,9 @@ describe("page-scoped net editing", () => {
       "2026-10-23T00:00:06.000Z",
     );
     wire = findWire(pageById(document, "page_a"), "w1")!.wire;
-    expect(wire.points[0]).toEqual({ x: 80, y: 100 });
+    expect(
+      resolveWirePoints(pageById(document, "page_a"), testLibrary, wire)![0],
+    ).toEqual({ x: 80, y: 100 });
   });
 
   it("updates a net name once and updates all attached labels", () => {
@@ -161,6 +216,68 @@ describe("page-scoped net editing", () => {
     const next = pageById(renamed, "page_rename_net");
     expect(next.nets[0]?.name).toBe("VOUT");
     expect(next.annotations[0]?.text).toBe("VOUT");
+  });
+
+  it("applies a color to every wire in the selected net and can reset it", () => {
+    let document = createDocument({ pageId: "page_net_color" });
+    const page = document.pages[0]!;
+    addTestWire(
+      page,
+      "net_color",
+      "wire_a",
+      [
+        { x: 0, y: 0 },
+        { x: 100, y: 0 },
+      ],
+    );
+    addTestWire(
+      page,
+      "net_color",
+      "wire_b",
+      [
+        { x: 200, y: 0 },
+        { x: 300, y: 0 },
+      ],
+    );
+
+    document = updateNetColorForWire(
+      document,
+      "page_net_color",
+      "wire_a",
+      "#1D4ED8",
+      "2026-10-25T00:00:00.000Z",
+    );
+    expect(pageById(document, "page_net_color").nets[0]?.color).toBe("#1d4ed8");
+
+    document = updateNetColorForWire(
+      document,
+      "page_net_color",
+      "wire_b",
+      null,
+      "2026-10-25T00:00:01.000Z",
+    );
+    expect(pageById(document, "page_net_color").nets[0]?.color).toBeUndefined();
+  });
+
+  it("ignores malformed net colors", () => {
+    const document = createDocument({ pageId: "page_invalid_color" });
+    addTestWire(
+      document.pages[0]!,
+      "net_color",
+      "wire_a",
+      [
+        { x: 0, y: 0 },
+        { x: 100, y: 0 },
+      ],
+    );
+    expect(
+      updateNetColorForWire(
+        document,
+        "page_invalid_color",
+        "wire_a",
+        "red",
+      ),
+    ).toBe(document);
   });
 
   it("creates a junction and splits a through wire when drawing a branch", () => {

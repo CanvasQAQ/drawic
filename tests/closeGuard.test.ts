@@ -6,6 +6,7 @@ import {
 import {
   WINDOW_MIN_HEIGHT,
   WINDOW_MIN_WIDTH,
+  platformWindowOptions,
 } from "../src/main/windowConfig";
 
 describe("desktop close protection", () => {
@@ -24,5 +25,14 @@ describe("desktop close protection", () => {
   it("enforces a usable minimum window size", () => {
     expect(WINDOW_MIN_WIDTH).toBeGreaterThanOrEqual(800);
     expect(WINDOW_MIN_HEIGHT).toBeGreaterThanOrEqual(600);
+  });
+
+  it("uses native mac traffic lights and custom frame control elsewhere", () => {
+    expect(platformWindowOptions("darwin")).toEqual({
+      titleBarStyle: "hiddenInset",
+      trafficLightPosition: { x: 14, y: 13 },
+    });
+    expect(platformWindowOptions("win32")).toEqual({ frame: false });
+    expect(platformWindowOptions("linux")).toEqual({ frame: false });
   });
 });

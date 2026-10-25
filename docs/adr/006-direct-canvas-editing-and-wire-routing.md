@@ -19,6 +19,16 @@ is blocked. Obstacles do not include the two devices that own a wire's bound
 endpoints. Manual segment handles remain available after routing and keep
 bound endpoints fixed by adding doglegs when necessary.
 
+`C` starts a one-shot Duplicate flow without immediately copying the current
+selection. The next left-click on a device chooses the copy source and arms the
+preview. Moving the pointer shows the copy, the second left-click commits it
+with a unique electrical Reference and copied visual label state, and the
+editor returns to Select mode. Ctrl-drag on a device creates the copy at the
+drag destination instead of moving the source.
+
+`U` is accepted as an EDA-style Undo shortcut alongside `Ctrl+Z`/`Cmd+Z`, and is
+ignored while text editing controls have focus.
+
 Canvas view state uses direct wheel zoom centered under the pointer. `F` fits
 the active page content while preserving the canvas aspect ratio.
 

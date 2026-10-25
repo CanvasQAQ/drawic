@@ -6,18 +6,23 @@ import {
   findJunction,
   findWire,
   junctionSelectionId,
+  normalizeNetColor,
   pinEndpoint,
   pageById,
   replacePage,
+  touchDocument,
   type Annotation,
   type ComponentNode,
   type ConnectionAnchor,
   type DrawingPage,
   type DrawingShape,
+  type DocumentTypography,
   type DrawicDocument,
   type Junction,
   type Net,
   type NodeLabelKind,
+  type NodeLabelLayout,
+  type RichTextRun,
   type Point,
   type Rotation,
   type SelectionRef,
@@ -25,9 +30,17 @@ import {
   type Wire,
   type WireEndpoint,
 } from "./model";
+import { defaultDeviceValue, suggestedReference } from "./library";
+import {
+  DEFAULT_TYPOGRAPHY,
+  layoutNodeLabels,
+  reflowDefaultNodeLabels,
+  translateNodeLabelLayouts,
+} from "./labels";
 import {
   pathProjectionRatio,
   planNodeMirror,
+  planNodeMirrorVertical,
   planNodeMove,
   planNodeRotation,
   pointAtPathRatio,
@@ -98,9 +111,11 @@ function mergeNetIds(
     createEmptyNet(createIdentifier("net"), preferredName?.trim() || undefined);
   const mergedName =
     preferredName?.trim() || selected.find((net) => net.name)?.name;
+  const mergedColor = selected.map((net) => net.color).find(Boolean);
   const merged: Net = {
     id: primary.id,
     ...(mergedName ? { name: mergedName } : {}),
+    ...(mergedColor ? { color: mergedColor } : {}),
     wires: [
       ...primary.wires,
       ...selected.slice(1).flatMap((net) => net.wires),
@@ -287,10 +302,15 @@ export function addComponent(
   pageId: string,
   request: {
     symbol: SymbolDefinition;
-    reference: string;
-    value: string;
+    reference?: string;
+    value?: string;
     point: Point;
     id: string;
+    showReference?: boolean;
+    showValue?: boolean;
+    placementMode?: "gui" | "agent";
+    library?: readonly SymbolDefinition[];
+    rotation?: Rotation;
     now?: string;
   },
 ): DrawicDocument {
@@ -298,23 +318,108 @@ export function addComponent(
   return updatePage(
     document,
     pageId,
-    (page) => ({
-      ...page,
-      nodes: [
-        ...page.nodes,
+    (page) => {
+      const existingReferences = page.nodes.map((node) => node.reference.trim());
+      const requestedReference = request.reference?.trim();
+      const reference =
+        requestedReference === undefined
+          ? suggestedReference(request.symbol, existingReferences)
+          : requestedReference === "" ||
+              !existingReferences.includes(requestedReference)
+            ? requestedReference
+            : suggestedReference(request.symbol, existingReferences);
+      const component: ComponentNode = {
+        id: request.id,
+        symbolId: request.symbol.id,
+        reference,
+        value: request.value ?? defaultDeviceValue(request.symbol.id, request.symbol),
+        x: point.x,
+        y: point.y,
+        rotation: request.rotation ?? 0,
+        mirrored: false,
+      };
+      const labelLayout = layoutNodeLabels(
+        component,
+        request.symbol,
+        page,
         {
-          id: request.id,
-          symbolId: request.symbol.id,
-          reference: request.reference,
-          value: request.value,
-          x: point.x,
-          y: point.y,
-          rotation: 0,
-          mirrored: false,
+          typography: document.typography ?? DEFAULT_TYPOGRAPHY,
+          automatic: request.placementMode === "agent",
+          showReference:
+            request.showReference !== false &&
+            request.symbol.referenceLabel !== false,
+          showValue: request.showValue === true,
+          library: request.library ?? [request.symbol],
         },
-      ],
-    }),
+      );
+      if (component.value.trim() && request.showValue !== true) {
+        labelLayout.value = {
+          ...layoutNodeLabels(component, request.symbol, page, {
+            typography: document.typography ?? DEFAULT_TYPOGRAPHY,
+            showReference: false,
+            showValue: true,
+          }).value,
+          offset: { x: 0, y: 0 },
+          hidden: true,
+          placement: "default",
+        };
+      }
+      return {
+        ...page,
+        nodes: [
+          ...page.nodes,
+          Object.keys(labelLayout).length > 0
+            ? { ...component, labelLayout }
+            : component,
+        ],
+      };
+    },
     request.now,
+  );
+}
+
+export function duplicateNode(
+  document: DrawicDocument,
+  pageId: string,
+  nodeId: string,
+  delta: Point,
+  library: readonly SymbolDefinition[],
+  newNodeId = createIdentifier("node"),
+  now = new Date().toISOString(),
+  rotation?: Rotation,
+): DrawicDocument {
+  return updatePage(
+    document,
+    pageId,
+    (page) => {
+      const source = page.nodes.find((node) => node.id === nodeId);
+      const symbol = source
+        ? library.find((candidate) => candidate.id === source.symbolId)
+        : undefined;
+      if (!source || !symbol) {
+        return page;
+      }
+      const reference = suggestedReference(
+        symbol,
+        page.nodes.map((node) => node.reference.trim()),
+      );
+      const moved = translateNodeLabelLayouts(
+        {
+          ...source,
+          id: newNodeId,
+          reference,
+          x: source.x + delta.x,
+          y: source.y + delta.y,
+          ...(rotation === undefined ? {} : { rotation }),
+        },
+        delta,
+      );
+      return {
+        ...page,
+        nodes: [...page.nodes, moved],
+      };
+    },
+    now,
   );
 }
 
@@ -730,7 +835,10 @@ export function moveNodes(
         ...page,
         nodes: page.nodes.map((node) =>
           ids.has(node.id)
-            ? { ...node, x: node.x + delta.x, y: node.y + delta.y }
+            ? translateNodeLabelLayouts(
+                { ...node, x: node.x + delta.x, y: node.y + delta.y },
+                delta,
+              )
             : node,
         ),
         nets: page.nets.map((net) => ({
@@ -804,7 +912,7 @@ export function rotateSelection(
               })),
             };
           })();
-      return {
+      const withShapes: DrawingPage = {
         ...planned,
         shapes: page.shapes.map((shape) =>
           shapeIds.has(shape.id)
@@ -812,6 +920,14 @@ export function rotateSelection(
             : shape,
         ),
       };
+      return library
+        ? reflowDefaultNodeLabels(
+            withShapes,
+            library,
+            document.typography ?? DEFAULT_TYPOGRAPHY,
+            ids,
+          )
+        : withShapes;
     },
     now,
   );
@@ -850,7 +966,12 @@ export function mirrorSelection(
     pageId,
     (page) => {
       if (library) {
-        return planNodeMirror(page, library, ids);
+        return reflowDefaultNodeLabels(
+          planNodeMirror(page, library, ids),
+          library,
+          document.typography ?? DEFAULT_TYPOGRAPHY,
+          ids,
+        );
       }
       const nodes = new Map(page.nodes.map((node) => [node.id, node]));
       return {
@@ -880,6 +1001,37 @@ export function mirrorSelection(
           ),
         })),
       };
+    },
+    now,
+  );
+}
+
+export function mirrorSelectionVertical(
+  document: DrawicDocument,
+  pageId: string,
+  selection: readonly SelectionRef[],
+  library: readonly SymbolDefinition[],
+  now = new Date().toISOString(),
+): DrawicDocument {
+  const ids = new Set(
+    selection
+      .filter((item) => item.kind === "node")
+      .map((item) => item.id),
+  );
+  if (ids.size === 0) {
+    return document;
+  }
+  return updatePage(
+    document,
+    pageId,
+    (page) => {
+      const mirrored = planNodeMirrorVertical(page, library, ids);
+      return reflowDefaultNodeLabels(
+        mirrored,
+        library,
+        document.typography ?? DEFAULT_TYPOGRAPHY,
+        ids,
+      );
     },
     now,
   );
@@ -1041,7 +1193,8 @@ export function updateNodeLabel(
   pageId: string,
   nodeId: string,
   label: NodeLabelKind,
-  patch: { offset?: Point; hidden?: boolean },
+  patch: Partial<NodeLabelLayout>,
+  library?: readonly SymbolDefinition[],
   now = new Date().toISOString(),
 ): DrawicDocument {
   return updatePage(
@@ -1053,18 +1206,16 @@ export function updateNodeLabel(
         return page;
       }
       const current = target.labelLayout?.[label];
-      const nextLayout = {
+      const nextLayout: NodeLabelLayout = {
+        ...current,
         offset: patch.offset ?? current?.offset ?? { x: 0, y: 0 },
         hidden: patch.hidden ?? current?.hidden ?? false,
+        ...patch,
       };
-      if (
-        current?.hidden === nextLayout.hidden &&
-        current.offset.x === nextLayout.offset.x &&
-        current.offset.y === nextLayout.offset.y
-      ) {
+      if (JSON.stringify(current) === JSON.stringify(nextLayout)) {
         return page;
       }
-      return {
+      const updated: DrawingPage = {
         ...page,
         nodes: page.nodes.map((node) =>
           node.id === nodeId
@@ -1078,9 +1229,147 @@ export function updateNodeLabel(
             : node,
         ),
       };
+      return labelLayoutMovesDefault(target, label)
+        && library
+        ? reflowDefaultNodeLabels(
+            updated,
+            library,
+            document.typography ?? DEFAULT_TYPOGRAPHY,
+            new Set([nodeId]),
+          )
+        : updated;
     },
     now,
   );
+}
+
+export function updateDocumentTypography(
+  document: DrawicDocument,
+  patch: Partial<DocumentTypography>,
+  now = new Date().toISOString(),
+): DrawicDocument {
+  const current = document.typography ?? {
+    family: "sans" as const,
+    scale: 1,
+  };
+  const next: DocumentTypography = {
+    family: patch.family ?? current.family,
+    scale: patch.scale ?? current.scale,
+  };
+  if (
+    !Number.isFinite(next.scale) ||
+    next.scale <= 0 ||
+    (next.family !== "sans" && next.family !== "serif")
+  ) {
+    return document;
+  }
+  if (next.family === current.family && next.scale === current.scale) {
+    return document;
+  }
+  return touchDocument({ ...document, typography: next }, now);
+}
+
+export function updateNodeReferenceLabel(
+  document: DrawicDocument,
+  pageId: string,
+  nodeId: string,
+  reference: string,
+  richText: readonly RichTextRun[],
+  now = new Date().toISOString(),
+): DrawicDocument {
+  return updatePage(
+    document,
+    pageId,
+    (page) => {
+      const target = page.nodes.find((node) => node.id === nodeId);
+      if (!target) {
+        return page;
+      }
+      const current = target.labelLayout?.reference;
+      const nextLayout: NodeLabelLayout = {
+        offset: current?.offset ?? { x: 0, y: 0 },
+        hidden: current?.hidden ?? false,
+        ...current,
+        richText: richText.map((run) => ({ ...run })),
+        placement: current?.placement ?? "default",
+      };
+      return {
+        ...page,
+        nodes: page.nodes.map((node) =>
+          node.id === nodeId
+            ? {
+                ...node,
+                reference,
+                labelLayout: {
+                  ...node.labelLayout,
+                  reference: nextLayout,
+                },
+              }
+            : node,
+        ),
+      };
+    },
+    now,
+  );
+}
+
+export function resetNodeLabelStyle(
+  document: DrawicDocument,
+  pageId: string,
+  nodeId: string,
+  label: NodeLabelKind,
+  library?: readonly SymbolDefinition[],
+  now = new Date().toISOString(),
+): DrawicDocument {
+  return updatePage(
+    document,
+    pageId,
+    (page) => {
+      const target = page.nodes.find((node) => node.id === nodeId);
+      const layout = target?.labelLayout?.[label];
+      if (!target || !layout) {
+        return page;
+      }
+      const {
+        fontSizeScale: _fontSizeScale,
+        color: _color,
+        fontWeight: _fontWeight,
+        fontStyle: _fontStyle,
+        script: _script,
+        ...base
+      } = layout;
+      const updated: DrawingPage = {
+        ...page,
+        nodes: page.nodes.map((node) =>
+          node.id === nodeId
+            ? {
+                ...node,
+                labelLayout: {
+                  ...node.labelLayout,
+                  [label]: base,
+                },
+              }
+            : node,
+        ),
+      };
+      return library && base.placement === "default"
+        ? reflowDefaultNodeLabels(
+            updated,
+            library,
+            document.typography ?? DEFAULT_TYPOGRAPHY,
+            new Set([nodeId]),
+          )
+        : updated;
+    },
+    now,
+  );
+}
+
+function labelLayoutMovesDefault(
+  node: ComponentNode,
+  label: NodeLabelKind,
+): boolean {
+  return node.labelLayout?.[label]?.placement === "default";
 }
 
 export function updateShape(
@@ -1239,6 +1528,45 @@ export function updateNetNameForWire(
             ? { ...annotation, text: nextName }
             : annotation,
         ),
+      });
+    },
+    now,
+  );
+}
+
+export function updateNetColorForWire(
+  document: DrawicDocument,
+  pageId: string,
+  wireId: string,
+  color: string | null,
+  now = new Date().toISOString(),
+): DrawicDocument {
+  const nextColor = color === null ? undefined : normalizeNetColor(color);
+  if (color !== null && !nextColor) {
+    return document;
+  }
+  return updatePage(
+    document,
+    pageId,
+    (page) => {
+      const located = findWire(page, wireId);
+      if (!located || located.net.color === nextColor) {
+        return page;
+      }
+      return canonicalizePageNetGraph({
+        ...page,
+        nets: page.nets.map((net) => {
+          if (net.id !== located.net.id) {
+            return net;
+          }
+          const next = { ...net };
+          if (nextColor) {
+            next.color = nextColor;
+          } else {
+            delete next.color;
+          }
+          return next;
+        }),
       });
     },
     now,

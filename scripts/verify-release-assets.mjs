@@ -1,7 +1,6 @@
 import { access, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
-const expectedPackage = /-.+-Unsigned-Preview-windows-x64\.zip$/;
 const sums = (await readFile(resolve("release/SHA256SUMS.txt"), "utf8"))
   .trim()
   .split("\n")
@@ -15,10 +14,28 @@ const sums = (await readFile(resolve("release/SHA256SUMS.txt"), "utf8"))
   });
 
 await access(resolve("release/UNSIGNED-RELEASE.txt"));
-if (sums.length !== 1 || !expectedPackage.test(sums[0]?.name ?? "")) {
-  console.error("The temporary release profile must contain exactly one Windows x64 ZIP.");
+
+const expectedNames = [
+  /^Drawic-.+-Unsigned-Preview-windows-x64\.zip$/,
+  /^Drawic-.+-Unsigned-Preview-macos-x64\.dmg$/,
+  /^Drawic-.+-Unsigned-Preview-macos-arm64\.dmg$/,
+  /^Drawic-.+-Unsigned-Preview-macos-x64\.zip$/,
+  /^Drawic-.+-Unsigned-Preview-macos-arm64\.zip$/,
+  /^Drawic-.+-Unsigned-Preview-linux-x64\.AppImage$/,
+  /^Drawic-.+-Unsigned-Preview-linux-x64\.deb$/,
+];
+const names = sums.map((entry) => entry.name);
+const matchesExpected =
+  names.length === expectedNames.length &&
+  expectedNames.every((pattern) =>
+    names.some((name) => pattern.test(name)),
+  );
+if (!matchesExpected) {
+  console.error(
+    "The release profile must contain Windows x64, macOS x64/arm64, and Linux x64 packages.",
+  );
   console.error(`Checksummed files: ${sums.map((entry) => entry.name).join(", ") || "none"}`);
   process.exit(1);
 }
 
-console.log(`Release asset manifest passed with ${sums.length} Windows package.`);
+console.log(`Release asset manifest passed with ${sums.length} platform packages.`);

@@ -152,6 +152,7 @@ export function duplicatePage(
     })),
     nets: source.nets.map((net) => ({
       ...(net.name ? { name: net.name } : {}),
+      ...(net.color ? { color: net.color } : {}),
       id: netIds.get(net.id)!,
       wires: net.wires.map((wire) => ({
         id: wireIds.get(wire.id)!,
@@ -251,6 +252,10 @@ export function addJunction(
       const mergedName = page.nets
         .filter((net) => netIds.has(net.id))
         .find((net) => net.name)?.name;
+      const mergedColor = page.nets
+        .filter((net) => netIds.has(net.id))
+        .map((net) => net.color)
+        .find(Boolean);
       const junction = {
         id: createIdentifier("junction"),
         point: { ...point },
@@ -321,6 +326,7 @@ export function addJunction(
           {
             id: primary.id,
             ...(mergedName ? { name: mergedName } : {}),
+            ...(mergedColor ? { color: mergedColor } : {}),
             wires: [...untouchedWires, ...mergedWires],
             junctions: [junction],
           },

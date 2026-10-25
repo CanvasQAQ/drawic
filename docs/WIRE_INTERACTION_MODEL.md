@@ -23,6 +23,7 @@ A net has:
 
 - a stable, unique net ID;
 - one canonical optional name;
+- an optional visual color shared by every wire in the net;
 - zero or more wire edges;
 - zero or more stable junction vertices.
 
@@ -49,7 +50,9 @@ segment's current array index.
 
 Current Drawic schema version 3 stores nets, junction IDs, endpoint references,
 and bend points. Version 2 is rejected. Stable segment identity and per-segment
-direction mode remain reserved extension points.
+direction mode remain reserved extension points. An optional six-digit
+hexadecimal Net color is additive within version 3 and does not affect
+connectivity.
 
 The editor implements shared endpoint/path resolution, topology-driven wire
 split/merge, rigid internal wire movement, local boundary stretching, grouped
@@ -126,6 +129,11 @@ A junction is a stable vertex in one net:
 - a degree-two junction is normalized away and its two wires become one edge;
 - a degree-three or higher junction remains;
 - moving it updates every incident wire endpoint atomically.
+
+During device placement or an explicit device drop, a nearby pin snaps onto an
+existing Wire and joins that Net. A pin merely crossing a Wire during an
+in-progress drag does not connect; connection is evaluated when the drag is
+released.
 
 All wires already owned by one net are electrically equivalent. A geometric
 crossing inside that net is not a second junction representation and receives no
@@ -318,3 +326,5 @@ The following scenarios are required regression coverage:
     genuine T branches remain separate and keep their junction.
 28. A same-net geometric crossing draws no arc, creates one degree-4 junction,
     and splits both crossing edges.
+29. Changing a Net color renders every wire in that Net with the same color and
+    preserves the color through canonicalization and SVG export.

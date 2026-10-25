@@ -1,11 +1,14 @@
-import { useEffect, useState, type ReactNode } from "react";
+import React, { useEffect, useState, type ReactNode } from "react";
 import { nodeLabelVisible } from "../../core/geometry";
 import type {
   Annotation,
   ComponentNode,
+  DocumentTypography,
   DrawingPage,
   DrawingShape,
   NodeLabelKind,
+  NodeLabelLayout,
+  RichTextRun,
   SelectionRef,
 } from "../../core/model";
 import {
@@ -17,6 +20,7 @@ import {
   junctionIdFromSelectionId,
 } from "../../core/model";
 import { Icon } from "./Icons";
+import { RichLabelEditor } from "./RichLabelEditor";
 
 function CommitField({
   label,
@@ -64,6 +68,7 @@ function CommitField({
 
 interface PropertiesPanelProps {
   page: DrawingPage;
+  typography?: DocumentTypography | undefined;
   selection: readonly SelectionRef[];
   netNameByWire: ReadonlyMap<string, string>;
   onUpdateNode: (
@@ -73,8 +78,15 @@ interface PropertiesPanelProps {
   onUpdateNodeLabel: (
     nodeId: string,
     label: NodeLabelKind,
-    patch: { hidden?: boolean },
+    patch: Partial<NodeLabelLayout>,
   ) => void;
+  onUpdateReferenceLabel: (
+    nodeId: string,
+    reference: string,
+    runs: RichTextRun[],
+  ) => void;
+  onResetNodeLabelStyle: (nodeId: string, label: NodeLabelKind) => void;
+  onUpdateTypography: (patch: Partial<DocumentTypography>) => void;
   onUpdateAnnotation: (
     annotationId: string,
     patch: Partial<Pick<Annotation, "text" | "kind" | "size">>,
@@ -84,8 +96,10 @@ interface PropertiesPanelProps {
     patch: Partial<Pick<DrawingShape, "x" | "y" | "width" | "height" | "text">>,
   ) => void;
   onUpdateNetName: (wireId: string, name: string) => void;
+  onUpdateNetColor: (wireId: string, color: string | null) => void;
   onRotate: () => void;
   onMirror: () => void;
+  onMirrorVertical: () => void;
   onDelete: () => void;
   onCollapse: () => void;
   onRenamePage: () => void;
@@ -108,15 +122,21 @@ function PropertiesSection({
 
 export function PropertiesPanel({
   page,
+  typography,
   selection,
   netNameByWire,
   onUpdateNode,
   onUpdateNodeLabel,
+  onUpdateReferenceLabel,
+  onResetNodeLabelStyle,
+  onUpdateTypography,
   onUpdateAnnotation,
   onUpdateShape,
   onUpdateNetName,
+  onUpdateNetColor,
   onRotate,
   onMirror,
+  onMirrorVertical,
   onDelete,
   onCollapse,
   onRenamePage,
@@ -125,10 +145,12 @@ export function PropertiesPanel({
     selection.length === 1 && selection[0]?.kind === "node"
       ? page.nodes.find((node) => node.id === selection[0]?.id)
       : undefined;
-  const selectedWire =
+  const selectedWireLocation =
     selection.length === 1 && selection[0]?.kind === "wire"
-      ? findWire(page, selection[0]?.id ?? "")?.wire
+      ? findWire(page, selection[0]?.id ?? "")
       : undefined;
+  const selectedWire = selectedWireLocation?.wire;
+  const selectedNetColor = selectedWireLocation?.net.color;
   const selectedWireNetName = selectedWire
     ? netNameByWire.get(selectedWire.id) ??
       defaultNetName(
@@ -141,6 +163,9 @@ export function PropertiesPanel({
     selection.length === 1 && selection[0]?.kind === "node-label"
       ? page.nodes.find((node) => node.id === selection[0]?.id)
       : undefined;
+  const selectedNodeLabelLayout = selectedNodeLabel
+    ? selectedNodeLabel.labelLayout?.[selection[0]?.label ?? "reference"]
+    : undefined;
   const selectedAnnotation =
     selection.length === 1 && selection[0]?.kind === "annotation"
       ? page.annotations.find((annotation) => annotation.id === selection[0]?.id)
@@ -222,6 +247,9 @@ export function PropertiesPanel({
             <button type="button" onClick={onMirror}>
               <Icon name="mirror" /> Mirror
             </button>
+            <button type="button" onClick={onMirrorVertical}>
+              <Icon name="mirror" /> Flip V
+            </button>
             <button
               type="button"
               onClick={() =>
@@ -256,6 +284,125 @@ export function PropertiesPanel({
             Drag the label directly on the canvas, double-click it to rename it, or delete it to
             hide it without removing the component.
           </p>
+          {selection[0]?.label !== "value" ? (
+            <div className="property-field">
+              <span>Name builder</span>
+              <RichLabelEditor
+                key={`${selectedNodeLabel.id}-${selectedNodeLabel.reference}`}
+                nodeId={selectedNodeLabel.id}
+                reference={selectedNodeLabel.reference}
+                storedRuns={selectedNodeLabelLayout?.richText}
+                typography={typography}
+                onCommit={(reference, runs) =>
+                  onUpdateReferenceLabel(
+                    selectedNodeLabel.id,
+                    reference,
+                    runs,
+                  )
+                }
+              />
+            </div>
+          ) : null}
+          <CommitField
+            label="Font size scale"
+            value={String(selectedNodeLabelLayout?.fontSizeScale ?? 1)}
+            onCommit={(value) => {
+              const scale = Number(value);
+              if (Number.isFinite(scale) && scale > 0) {
+                onUpdateNodeLabel(
+                  selectedNodeLabel.id,
+                  selection[0]?.label ?? "reference",
+                  { fontSizeScale: Math.max(0.25, Math.min(4, scale)) },
+                );
+              }
+            }}
+          />
+          <div className="button-row">
+            <button
+              type="button"
+              aria-pressed={(selectedNodeLabelLayout?.fontWeight ?? 400) === 700}
+              onClick={() =>
+                onUpdateNodeLabel(
+                  selectedNodeLabel.id,
+                  selection[0]?.label ?? "reference",
+                  {
+                    fontWeight:
+                      (selectedNodeLabelLayout?.fontWeight ?? 400) === 700
+                        ? 400
+                        : 700,
+                  },
+                )
+              }
+            >
+              Bold
+            </button>
+            <button
+              type="button"
+              aria-pressed={selectedNodeLabelLayout?.fontStyle === "italic"}
+              onClick={() =>
+                onUpdateNodeLabel(
+                  selectedNodeLabel.id,
+                  selection[0]?.label ?? "reference",
+                  {
+                    fontStyle:
+                      selectedNodeLabelLayout?.fontStyle === "italic"
+                        ? "normal"
+                        : "italic",
+                  },
+                )
+              }
+            >
+              Italic
+            </button>
+            <label className="inline-color-control">
+              <span>Color</span>
+              <input
+                type="color"
+                aria-label="Label color"
+                value={selectedNodeLabelLayout?.color ?? "#19333e"}
+                onChange={(event) =>
+                  onUpdateNodeLabel(
+                    selectedNodeLabel.id,
+                    selection[0]?.label ?? "reference",
+                    { color: event.currentTarget.value },
+                  )
+                }
+              />
+            </label>
+          </div>
+          <label className="property-field">
+            <span>Script</span>
+            <select
+              value={selectedNodeLabelLayout?.script ?? "normal"}
+              onChange={(event) =>
+                onUpdateNodeLabel(
+                  selectedNodeLabel.id,
+                  selection[0]?.label ?? "reference",
+                  {
+                    script: event.currentTarget.value as NonNullable<
+                      NodeLabelLayout["script"]
+                    >,
+                  },
+                )
+              }
+            >
+              <option value="normal">Normal</option>
+              <option value="subscript">Subscript</option>
+              <option value="superscript">Superscript</option>
+            </select>
+          </label>
+          <button
+            type="button"
+            className="text-button"
+            onClick={() =>
+              onResetNodeLabelStyle(
+                selectedNodeLabel.id,
+                selection[0]?.label ?? "reference",
+              )
+            }
+          >
+            Reset appearance
+          </button>
           <button
             type="button"
             className="text-button"
@@ -283,6 +430,49 @@ export function PropertiesPanel({
             value={selectedWireNetName}
             onCommit={(name) => onUpdateNetName(selectedWire.id, name)}
           />
+          <div className="net-color-field">
+            <div>
+              <span>Net color</span>
+              <output>{selectedNetColor ?? "Default"}</output>
+            </div>
+            <div className="net-color-controls">
+              <input
+                type="color"
+                aria-label="Net color"
+                value={selectedNetColor ?? "#14262f"}
+                onChange={(event) =>
+                  onUpdateNetColor(selectedWire.id, event.currentTarget.value)
+                }
+              />
+              {[
+                "#0f766e",
+                "#1d4ed8",
+                "#b42318",
+                "#7e22ce",
+                "#15803d",
+                "#b45309",
+                "#475569",
+              ].map((color) => (
+                <button
+                  key={color}
+                  type="button"
+                  className={`net-color-swatch${selectedNetColor === color ? " is-active" : ""}`}
+                  style={{ backgroundColor: color }}
+                  aria-label={`Set net color ${color}`}
+                  title={color}
+                  onClick={() => onUpdateNetColor(selectedWire.id, color)}
+                />
+              ))}
+              <button
+                type="button"
+                className="net-color-reset"
+                disabled={!selectedNetColor}
+                onClick={() => onUpdateNetColor(selectedWire.id, null)}
+              >
+                Default
+              </button>
+            </div>
+          </div>
           <dl className="property-grid">
             <div>
               <dt>Vertices</dt>
@@ -438,6 +628,9 @@ export function PropertiesPanel({
             <button type="button" onClick={onMirror}>
               <Icon name="mirror" /> Mirror
             </button>
+            <button type="button" onClick={onMirrorVertical}>
+              <Icon name="mirror" /> Flip V
+            </button>
           </div>
         </PropertiesSection>
       ) : null}
@@ -477,6 +670,32 @@ export function PropertiesPanel({
                 Rename page
               </button>
             </div>
+            <CommitField
+              label="Type scale"
+              value={String(typography?.scale ?? 1)}
+              onCommit={(value) => {
+                const scale = Number(value);
+                if (Number.isFinite(scale) && scale > 0) {
+                  onUpdateTypography({
+                    scale: Math.max(0.5, Math.min(3, scale)),
+                  });
+                }
+              }}
+            />
+            <label className="property-field">
+              <span>Diagram font</span>
+              <select
+                value={typography?.family ?? "sans"}
+                onChange={(event) =>
+                  onUpdateTypography({
+                    family: event.currentTarget.value as DocumentTypography["family"],
+                  })
+                }
+              >
+                <option value="sans">Sans</option>
+                <option value="serif">Serif</option>
+              </select>
+            </label>
           </PropertiesSection>
           <PropertiesSection title="Selection">
             <p className="property-hint">

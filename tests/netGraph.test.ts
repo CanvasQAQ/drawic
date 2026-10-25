@@ -348,4 +348,33 @@ describe("net graph normalization", () => {
     });
     expect(canonicalizePageNetGraph(normalized)).toBe(normalized);
   });
+
+  it("preserves a net color through canonicalization and named-net merging", () => {
+    const page = createEmptyPage("Colored nets");
+    addTestNet(page, "net_a", "VCC").color = "#0F766E";
+    addTestNet(page, "net_b", "VCC");
+    addTestWire(
+      page,
+      "net_a",
+      "a",
+      [
+        { x: 0, y: 0 },
+        { x: 50, y: 0 },
+      ],
+    );
+    addTestWire(
+      page,
+      "net_b",
+      "b",
+      [
+        { x: 100, y: 0 },
+        { x: 150, y: 0 },
+      ],
+    );
+
+    const normalized = canonicalizePageNetGraph(page);
+    expect(normalized.nets).toHaveLength(1);
+    expect(normalized.nets[0]?.color).toBe("#0F766E");
+    expect(canonicalizePageNetGraph(normalized)).toBe(normalized);
+  });
 });

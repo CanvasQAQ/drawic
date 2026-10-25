@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import type { DeviceSymbol } from "../../core/library";
 import { Icon } from "./Icons";
 
@@ -15,7 +15,6 @@ function SymbolPreview({ symbol }: { symbol: DeviceSymbol }) {
     <svg
       className="symbol-preview"
       viewBox={symbol.viewBox || `${frame.x} ${frame.y} ${frame.width} ${frame.height}`}
-      style={{ color: "var(--symbol-ink, #dbe5e3)" }}
       aria-hidden="true"
     >
       <g dangerouslySetInnerHTML={{ __html: symbol.svgBody }} />

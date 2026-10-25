@@ -16,6 +16,7 @@ export type IconName =
   | "redo"
   | "rotate"
   | "mirror"
+  | "duplicate"
   | "delete"
   | "export"
   | "audit"
@@ -131,6 +132,13 @@ export function Icon({
       return (
         <svg {...common}>
           <path d="M12 3v18M9 6 3 18h6zM15 6l6 12h-6z" />
+        </svg>
+      );
+    case "duplicate":
+      return (
+        <svg {...common}>
+          <rect x="4" y="4" width="11" height="13" rx="1.5" />
+          <path d="M9 8h11v12H9z" />
         </svg>
       );
     case "delete":

@@ -34,6 +34,7 @@ import {
   WINDOW_DEFAULT_WIDTH,
   WINDOW_MIN_HEIGHT,
   WINDOW_MIN_WIDTH,
+  platformWindowOptions,
 } from "./windowConfig";
 
 interface RecentEntry {
@@ -612,10 +613,36 @@ function registerIpc(): void {
       mainWindow.close();
     }
   });
+  ipcMain.handle("window:is-maximized", (event) => {
+    return event.sender === mainWindow?.webContents && mainWindow
+      ? mainWindow.isMaximized()
+      : false;
+  });
+  ipcMain.on("window:minimize", (event) => {
+    if (event.sender === mainWindow?.webContents) {
+      mainWindow.minimize();
+    }
+  });
+  ipcMain.on("window:toggle-maximize", (event) => {
+    if (event.sender !== mainWindow?.webContents || !mainWindow) {
+      return;
+    }
+    if (mainWindow.isMaximized()) {
+      mainWindow.unmaximize();
+    } else {
+      mainWindow.maximize();
+    }
+  });
+  ipcMain.on("window:close", (event) => {
+    if (event.sender === mainWindow?.webContents) {
+      mainWindow.close();
+    }
+  });
 }
 
 function createWindow(): BrowserWindow {
   const window = new BrowserWindow({
+    ...platformWindowOptions(process.platform),
     width: WINDOW_DEFAULT_WIDTH,
     height: WINDOW_DEFAULT_HEIGHT,
     minWidth: WINDOW_MIN_WIDTH,
@@ -641,6 +668,11 @@ function createWindow(): BrowserWindow {
   window.webContents.session.setPermissionRequestHandler((_webContents, _permission, callback) =>
     callback(false),
   );
+  const sendMaximizedState = (): void => {
+    window.webContents.send("window:maximized-changed", window.isMaximized());
+  };
+  window.on("maximize", sendMaximizedState);
+  window.on("unmaximize", sendMaximizedState);
   window.on("close", (event) => {
     if (allowClose || !documentDirty) {
       return;
@@ -690,11 +722,23 @@ async function runSmokeCheck(window: BrowserWindow): Promise<void> {
           title: document.title,
           canvas: Boolean(document.querySelector('[data-testid="schematic-canvas"]')),
           brand: document.body.innerText.includes("Drawic"),
+          titleBar: Boolean(document.querySelector('[data-testid="window-titlebar"]')),
+          windowControls: document.querySelectorAll('.window-control').length,
+          theme: document.documentElement.dataset.theme,
           width: window.innerWidth,
           height: window.innerHeight
         })`,
-      )) as { title: string; canvas: boolean; brand: boolean; width: number; height: number };
-      if (state.canvas && state.brand && state.title === "Drawic") {
+      )) as {
+        title: string;
+        canvas: boolean;
+        brand: boolean;
+        titleBar: boolean;
+        windowControls: number;
+        theme: string | undefined;
+        width: number;
+        height: number;
+      };
+      if (state.canvas && state.brand && state.titleBar && state.title === "Drawic") {
         const editState = (await window.webContents.executeJavaScript(
           `(async () => {
             const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -725,24 +769,213 @@ async function runSmokeCheck(window: BrowserWindow): Promise<void> {
             await waitFor(
               () =>
                 document.querySelectorAll('.component-node').length === 1 &&
-                Boolean(document.querySelector('.dirty-indicator.is-dirty'))
+                Boolean(
+                  document.querySelector('.status-bar')?.textContent?.includes('Modified')
+                )
             );
             const placed = document.querySelectorAll('.component-node').length;
-            const dirty = Boolean(document.querySelector('.dirty-indicator.is-dirty'));
+            const dirty = Boolean(
+              document.querySelector('.status-bar')?.textContent?.includes('Modified')
+            );
             document.querySelector('button[aria-label="Undo"]')?.click();
             await waitFor(() => document.querySelectorAll('.component-node').length === 0);
             const undone = document.querySelectorAll('.component-node').length;
             document.querySelector('button[aria-label="Redo"]')?.click();
             await waitFor(() => document.querySelectorAll('.component-node').length === 1);
             const redone = document.querySelectorAll('.component-node').length;
-            return { placed, dirty, undone, redone };
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+            await wait(40);
+            const componentNameCount = document.querySelectorAll('.component-reference').length;
+            const componentValueCount = document.querySelectorAll('.component-value').length;
+            const richBase = document.querySelector(
+              '.component-reference [data-rich-role="base"]'
+            );
+            const richBaseStyle = getComputedStyle(richBase);
+            const placedNode = document.querySelector('.component-node');
+            const placedBox = placedNode.getBoundingClientRect();
+            placedNode.dispatchEvent(new PointerEvent('pointerdown', {
+              bubbles: true,
+              clientX: placedBox.left + placedBox.width / 2,
+              clientY: placedBox.top + placedBox.height / 2,
+              pointerId: 13,
+              pointerType: 'mouse',
+              button: 0,
+              buttons: 1
+            }));
+            placedNode.dispatchEvent(new PointerEvent('pointerup', {
+              bubbles: true,
+              clientX: placedBox.left + placedBox.width / 2,
+              clientY: placedBox.top + placedBox.height / 2,
+              pointerId: 13,
+              pointerType: 'mouse',
+              button: 0
+            }));
+            await wait(40);
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'c', bubbles: true }));
+            await wait(40);
+            placedNode.dispatchEvent(new PointerEvent('pointerdown', {
+              bubbles: true,
+              clientX: placedBox.left + placedBox.width / 2,
+              clientY: placedBox.top + placedBox.height / 2,
+              pointerId: 16,
+              pointerType: 'mouse',
+              button: 0,
+              buttons: 1
+            }));
+            placedNode.dispatchEvent(new PointerEvent('pointerup', {
+              bubbles: true,
+              clientX: placedBox.left + placedBox.width / 2,
+              clientY: placedBox.top + placedBox.height / 2,
+              pointerId: 16,
+              pointerType: 'mouse',
+              button: 0
+            }));
+            await wait(40);
+            canvas.dispatchEvent(new PointerEvent('pointermove', {
+              bubbles: true,
+              clientX: placedBox.left + placedBox.width / 2 + 60,
+              clientY: placedBox.top + placedBox.height / 2 + 40,
+              pointerId: 14,
+              pointerType: 'mouse',
+              buttons: 0
+            }));
+            await wait(40);
+            const afterDuplicatePointerMove = document.querySelectorAll(
+              '.component-node:not(.is-duplicate-preview)'
+            ).length;
+            const duplicatePreview = Boolean(document.querySelector('.is-duplicate-preview'));
+            canvas.dispatchEvent(new PointerEvent('pointerdown', {
+              bubbles: true,
+              clientX: placedBox.left + placedBox.width / 2 + 60,
+              clientY: placedBox.top + placedBox.height / 2 + 40,
+              pointerId: 14,
+              pointerType: 'mouse',
+              button: 0,
+              buttons: 1
+            }));
+            await waitFor(() => document.querySelectorAll('.component-node').length === 2);
+            const duplicateCount = document.querySelectorAll('.component-node').length;
+            const duplicateModeExited = Boolean(
+              document.querySelector('button[aria-label="Select"][aria-pressed="true"]')
+            );
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'u', bubbles: true }));
+            await waitFor(() => document.querySelectorAll('.component-node').length === 1);
+            const afterDuplicateUndo = document.querySelectorAll('.component-node').length;
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+            document.querySelector('button[aria-label="Switch to light theme"]')?.click();
+            await wait(40);
+            const symbolInk = getComputedStyle(
+              document.querySelector('.symbol-preview')
+            ).color;
+            document.querySelector('button[aria-label="Hide device library"]')?.click();
+            await waitFor(() => canvas.getBoundingClientRect().width > box.width, 1500);
+            await wait(80);
+            const railBackground = getComputedStyle(
+              document.querySelector('.panel-rail-left')
+            ).backgroundColor;
+            const theme = document.documentElement.dataset.theme;
+            const boxAfterTheme = canvas.getBoundingClientRect();
+            const viewBox = (canvas.getAttribute('viewBox') || '').split(' ').map(Number);
+            const viewAspect = viewBox[2] / viewBox[3];
+            const elementAspect = boxAfterTheme.width / boxAfterTheme.height;
+            document.querySelector('button[aria-label="Show device library"]')?.click();
+            await waitFor(
+              () => document.querySelectorAll('.symbol-preview').length > 0,
+              1500
+            );
+            const componentLabel = document.querySelector('.component-reference');
+            const componentLabelBox = componentLabel.getBoundingClientRect();
+            componentLabel.dispatchEvent(new PointerEvent('pointerdown', {
+              bubbles: true,
+              clientX: componentLabelBox.left + componentLabelBox.width / 2,
+              clientY: componentLabelBox.top + componentLabelBox.height / 2,
+              pointerId: 15,
+              pointerType: 'mouse',
+              button: 0,
+              buttons: 1
+            }));
+            componentLabel.dispatchEvent(new PointerEvent('pointerup', {
+              bubbles: true,
+              clientX: componentLabelBox.left + componentLabelBox.width / 2,
+              clientY: componentLabelBox.top + componentLabelBox.height / 2,
+              pointerId: 15,
+              pointerType: 'mouse',
+              button: 0
+            }));
+            await waitFor(
+              () => Boolean(document.querySelector('[aria-label="Editable component Name"]')),
+              1500
+            );
+            const richEditor = Boolean(
+              document.querySelector('[aria-label="Editable component Name"]')
+            );
+            const dangerBackground = getComputedStyle(
+              document.querySelector('.danger-button')
+            ).backgroundColor;
+            return {
+              placed,
+              dirty,
+              undone,
+              redone,
+              componentNameCount,
+              componentValueCount,
+              labelFontStyle: richBaseStyle.fontStyle,
+              labelFontSynthesis: richBaseStyle.fontSynthesis,
+              duplicateCount,
+              afterDuplicatePointerMove,
+              duplicatePreview,
+              duplicateModeExited,
+              afterDuplicateUndo,
+              theme,
+              aspectMatched: Math.abs(viewAspect - elementAspect) < 0.002,
+              symbolInk,
+              richEditor,
+              railBackground,
+              dangerBackground
+            };
           })()`,
-        )) as { placed: number; dirty: boolean; undone: number; redone: number };
+        )) as {
+          placed: number;
+          dirty: boolean;
+          undone: number;
+          redone: number;
+          componentNameCount: number;
+          componentValueCount: number;
+          labelFontStyle: string;
+          labelFontSynthesis: string;
+          duplicateCount: number;
+          afterDuplicatePointerMove: number;
+          duplicatePreview: boolean;
+          duplicateModeExited: boolean;
+          afterDuplicateUndo: number;
+          theme: string | undefined;
+          aspectMatched: boolean;
+          symbolInk: string;
+          richEditor: boolean;
+          railBackground: string;
+          dangerBackground: string;
+        };
         passed =
           editState.placed === 1 &&
           editState.dirty &&
           editState.undone === 0 &&
-          editState.redone === 1;
+          editState.redone === 1 &&
+          editState.componentNameCount === 1 &&
+          editState.componentValueCount === 0 &&
+          editState.labelFontStyle === "italic" &&
+          editState.labelFontSynthesis !== "none" &&
+          editState.duplicateCount === 2 &&
+          editState.afterDuplicatePointerMove === 1 &&
+          editState.duplicatePreview &&
+          editState.duplicateModeExited &&
+          editState.afterDuplicateUndo === 1 &&
+          editState.theme === "light" &&
+          editState.aspectMatched &&
+          editState.symbolInk !== "rgb(219, 229, 227)" &&
+          editState.richEditor &&
+          editState.railBackground !== "rgb(19, 30, 37)" &&
+          editState.dangerBackground !== "rgb(43, 30, 31)" &&
+          (process.platform === "darwin" || state.windowControls === 3);
         details = JSON.stringify({ ...state, edit: editState });
         break;
       }

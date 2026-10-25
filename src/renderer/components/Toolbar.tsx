@@ -3,6 +3,7 @@ import { Icon, type IconName } from "./Icons";
 
 export type EditorTool =
   | "select"
+  | "duplicate"
   | "wire"
   | "junction"
   | "net-label"
@@ -50,25 +51,16 @@ function ToolButton({
 }
 
 interface ToolbarProps {
-  documentTitle: string;
-  dirty: boolean;
   tool: EditorTool;
   canUndo: boolean;
   canRedo: boolean;
-  canDelete: boolean;
-  canRotate: boolean;
-  canMirror: boolean;
   onNew: () => void;
   onOpen: () => void;
   onSave: () => void;
   onTool: (tool: EditorTool) => void;
   onUndo: () => void;
   onRedo: () => void;
-  onDelete: () => void;
-  onRotate: () => void;
-  onMirror: () => void;
   onExport: () => void;
-  onAuditPins: () => void;
 }
 
 function Separator() {
@@ -76,47 +68,19 @@ function Separator() {
 }
 
 export function Toolbar({
-  documentTitle,
-  dirty,
   tool,
   canUndo,
   canRedo,
-  canDelete,
-  canRotate,
-  canMirror,
   onNew,
   onOpen,
   onSave,
   onTool,
   onUndo,
   onRedo,
-  onDelete,
-  onRotate,
-  onMirror,
   onExport,
-  onAuditPins,
 }: ToolbarProps): ReactNode {
   return (
     <header className="app-toolbar">
-      <div className="brand-block" aria-label="Drawic">
-        <span className="brand-mark" aria-hidden="true">
-          <svg viewBox="0 0 32 32">
-            <path d="M5 8h8l5 5v13H5z" />
-            <path d="M18 6h9v9l-9 9-9-9z" />
-            <circle cx="13" cy="13" r="2" />
-          </svg>
-        </span>
-        <span className="brand-name">Drawic</span>
-        <span className="preview-tag">PREVIEW</span>
-      </div>
-
-      <div className="document-name" title={documentTitle}>
-        <span>{documentTitle}</span>
-        <span className={`dirty-indicator${dirty ? " is-dirty" : ""}`}>
-          {dirty ? "Unsaved changes" : "Saved"}
-        </span>
-      </div>
-
       <nav className="toolbar-groups" aria-label="Editor toolbar">
         <div className="tool-group file-tools">
           <ToolButton label="New" icon="new" onClick={onNew} shortcut="Ctrl+N" />
@@ -138,6 +102,14 @@ export function Toolbar({
             active={tool === "wire"}
             onClick={() => onTool("wire")}
             shortcut="W"
+          />
+          <ToolButton
+            label="Duplicate"
+            icon="duplicate"
+            active={tool === "duplicate"}
+            onClick={() => onTool("duplicate")}
+            shortcut="C"
+            description="Click a device to copy it"
           />
           <ToolButton
             label="Junction"
@@ -176,33 +148,9 @@ export function Toolbar({
         <div className="tool-group compact-tools">
           <ToolButton label="Undo" icon="undo" onClick={onUndo} disabled={!canUndo} />
           <ToolButton label="Redo" icon="redo" onClick={onRedo} disabled={!canRedo} />
-          <ToolButton
-            label="Rotate"
-            icon="rotate"
-            onClick={onRotate}
-            disabled={!canRotate}
-          />
-          <ToolButton
-            label="Mirror"
-            icon="mirror"
-            onClick={onMirror}
-            disabled={!canMirror}
-          />
-          <ToolButton
-            label="Delete"
-            icon="delete"
-            onClick={onDelete}
-            disabled={!canDelete}
-          />
         </div>
         <Separator />
         <ToolButton label="Export" icon="export" onClick={onExport} />
-        <ToolButton
-          label="Pin audit"
-          icon="audit"
-          onClick={onAuditPins}
-          description="Review device pin escape directions"
-        />
       </nav>
 
     </header>
