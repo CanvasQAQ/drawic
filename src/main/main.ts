@@ -869,7 +869,20 @@ async function runSmokeCheck(window: BrowserWindow): Promise<void> {
             ).color;
             document.querySelector('button[aria-label="Hide device library"]')?.click();
             await waitFor(() => canvas.getBoundingClientRect().width > box.width, 1500);
-            await wait(80);
+            await waitFor(() => {
+              const currentBox = canvas.getBoundingClientRect();
+              const currentViewBox = (canvas.getAttribute('viewBox') || '')
+                .split(' ')
+                .map(Number);
+              return (
+                currentBox.width > 0 &&
+                currentBox.height > 0 &&
+                Math.abs(
+                  currentViewBox[2] / currentViewBox[3] -
+                    currentBox.width / currentBox.height
+                ) < 0.002
+              );
+            }, 1500);
             const railBackground = getComputedStyle(
               document.querySelector('.panel-rail-left')
             ).backgroundColor;
