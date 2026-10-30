@@ -69,7 +69,8 @@ tag such as `v1.0.0` is treated as a formal release.
   divergence gets one junction, while collinear continuation becomes one
   continuous wire object.
 - Independently movable and hideable component labels, plus in-place editing and
-  dragging for free text, named net labels, rectangles, and ellipses.
+  dragging for multiline free text, named net labels, rectangles, and ellipses.
+  Text supports color, alignment, bold/italic, font size, and 90-degree rotation.
 - Component placement assigns Reference Names from electrical prefixes, places
   rich typographic Name labels using device ink bounds, hides Value by default,
   and supports manual styling, sans/serif typography, and Agent collision
@@ -77,8 +78,19 @@ tag such as `v1.0.0` is treated as a formal release.
 - Independent drawing pages with creation, rename, duplicate, delete, reorder,
   and tab switching. Page switching is view state and does not mark a document
   dirty.
-- Rectangle and ellipse drawing tools with canvas move, resize, and label
-  editing.
+- Rectangle and ellipse drawing tools return to Select after one placement;
+  Note returns to Select after its text editor is committed. Both support move,
+  eight-handle resize, Shift
+  aspect-ratio and Alt center constraints, layer ordering, multiline labels, and
+  fill, stroke, line-width, dash, opacity, and label-style controls. Resize
+  handles keep a constant on-screen size at every zoom level.
+- A Note tool for quick block callouts: drag a frame (or click for a default
+  size) to get a simple rounded translucent note with a bold heading line and
+  auto-wrapping body copy. Drag the note text to place it anywhere inside the
+  frame, drag the border or top edge to move the note, and resize with the
+  eight handles. Notes sit above components but their body clicks pass through,
+  so they do not block device interaction; long copy grows the note height
+  automatically.
 - New/open/save/save-as, recent projects, dirty-state tracking, and debounced
   unsaved-work recovery.
 - Save/discard/cancel protection when replacing a dirty document or closing an
@@ -170,7 +182,8 @@ service, sync, account, telemetry, or update-check request.
   remain available on pin-bound segments and add doglegs without detaching the
   electrical endpoint.
 - Double-click text, a net label, a shape label, or a component reference/value
-  to edit it in place. Labels and shapes can be dragged directly.
+  to edit it in place. New text opens its editor immediately; labels and shapes
+  can be dragged directly.
 - New components show their Reference Name and hide Value. Select a component
   label to edit its font scale, weight, style, script, color, visibility, or
   manual position. Agent callers can request collision-avoiding placement.
@@ -190,7 +203,9 @@ service, sync, account, telemetry, or update-check request.
 - A new wire endpoint deliberately snapped onto another wire creates an explicit
   junction. Passive crossing or endpoint overlap stays separate and renders as a
   hop.
-- Net labels with identical text merge their networks.
+- Net labels render in their Net color with a page-colored halo above the wire;
+  identical names merge their networks, and labels move independently along the
+  sheet.
 - Drag with the right mouse button to draw a focus rectangle and fit the view to
   that region.
 - Drag a component to move selected components. Hold Shift while dragging to
@@ -198,6 +213,7 @@ service, sync, account, telemetry, or update-check request.
 - Hold Shift while selecting to add or remove an item.
 - Menu commands provide Save, Save As, Undo, Redo, Delete, Rotate, Mirror,
   Import SPICE, Export SPICE, and diagram export.
+- Press Backspace or Delete to remove the current selection, including on macOS.
 
 ## Security and offline behavior
 

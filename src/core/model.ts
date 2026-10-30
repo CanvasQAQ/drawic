@@ -153,6 +153,14 @@ export interface Net {
   junctions: Junction[];
 }
 
+export type AnnotationAlign = "start" | "middle" | "end";
+
+export const DEFAULT_ANNOTATION_TEXT_COLOR = "#34434c";
+export const DEFAULT_NET_LABEL_COLOR = "#8b421f";
+export const DEFAULT_NET_LABEL_FONT_SIZE = 16;
+export const DEFAULT_ANNOTATION_FONT_SIZE = 16;
+export const NET_LABEL_BASELINE_OFFSET = 8;
+
 export interface Annotation {
   id: string;
   kind: "text" | "net";
@@ -162,9 +170,30 @@ export interface Annotation {
   size: number;
   wireId?: string;
   netId?: string;
+  color?: string;
+  align?: AnnotationAlign;
+  bold?: boolean;
+  italic?: boolean;
+  rotation?: Rotation;
 }
 
-export type ShapeKind = "rectangle" | "ellipse";
+export type ShapeKind = "rectangle" | "ellipse" | "note";
+export type ShapeDash = "solid" | "dashed" | "dotted";
+
+export const DEFAULT_SHAPE_STROKE = "#263d48";
+export const DEFAULT_SHAPE_FILL = "transparent";
+export const DEFAULT_SHAPE_STROKE_WIDTH = 2;
+export const DEFAULT_SHAPE_TEXT_SIZE = 13;
+export const DEFAULT_SHAPE_TEXT_COLOR = "#263d48";
+export const DEFAULT_SHAPE_TEXT_ALIGN: AnnotationAlign = "middle";
+
+export const DEFAULT_NOTE_FILL = "#f2c777";
+export const DEFAULT_NOTE_FILL_OPACITY = 0.22;
+export const DEFAULT_NOTE_STROKE = "#b98433";
+export const DEFAULT_NOTE_STROKE_WIDTH = 1.5;
+export const DEFAULT_NOTE_TEXT_COLOR = "#6b4d20";
+export const DEFAULT_NOTE_WIDTH = 240;
+export const DEFAULT_NOTE_HEIGHT = 100;
 
 export interface DrawingShape {
   id: string;
@@ -177,6 +206,15 @@ export interface DrawingShape {
   stroke: string;
   fill: string;
   text?: string;
+  strokeWidth?: number;
+  dash?: ShapeDash;
+  opacity?: number;
+  fillOpacity?: number;
+  textSize?: number;
+  textColor?: string;
+  textAlign?: AnnotationAlign;
+  textBold?: boolean;
+  textOffset?: Point;
 }
 
 export interface DrawingPage {
@@ -397,6 +435,10 @@ export function selectionEquals(a: SelectionRef, b: SelectionRef): boolean {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
 }
 
 function expectString(value: unknown, field: string): string {
@@ -644,6 +686,33 @@ function parseLabelAnchor(
   return { anchor: value };
 }
 
+function parseTextAlign(value: unknown, field: string): AnnotationAlign {
+  if (value !== "start" && value !== "middle" && value !== "end") {
+    throw new ProjectFormatError("invalid-field", `${field} is not supported.`);
+  }
+  return value;
+}
+
+function parseShapeDash(value: unknown, field: string): ShapeDash {
+  if (value !== "solid" && value !== "dashed" && value !== "dotted") {
+    throw new ProjectFormatError("invalid-field", `${field} is not supported.`);
+  }
+  return value;
+}
+
+function expectOptionalBoolean(
+  value: unknown,
+  field: string,
+): boolean | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (typeof value !== "boolean") {
+    throw new ProjectFormatError("invalid-field", `${field} must be a boolean.`);
+  }
+  return value;
+}
+
 function parseLabelPlacement(
   value: unknown,
   field: string,
@@ -804,12 +873,30 @@ function parseAnnotation(value: unknown, index: number): Annotation {
     ...(value.netId === undefined
       ? {}
       : { netId: expectString(value.netId, `${field}.netId`) }),
+    ...(value.color === undefined
+      ? {}
+      : { color: expectColor(value.color, `${field}.color`) }),
+    ...(value.align === undefined
+      ? {}
+      : { align: parseTextAlign(value.align, `${field}.align`) }),
+    ...(value.bold === undefined
+      ? {}
+      : { bold: expectOptionalBoolean(value.bold, `${field}.bold`)! }),
+    ...(value.italic === undefined
+      ? {}
+      : { italic: expectOptionalBoolean(value.italic, `${field}.italic`)! }),
+    ...(value.rotation === undefined
+      ? {}
+      : { rotation: expectRotation(value.rotation, `${field}.rotation`) }),
   };
 }
 
 function parseShape(value: unknown, index: number): DrawingShape {
   const field = `pages[].shapes[${index}]`;
-  if (!isRecord(value) || (value.kind !== "rectangle" && value.kind !== "ellipse")) {
+  if (
+    !isRecord(value) ||
+    (value.kind !== "rectangle" && value.kind !== "ellipse" && value.kind !== "note")
+  ) {
     throw new ProjectFormatError("invalid-field", `${field} has an invalid shape.`);
   }
   return {
@@ -825,6 +912,57 @@ function parseShape(value: unknown, index: number): DrawingShape {
     ...(value.text === undefined
       ? {}
       : { text: expectString(value.text, `${field}.text`) }),
+    ...(value.strokeWidth === undefined
+      ? {}
+      : {
+          strokeWidth: clamp(
+            expectFinite(value.strokeWidth, `${field}.strokeWidth`),
+            0.5,
+            24,
+          ),
+        }),
+    ...(value.dash === undefined
+      ? {}
+      : { dash: parseShapeDash(value.dash, `${field}.dash`) }),
+    ...(value.opacity === undefined
+      ? {}
+      : {
+          opacity: clamp(
+            expectFinite(value.opacity, `${field}.opacity`),
+            0,
+            1,
+          ),
+        }),
+    ...(value.fillOpacity === undefined
+      ? {}
+      : {
+          fillOpacity: clamp(
+            expectFinite(value.fillOpacity, `${field}.fillOpacity`),
+            0,
+            1,
+          ),
+        }),
+    ...(value.textSize === undefined
+      ? {}
+      : {
+          textSize: clamp(
+            expectFinite(value.textSize, `${field}.textSize`),
+            4,
+            200,
+          ),
+        }),
+    ...(value.textColor === undefined
+      ? {}
+      : { textColor: expectColor(value.textColor, `${field}.textColor`) }),
+    ...(value.textAlign === undefined
+      ? {}
+      : { textAlign: parseTextAlign(value.textAlign, `${field}.textAlign`) }),
+    ...(value.textBold === undefined
+      ? {}
+      : { textBold: expectOptionalBoolean(value.textBold, `${field}.textBold`)! }),
+    ...(value.textOffset === undefined
+      ? {}
+      : { textOffset: parsePoint(value.textOffset, `${field}.textOffset`) }),
   };
 }
 

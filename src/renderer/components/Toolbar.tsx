@@ -10,6 +10,7 @@ export type EditorTool =
   | "text"
   | "rectangle"
   | "ellipse"
+  | "note"
   | "place";
 
 interface ToolButtonProps {
@@ -142,6 +143,14 @@ export function Toolbar({
             icon="ellipse"
             active={tool === "ellipse"}
             onClick={() => onTool("ellipse")}
+          />
+          <ToolButton
+            label="Note"
+            icon="note"
+            active={tool === "note"}
+            onClick={() => onTool("note")}
+            shortcut="N"
+            description="Drag a frame to add a quick block note"
           />
         </div>
         <Separator />

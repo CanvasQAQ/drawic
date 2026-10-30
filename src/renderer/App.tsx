@@ -16,6 +16,7 @@ import {
   moveNodes,
   removeSelection,
   renameNet,
+  reorderShape,
   resetNodeLabelStyle,
   rotateSelection,
   updateAnnotation,
@@ -149,6 +150,8 @@ export function App() {
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
   const [pinAuditOpen, setPinAuditOpen] = useState(false);
+  const [pendingTextAnnotationId, setPendingTextAnnotationId] = useState<string | null>(null);
+  const [pendingNoteShapeId, setPendingNoteShapeId] = useState<string | null>(null);
   const [theme, setTheme] = useState<Theme>(() => resolveInitialTheme());
   const [recovery, setRecovery] = useState<{
     content: string;
@@ -413,6 +416,20 @@ export function App() {
     setDiagnostics(null);
   }, [activePageId, commitMutation, selection]);
 
+  const reorderSelectedShape = useCallback(
+    (direction: "forward" | "backward") => {
+      const selectedShape = selection.find((item) => item.kind === "shape");
+      if (!selectedShape) {
+        return;
+      }
+      commitMutation((current) =>
+        reorderShape(current, page.id, selectedShape.id, direction),
+      );
+      setDiagnostics(null);
+    },
+    [commitMutation, page.id, selection],
+  );
+
   const mirrorSelected = useCallback(() => {
     commitMutation((current) =>
       mirrorSelection(current, activePageId, selection, library),
@@ -540,6 +557,11 @@ export function App() {
       );
       setSelection([{ kind: "shape", id }]);
       setDiagnostics(null);
+      if (kind === "note") {
+        setPendingNoteShapeId(id);
+      } else {
+        setTool("select");
+      }
     },
     [commitMutation, page.id],
   );
@@ -571,10 +593,13 @@ export function App() {
       );
       setSelection([{ kind: "annotation", id }]);
       setDiagnostics(null);
+      if (kind === "text") {
+        setPendingTextAnnotationId(id);
+      }
       appendLog(
         kind === "net"
           ? "Net label added to the wire. Edit its name in Properties."
-          : "Text added. Edit it in Properties.",
+          : "Text added. Type directly on the canvas.",
       );
     },
     [activePageId, appendLog, commitMutation, history.present, pageConnectivity],
@@ -875,6 +900,14 @@ export function App() {
         event.preventDefault();
         setConsoleOpen((open) => !open);
       } else if (
+        (event.key === "Backspace" || event.key === "Delete") &&
+        !event.ctrlKey &&
+        !event.metaKey &&
+        !event.altKey
+      ) {
+        event.preventDefault();
+        deleteSelection();
+      } else if (
         !event.ctrlKey &&
         !event.metaKey &&
         !event.altKey &&
@@ -896,11 +929,19 @@ export function App() {
       ) {
         event.preventDefault();
         changeTool("duplicate");
+      } else if (
+        !event.ctrlKey &&
+        !event.metaKey &&
+        !event.altKey &&
+        event.key.toLowerCase() === "n"
+      ) {
+        event.preventDefault();
+        changeTool("note");
       }
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [changeTool, pinAuditOpen, undo]);
+  }, [changeTool, deleteSelection, pinAuditOpen, undo]);
 
   const handleCommand = useCallback(
     (command: AppCommand) => {
@@ -1175,6 +1216,13 @@ export function App() {
               commitMutation((current) => updateShape(current, page.id, shapeId, patch))
             }
             onMoveSelected={moveSelected}
+            initialEditAnnotationId={pendingTextAnnotationId}
+            onInitialEditConsumed={() => setPendingTextAnnotationId(null)}
+            initialEditShapeId={pendingNoteShapeId}
+            onInitialEditShapeConsumed={() => setPendingNoteShapeId(null)}
+            onNoteEditingFinished={() =>
+              setTool((current) => (current === "note" ? "select" : current))
+            }
           />
         </main>
 
@@ -1212,6 +1260,7 @@ export function App() {
             onUpdateShape={(shapeId, patch) =>
               commitMutation((current) => updateShape(current, page.id, shapeId, patch))
             }
+            onReorderShape={reorderSelectedShape}
             onUpdateNetName={updateNetName}
             onUpdateNetColor={updateNetColor}
             onRotate={rotateSelected}

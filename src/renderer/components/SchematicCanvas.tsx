@@ -28,6 +28,14 @@ import {
 } from "../../core/wireMotion";
 import { wireHops, wireOverlaps, wirePathData } from "../../core/wireHops";
 import {
+  NOTE_PADDING,
+  NOTE_TEXT_TOP,
+  clampNoteTextOffset,
+  layoutNoteText,
+  noteContentHeight,
+  type NoteTextOffset,
+} from "../../core/noteText";
+import {
   effectiveNameFontSize,
   effectiveValueFontSize,
   labelTextBounds,
@@ -52,7 +60,21 @@ import type {
 import {
   allJunctions,
   allWires,
+  DEFAULT_ANNOTATION_TEXT_COLOR,
+  DEFAULT_NET_LABEL_COLOR,
+  DEFAULT_NOTE_FILL,
+  DEFAULT_NOTE_FILL_OPACITY,
+  DEFAULT_NOTE_HEIGHT,
+  DEFAULT_NOTE_STROKE,
+  DEFAULT_NOTE_STROKE_WIDTH,
+  DEFAULT_NOTE_TEXT_COLOR,
+  DEFAULT_NOTE_WIDTH,
+  DEFAULT_SHAPE_STROKE_WIDTH,
+  DEFAULT_SHAPE_TEXT_ALIGN,
+  DEFAULT_SHAPE_TEXT_COLOR,
+  DEFAULT_SHAPE_TEXT_SIZE,
   junctionSelectionId,
+  NET_LABEL_BASELINE_OFFSET,
 } from "../../core/model";
 import type { EditorTool } from "./Toolbar";
 import { ComponentTextLabel } from "./ComponentTextLabel";
@@ -62,6 +84,10 @@ const BASE_HEIGHT = 1000;
 const MIN_VIEW_WIDTH = 320;
 const MAX_VIEW_WIDTH = 5200;
 const SNAP_PIXELS = 13;
+
+function netLabelPoint(point: Point): Point {
+  return { x: point.x, y: point.y - NET_LABEL_BASELINE_OFFSET };
+}
 
 export interface Viewport {
   x: number;
@@ -102,14 +128,50 @@ interface SchematicCanvasProps {
   ) => void;
   onUpdateAnnotation: (
     annotationId: string,
-    patch: Partial<Pick<Annotation, "text" | "x" | "y" | "size">>,
+    patch: Partial<
+      Pick<
+        Annotation,
+        | "text"
+        | "x"
+        | "y"
+        | "size"
+        | "color"
+        | "align"
+        | "bold"
+        | "italic"
+        | "rotation"
+      >
+    >,
   ) => void;
   onAddShape: (kind: ShapeKind, bounds: { x: number; y: number; width: number; height: number }) => void;
   onUpdateShape: (
     shapeId: string,
-    patch: Partial<Pick<DrawingShape, "x" | "y" | "width" | "height" | "text">>,
+    patch: Partial<
+      Pick<
+        DrawingShape,
+        | "x"
+        | "y"
+        | "width"
+        | "height"
+        | "text"
+        | "strokeWidth"
+        | "dash"
+        | "opacity"
+        | "fillOpacity"
+        | "textSize"
+        | "textColor"
+        | "textAlign"
+        | "textBold"
+        | "textOffset"
+      >
+    >,
   ) => void;
   onMoveSelected: (delta: Point) => void;
+  initialEditAnnotationId?: string | null;
+  onInitialEditConsumed?: (() => void) | undefined;
+  initialEditShapeId?: string | null;
+  onInitialEditShapeConsumed?: (() => void) | undefined;
+  onNoteEditingFinished?: (() => void) | undefined;
 }
 
 interface DragState {
@@ -165,13 +227,26 @@ interface ShapeDragState {
   delta: Point;
 }
 
-type ShapeCorner = "nw" | "ne" | "sw" | "se";
+type ShapeHandle = "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w";
+
+interface ShapeResizeModifiers {
+  aspectRatio: boolean;
+  fromCenter: boolean;
+}
 
 interface ShapeResizeState {
   shape: DrawingShape;
-  corner: ShapeCorner;
+  corner: ShapeHandle;
   origin: Point;
   delta: Point;
+  modifiers: ShapeResizeModifiers;
+}
+
+interface NoteTextDragState {
+  shape: DrawingShape;
+  origin: Point;
+  startOffset: NoteTextOffset;
+  offset: NoteTextOffset;
 }
 
 type InlineEditorState =
@@ -183,6 +258,42 @@ interface ShapeDraft {
   kind: ShapeKind;
   start: Point;
   current: Point;
+  modifiers: {
+    square: boolean;
+    centered: boolean;
+  };
+}
+
+function shapeDraftBounds(draft: ShapeDraft): {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+} {
+  const dx = draft.current.x - draft.start.x;
+  const dy = draft.current.y - draft.start.y;
+  let width = Math.abs(dx);
+  let height = Math.abs(dy);
+  if (draft.modifiers.square) {
+    width = Math.max(width, height);
+    height = width;
+  }
+  if (draft.modifiers.centered) {
+    width *= 2;
+    height *= 2;
+    return {
+      x: draft.start.x - width / 2,
+      y: draft.start.y - height / 2,
+      width,
+      height,
+    };
+  }
+  return {
+    x: dx >= 0 ? draft.start.x : draft.start.x - width,
+    y: dy >= 0 ? draft.start.y : draft.start.y - height,
+    width,
+    height,
+  };
 }
 
 interface PanState {
@@ -480,14 +591,21 @@ function pageBounds(
   });
   const points = [
     ...allJunctions(page).map(({ junction }) => junction.point),
-    ...page.annotations.map((annotation) => ({ x: annotation.x, y: annotation.y })),
-    ...page.annotations.flatMap((annotation) => [
-      { x: annotation.x - annotation.size, y: annotation.y - annotation.size },
-      {
-        x: annotation.x + Math.max(8, annotation.text.length * annotation.size * 0.65),
-        y: annotation.y + annotation.size * 0.35,
-      },
-    ]),
+    ...page.annotations.flatMap((annotation) => {
+      const lines = annotation.text.split(/\r?\n/);
+      const width =
+        Math.max(1, ...lines.map((line) => line.length)) * annotation.size * 0.62;
+      const height = Math.max(1, lines.length) * annotation.size * 1.2;
+      const origin = { x: annotation.x, y: annotation.y };
+      return [
+        { x: annotation.x, y: annotation.y },
+        { x: annotation.x + width, y: annotation.y },
+        { x: annotation.x + width, y: annotation.y - height },
+        { x: annotation.x, y: annotation.y - height },
+      ].map((corner) =>
+        rotatePointAround(corner, origin, annotation.rotation ?? 0),
+      );
+    }),
   ];
   const boxes = [...nodeBoxes, ...nodeLabelBoxes, ...shapeBoxes, ...wireBoxes];
   if (boxes.length === 0 && points.length === 0) {
@@ -536,10 +654,26 @@ function rotatedShapeBounds(shape: DrawingShape): {
   };
 }
 
+function rotatePointAround(point: Point, center: Point, rotation: Rotation): Point {
+  const x = point.x - center.x;
+  const y = point.y - center.y;
+  switch (rotation) {
+    case 0:
+      return point;
+    case 90:
+      return { x: center.x - y, y: center.y + x };
+    case 180:
+      return { x: center.x - x, y: center.y - y };
+    case 270:
+      return { x: center.x + y, y: center.y - x };
+  }
+}
+
 function resizeShape(
   shape: DrawingShape,
-  corner: ShapeCorner,
+  handle: ShapeHandle,
   delta: Point,
+  modifiers: ShapeResizeModifiers = { aspectRatio: false, fromCenter: false },
 ): Pick<DrawingShape, "x" | "y" | "width" | "height"> {
   let dx = delta.x;
   let dy = delta.y;
@@ -554,21 +688,74 @@ function resizeShape(
       [dx, dy] = [-dy, dx];
       break;
   }
-  let left = shape.x;
-  let top = shape.y;
-  let right = shape.x + shape.width;
-  let bottom = shape.y + shape.height;
-  if (corner.includes("w")) {
-    left = Math.min(right - GRID_SIZE, left + dx);
-  } else {
-    right = Math.max(left + GRID_SIZE, right + dx);
+
+  const west = handle.includes("w");
+  const east = handle.includes("e");
+  const north = handle.includes("n");
+  const south = handle.includes("s");
+  const hasHorizontal = west || east;
+  const hasVertical = north || south;
+  const centerX = shape.x + shape.width / 2;
+  const centerY = shape.y + shape.height / 2;
+
+  let width =
+    shape.width +
+    (east ? dx : west ? -dx : 0) * (modifiers.fromCenter ? 2 : 1);
+  let height =
+    shape.height +
+    (south ? dy : north ? -dy : 0) * (modifiers.fromCenter ? 2 : 1);
+
+  if (modifiers.aspectRatio && hasHorizontal && hasVertical) {
+    const ratio = shape.width / shape.height;
+    const scaleX = width / shape.width;
+    const scaleY = height / shape.height;
+    const scale =
+      Math.abs(scaleX - 1) >= Math.abs(scaleY - 1) ? scaleX : scaleY;
+    width = shape.width * scale;
+    height = shape.height * scale;
+  } else if (modifiers.aspectRatio && hasHorizontal) {
+    height = width / (shape.width / shape.height);
+  } else if (modifiers.aspectRatio && hasVertical) {
+    width = height * (shape.width / shape.height);
   }
-  if (corner.includes("n")) {
-    top = Math.min(bottom - GRID_SIZE, top + dy);
-  } else {
-    bottom = Math.max(top + GRID_SIZE, bottom + dy);
+
+  width = Math.max(GRID_SIZE, width);
+  height = Math.max(GRID_SIZE, height);
+
+  const left = modifiers.fromCenter
+    ? centerX - width / 2
+    : west
+      ? shape.x + shape.width - width
+      : shape.x;
+  const top = modifiers.fromCenter
+    ? centerY - height / 2
+    : north
+      ? shape.y + shape.height - height
+      : shape.y;
+
+  const result = { x: left, y: top, width, height };
+  if (modifiers.fromCenter || shape.rotation === 0 || (!hasHorizontal && !hasVertical)) {
+    return result;
   }
-  return { x: left, y: top, width: right - left, height: bottom - top };
+
+  // Keep the opposite corner/edge anchored in world space after rotation.
+  const fixedOld = {
+    x: west ? shape.x + shape.width : east ? shape.x : centerX,
+    y: north ? shape.y + shape.height : south ? shape.y : centerY,
+  };
+  const fixedNew = {
+    x: west ? left + width : east ? left : left + width / 2,
+    y: north ? top + height : south ? top : top + height / 2,
+  };
+  const oldCenter = { x: centerX, y: centerY };
+  const newCenter = { x: left + width / 2, y: top + height / 2 };
+  const worldOld = rotatePointAround(fixedOld, oldCenter, shape.rotation);
+  const worldNew = rotatePointAround(fixedNew, newCenter, shape.rotation);
+  return {
+    ...result,
+    x: left + worldOld.x - worldNew.x,
+    y: top + worldOld.y - worldNew.y,
+  };
 }
 
 function CanvasInlineEditor({
@@ -580,6 +767,7 @@ function CanvasInlineEditor({
   multiline,
   onCommit,
   onCancel,
+  onOutsidePointerDown,
 }: {
   x: number;
   y: number;
@@ -589,6 +777,7 @@ function CanvasInlineEditor({
   multiline: boolean;
   onCommit: (value: string) => void;
   onCancel: () => void;
+  onOutsidePointerDown?: (() => void) | undefined;
 }) {
   const [draft, setDraft] = useState(value);
   useEffect(() => setDraft(value), [value]);
@@ -599,6 +788,29 @@ function CanvasInlineEditor({
       onCancel();
     }
   };
+  const finishRef = useRef(finish);
+  finishRef.current = finish;
+  const outsideRef = useRef(onOutsidePointerDown);
+  outsideRef.current = onOutsidePointerDown;
+  useEffect(() => {
+    const handleOutsidePointerDown = (event: PointerEvent): void => {
+      console.log("OUTSIDE", (event.target as Element | null)?.tagName);
+      const target = event.target as Element | null;
+      if (target?.closest?.(".canvas-inline-editor-object")) {
+        return;
+      }
+      if (!target?.closest?.("svg.schematic-canvas")) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      finishRef.current();
+      outsideRef.current?.();
+    };
+    window.addEventListener("pointerdown", handleOutsidePointerDown, true);
+    return () =>
+      window.removeEventListener("pointerdown", handleOutsidePointerDown, true);
+  }, []);
   return (
     <foreignObject
       x={x}
@@ -613,6 +825,7 @@ function CanvasInlineEditor({
           <textarea
             autoFocus
             value={draft}
+            onFocus={(event) => event.currentTarget.select()}
             onChange={(event) => setDraft(event.target.value)}
             onBlur={finish}
             onKeyDown={(event) => {
@@ -630,6 +843,7 @@ function CanvasInlineEditor({
           <input
             autoFocus
             value={draft}
+            onFocus={(event) => event.currentTarget.select()}
             onChange={(event) => setDraft(event.target.value)}
             onBlur={finish}
             onKeyDown={(event) => {
@@ -669,6 +883,11 @@ export function SchematicCanvas({
   onAddShape,
   onUpdateShape,
   onMoveSelected,
+  initialEditAnnotationId,
+  onInitialEditConsumed,
+  initialEditShapeId,
+  onInitialEditShapeConsumed,
+  onNoteEditingFinished,
 }: SchematicCanvasProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const viewportSizeRef = useRef<{ width: number; height: number } | null>(null);
@@ -692,7 +911,15 @@ export function SchematicCanvas({
   const [annotationDrag, setAnnotationDrag] = useState<AnnotationDragState | null>(null);
   const [shapeDrag, setShapeDrag] = useState<ShapeDragState | null>(null);
   const [shapeResize, setShapeResize] = useState<ShapeResizeState | null>(null);
+  const [noteTextDrag, setNoteTextDrag] = useState<NoteTextDragState | null>(null);
   const [inlineEditor, setInlineEditor] = useState<InlineEditorState | null>(null);
+  const [gridVisible, setGridVisible] = useState(() => {
+    try {
+      return window.localStorage.getItem("drawic-canvas-grid") !== "off";
+    } catch {
+      return true;
+    }
+  });
   const [pan, setPan] = useState<PanState | null>(null);
   const [spacePressed, setSpacePressed] = useState(false);
   const [hovered, setHovered] = useState<SelectionRef | null>(null);
@@ -704,6 +931,12 @@ export function SchematicCanvas({
   const activeDuplicateSourceId =
     tool === "duplicate" ? duplicateSourceId : null;
   const symbols = useMemo(() => new Map(library.map((symbol) => [symbol.id, symbol])), [library]);
+  const netColorById = useMemo(
+    () => new Map(page.nets.map((net) => [net.id, net.color])),
+    [page.nets],
+  );
+  const consumedInitialEditRef = useRef<string | null>(null);
+  const consumedInitialShapeEditRef = useRef<string | null>(null);
   const movingNodeIds = useMemo(
     () => new Set(drag && !drag.duplicate ? drag.nodeIds : []),
     [drag],
@@ -833,6 +1066,7 @@ export function SchematicCanvas({
         setAnnotationDrag(null);
         setShapeDrag(null);
         setShapeResize(null);
+        setNoteTextDrag(null);
         setInlineEditor(null);
         setPan(null);
       } else if ((event.ctrlKey || event.metaKey) && event.key === "0") {
@@ -855,6 +1089,23 @@ export function SchematicCanvas({
       } else if (event.key.toLowerCase() === "f") {
         event.preventDefault();
         fitPageToContent();
+      } else if (
+        event.key.toLowerCase() === "g" &&
+        !event.metaKey &&
+        !event.ctrlKey &&
+        !event.altKey
+      ) {
+        const target = event.target as HTMLElement | null;
+        if (
+          target?.tagName === "INPUT" ||
+          target?.tagName === "TEXTAREA" ||
+          target?.tagName === "SELECT" ||
+          target?.isContentEditable
+        ) {
+          return;
+        }
+        event.preventDefault();
+        setGridVisible((visible) => !visible);
       }
     };
     const handleKeyUp = (event: KeyboardEvent): void => {
@@ -886,6 +1137,7 @@ export function SchematicCanvas({
     setAnnotationDrag(null);
     setShapeDrag(null);
     setShapeResize(null);
+    setNoteTextDrag(null);
     setInlineEditor(null);
     setMarquee(null);
     setViewportMarquee(null);
@@ -896,6 +1148,58 @@ export function SchematicCanvas({
     setDuplicateRotationOffset(0);
     setPlacementRotation(0);
   }, [page.id]);
+
+  useEffect(() => {
+    if (
+      !initialEditAnnotationId ||
+      consumedInitialEditRef.current === initialEditAnnotationId
+    ) {
+      return;
+    }
+    const annotation = page.annotations.find(
+      (candidate) => candidate.id === initialEditAnnotationId,
+    );
+    if (!annotation) {
+      return;
+    }
+    consumedInitialEditRef.current = initialEditAnnotationId;
+    setInlineEditor({
+      kind: "annotation",
+      id: annotation.id,
+      value: annotation.text,
+    });
+    onInitialEditConsumed?.();
+  }, [initialEditAnnotationId, onInitialEditConsumed, page.annotations]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem("drawic-canvas-grid", gridVisible ? "on" : "off");
+    } catch {
+      // Local storage is optional; keep the toggle working for this session.
+    }
+  }, [gridVisible]);
+
+  useEffect(() => {
+    if (
+      !initialEditShapeId ||
+      consumedInitialShapeEditRef.current === initialEditShapeId
+    ) {
+      return;
+    }
+    const shape = page.shapes.find(
+      (candidate) => candidate.id === initialEditShapeId,
+    );
+    if (!shape) {
+      return;
+    }
+    consumedInitialShapeEditRef.current = initialEditShapeId;
+    setInlineEditor({
+      kind: "shape",
+      id: shape.id,
+      value: shape.text ?? "",
+    });
+    onInitialEditShapeConsumed?.();
+  }, [initialEditShapeId, onInitialEditShapeConsumed, page.shapes]);
 
   useEffect(() => {
     setPlacementRotation(0);
@@ -1259,6 +1563,10 @@ export function SchematicCanvas({
       );
       return;
     }
+    if (tool === "rectangle" || tool === "ellipse" || tool === "note") {
+      beginShapeDraftFor(tool, event, point);
+      return;
+    }
     if (tool === "wire") {
       beginWireAt(point);
       return;
@@ -1270,7 +1578,7 @@ export function SchematicCanvas({
     if (tool === "net-label") {
       const snapped = snapWirePoint(point);
       if (snapped.wireId) {
-        onAddAnnotation("net", snapped.point, snapped.wireId);
+        onAddAnnotation("net", netLabelPoint(snapped.point), snapped.wireId);
       }
       return;
     }
@@ -1386,6 +1694,21 @@ export function SchematicCanvas({
     });
   }
 
+  function beginShapeDraftFor(
+    kind: ShapeKind,
+    event: ReactPointerEvent<Element>,
+    point: Point,
+  ): void {
+    trySetPointerCapture(event.currentTarget, event.pointerId);
+    const snapped = snapPoint(point);
+    setShapeDraft({
+      kind,
+      start: snapped,
+      current: snapped,
+      modifiers: { square: event.shiftKey, centered: event.altKey },
+    });
+  }
+
   function beginShapePointer(
     event: ReactPointerEvent<SVGGElement>,
     shape: DrawingShape,
@@ -1408,18 +1731,46 @@ export function SchematicCanvas({
     });
   }
 
+  function beginNoteTextPointer(
+    event: ReactPointerEvent<SVGTextElement>,
+    shape: DrawingShape,
+  ): void {
+    if (event.button !== 0 || spacePressed || tool !== "select" || placementSymbol) {
+      return;
+    }
+    event.stopPropagation();
+    const item: SelectionRef = { kind: "shape", id: shape.id };
+    const next = selectionWith(selection, item, event.shiftKey);
+    onSelectionChange(next);
+    if (event.shiftKey && isSelected(selection, "shape", shape.id)) {
+      return;
+    }
+    trySetPointerCapture(event.currentTarget, event.pointerId);
+    const startOffset = shape.textOffset ?? { x: 0, y: 0 };
+    setNoteTextDrag({
+      shape,
+      origin: clientToSvg(event),
+      startOffset,
+      offset: startOffset,
+    });
+  }
+
   function beginShapeResize(
     event: ReactPointerEvent<SVGRectElement>,
     shape: DrawingShape,
-    corner: ShapeCorner,
+    handle: ShapeHandle,
   ): void {
     event.stopPropagation();
     trySetPointerCapture(event.currentTarget, event.pointerId);
     setShapeResize({
       shape,
-      corner,
+      corner: handle,
       origin: clientToSvg(event),
       delta: { x: 0, y: 0 },
+      modifiers: {
+        aspectRatio: event.shiftKey,
+        fromCenter: event.altKey,
+      },
     });
   }
 
@@ -1440,6 +1791,9 @@ export function SchematicCanvas({
 
   function beginCanvasPointer(event: ReactPointerEvent<SVGSVGElement>): void {
     if ((event.target as Element).closest?.(".canvas-inline-editor-object")) {
+      return;
+    }
+    if (inlineEditor) {
       return;
     }
     const point = clientToSvg(event);
@@ -1500,7 +1854,7 @@ export function SchematicCanvas({
     if (tool === "net-label") {
       const snapped = snapWirePoint(point);
       if (snapped.wireId) {
-        onAddAnnotation("net", snapped.point, snapped.wireId);
+        onAddAnnotation("net", netLabelPoint(snapped.point), snapped.wireId);
       }
       return;
     }
@@ -1524,10 +1878,8 @@ export function SchematicCanvas({
       }
       return;
     }
-    if (tool === "rectangle" || tool === "ellipse") {
-      trySetPointerCapture(event.currentTarget, event.pointerId);
-      const snapped = snapPoint(point);
-      setShapeDraft({ kind: tool, start: snapped, current: snapped });
+    if (tool === "rectangle" || tool === "ellipse" || tool === "note") {
+      beginShapeDraftFor(tool, event, point);
       return;
     }
     if (!event.shiftKey) {
@@ -1630,6 +1982,16 @@ export function SchematicCanvas({
       });
       return;
     }
+    if (noteTextDrag) {
+      setNoteTextDrag({
+        ...noteTextDrag,
+        offset: {
+          x: noteTextDrag.startOffset.x + Math.round(point.x - noteTextDrag.origin.x),
+          y: noteTextDrag.startOffset.y + Math.round(point.y - noteTextDrag.origin.y),
+        },
+      });
+      return;
+    }
     if (shapeResize) {
       setShapeResize({
         ...shapeResize,
@@ -1637,11 +1999,19 @@ export function SchematicCanvas({
           x: roundToGrid(point.x - shapeResize.origin.x),
           y: roundToGrid(point.y - shapeResize.origin.y),
         },
+        modifiers: {
+          aspectRatio: event.shiftKey,
+          fromCenter: event.altKey,
+        },
       });
       return;
     }
     if (shapeDraft) {
-      setShapeDraft({ ...shapeDraft, current: snapPoint(point) });
+      setShapeDraft({
+        ...shapeDraft,
+        current: snapPoint(point),
+        modifiers: { square: event.shiftKey, centered: event.altKey },
+      });
       return;
     }
     if (marquee) {
@@ -1753,23 +2123,60 @@ export function SchematicCanvas({
       setShapeDrag(null);
       return;
     }
+    if (noteTextDrag) {
+      if (
+        noteTextDrag.offset.x !== noteTextDrag.startOffset.x ||
+        noteTextDrag.offset.y !== noteTextDrag.startOffset.y
+      ) {
+        const fontSize = noteTextDrag.shape.textSize ?? DEFAULT_SHAPE_TEXT_SIZE;
+        const offset = clampNoteTextOffset(
+          noteTextDrag.offset,
+          noteTextDrag.shape.text ?? "",
+          noteTextDrag.shape.width,
+          noteTextDrag.shape.height,
+          fontSize,
+        );
+        onUpdateShape(noteTextDrag.shape.id, {
+          textOffset: { x: Math.round(offset.x), y: Math.round(offset.y) },
+        });
+      }
+      setNoteTextDrag(null);
+      return;
+    }
     if (shapeResize) {
       if (shapeResize.delta.x !== 0 || shapeResize.delta.y !== 0) {
-        onUpdateShape(
-          shapeResize.shape.id,
-          resizeShape(shapeResize.shape, shapeResize.corner, shapeResize.delta),
+        const patch = resizeShape(
+          shapeResize.shape,
+          shapeResize.corner,
+          shapeResize.delta,
+          shapeResize.modifiers,
         );
+        if (shapeResize.shape.kind === "note") {
+          const requiredHeight = noteContentHeight(
+            shapeResize.shape.text ?? "",
+            patch.width,
+            shapeResize.shape.textSize ?? DEFAULT_SHAPE_TEXT_SIZE,
+          );
+          if (requiredHeight > patch.height) {
+            patch.height = requiredHeight;
+          }
+        }
+        onUpdateShape(shapeResize.shape.id, patch);
       }
       setShapeResize(null);
       return;
     }
     if (shapeDraft) {
-      const x = Math.min(shapeDraft.start.x, shapeDraft.current.x);
-      const y = Math.min(shapeDraft.start.y, shapeDraft.current.y);
-      const width = Math.abs(shapeDraft.current.x - shapeDraft.start.x);
-      const height = Math.abs(shapeDraft.current.y - shapeDraft.start.y);
-      if (width >= 10 && height >= 10) {
-        onAddShape(shapeDraft.kind, { x, y, width, height });
+      const bounds = shapeDraftBounds(shapeDraft);
+      if (bounds.width >= 10 && bounds.height >= 10) {
+        onAddShape(shapeDraft.kind, bounds);
+      } else if (shapeDraft.kind === "note") {
+        onAddShape(shapeDraft.kind, {
+          x: shapeDraft.start.x,
+          y: shapeDraft.start.y,
+          width: DEFAULT_NOTE_WIDTH,
+          height: DEFAULT_NOTE_HEIGHT,
+        });
       }
       setShapeDraft(null);
       return;
@@ -1793,6 +2200,7 @@ export function SchematicCanvas({
     setAnnotationDrag(null);
     setShapeDrag(null);
     setShapeResize(null);
+    setNoteTextDrag(null);
     setPan(null);
   }
 
@@ -1862,6 +2270,9 @@ export function SchematicCanvas({
       )
     : snapPoint(pointer);
   const zoomPercent = Math.round((BASE_WIDTH / view.width) * 100);
+  const viewportPixelWidth = viewportSizeRef.current?.width ?? 0;
+  const unitsPerPixel =
+    viewportPixelWidth > 0 ? view.width / viewportPixelWidth : 1;
   const canvasClassName = `schematic-canvas tool-${tool}${placementSymbol ? " is-placing" : ""}${pan || spacePressed ? " is-panning" : ""}`;
 
   return (
@@ -1900,17 +2311,22 @@ export function SchematicCanvas({
           setAnnotationDrag(null);
           setShapeDrag(null);
           setShapeResize(null);
+          setNoteTextDrag(null);
           setInlineEditor(null);
         }}
       >
         <defs>
-          <pattern id="grid-small" width="20" height="20" patternUnits="userSpaceOnUse">
-            <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#dbe2e3" strokeWidth="0.7" />
-          </pattern>
-          <pattern id="grid-large" width="100" height="100" patternUnits="userSpaceOnUse">
-            <rect width="100" height="100" fill="url(#grid-small)" />
-            <path d="M 100 0 L 0 0 0 100" fill="none" stroke="#c6d0d2" strokeWidth="1" />
-          </pattern>
+          {gridVisible ? (
+            <>
+              <pattern id="grid-small" width="20" height="20" patternUnits="userSpaceOnUse">
+                <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#dbe2e3" strokeWidth="0.7" />
+              </pattern>
+              <pattern id="grid-large" width="100" height="100" patternUnits="userSpaceOnUse">
+                <rect width="100" height="100" fill="url(#grid-small)" />
+                <path d="M 100 0 L 0 0 0 100" fill="none" stroke="#c6d0d2" strokeWidth="1" />
+              </pattern>
+            </>
+          ) : null}
         </defs>
         <rect
           x={view.x}
@@ -1919,16 +2335,18 @@ export function SchematicCanvas({
           height={view.height}
           fill="#f5f3ec"
         />
-        <rect
-          x={view.x}
-          y={view.y}
-          width={view.width}
-          height={view.height}
-          fill="url(#grid-large)"
-        />
+        {gridVisible ? (
+          <rect
+            x={view.x}
+            y={view.y}
+            width={view.width}
+            height={view.height}
+            fill="url(#grid-large)"
+          />
+        ) : null}
 
         <g className="shape-layer">
-          {page.shapes.map((shape) => {
+          {page.shapes.filter((shape) => shape.kind !== "note").map((shape) => {
             const draggedShape =
               shapeDrag?.shape.id === shape.id
                 ? {
@@ -1939,7 +2357,12 @@ export function SchematicCanvas({
                 : shapeResize?.shape.id === shape.id
                   ? {
                       ...shape,
-                      ...resizeShape(shapeResize.shape, shapeResize.corner, shapeResize.delta),
+                      ...resizeShape(
+                        shapeResize.shape,
+                        shapeResize.corner,
+                        shapeResize.delta,
+                        shapeResize.modifiers,
+                      ),
                     }
                   : shape;
             const centerX = draggedShape.x + draggedShape.width / 2;
@@ -1953,6 +2376,54 @@ export function SchematicCanvas({
               inlineEditor?.kind === "shape" && inlineEditor.id === shape.id
                 ? inlineEditor
                 : null;
+            const strokeWidth = draggedShape.strokeWidth ?? DEFAULT_SHAPE_STROKE_WIDTH;
+            const dashArray =
+              draggedShape.dash === "dashed"
+                ? "7 5"
+                : draggedShape.dash === "dotted"
+                  ? "2 4"
+                  : undefined;
+            const shapeOpacity = draggedShape.opacity ?? 1;
+            const textSize = draggedShape.textSize ?? DEFAULT_SHAPE_TEXT_SIZE;
+            const textColor = draggedShape.textColor ?? DEFAULT_SHAPE_TEXT_COLOR;
+            const textAlign = draggedShape.textAlign ?? DEFAULT_SHAPE_TEXT_ALIGN;
+            const textBold = draggedShape.textBold ?? true;
+            const shapeLines = draggedShape.text?.split(/\r?\n/) ?? [];
+            const textX =
+              textAlign === "middle"
+                ? centerX
+                : textAlign === "end"
+                  ? draggedShape.x + draggedShape.width - 8
+                  : draggedShape.x + 8;
+            const textLineHeight = textSize * 1.25;
+            const textFirstY =
+              centerY - ((shapeLines.length - 1) * textLineHeight) / 2;
+            const handles: Array<{ handle: ShapeHandle; x: number; y: number }> = [
+              { handle: "nw", x: draggedShape.x, y: draggedShape.y },
+              { handle: "n", x: centerX, y: draggedShape.y },
+              {
+                handle: "ne",
+                x: draggedShape.x + draggedShape.width,
+                y: draggedShape.y,
+              },
+              {
+                handle: "e",
+                x: draggedShape.x + draggedShape.width,
+                y: centerY,
+              },
+              {
+                handle: "se",
+                x: draggedShape.x + draggedShape.width,
+                y: draggedShape.y + draggedShape.height,
+              },
+              { handle: "s", x: centerX, y: draggedShape.y + draggedShape.height },
+              {
+                handle: "sw",
+                x: draggedShape.x,
+                y: draggedShape.y + draggedShape.height,
+              },
+              { handle: "w", x: draggedShape.x, y: centerY },
+            ];
             return (
               <g
                 key={shape.id}
@@ -1980,6 +2451,10 @@ export function SchematicCanvas({
                       ry={draggedShape.height / 2}
                       fill={draggedShape.fill}
                       stroke={draggedShape.stroke}
+                      strokeWidth={strokeWidth}
+                      strokeDasharray={dashArray}
+                      opacity={shapeOpacity}
+                      fillOpacity={draggedShape.fillOpacity ?? 1}
                     />
                   ) : (
                     <rect
@@ -1990,47 +2465,46 @@ export function SchematicCanvas({
                       height={draggedShape.height}
                       fill={draggedShape.fill}
                       stroke={draggedShape.stroke}
+                      strokeWidth={strokeWidth}
+                      strokeDasharray={dashArray}
+                      opacity={shapeOpacity}
+                      fillOpacity={draggedShape.fillOpacity ?? 1}
                     />
                   )}
-                  {draggedShape.text && !editing ? (
-                    <text
-                      className="shape-text"
-                      x={centerX}
-                      y={centerY}
-                      textAnchor="middle"
-                      dominantBaseline="central"
-                    >
-                      {draggedShape.text}
-                    </text>
-                  ) : null}
+                    {shapeLines.length > 0 && !editing ? (
+                      <text
+                        className="shape-text"
+                        x={textX}
+                        y={textFirstY}
+                        textAnchor={textAlign}
+                        dominantBaseline="central"
+                        fontSize={textSize}
+                        fontFamily="Arial, sans-serif"
+                        fontWeight={textBold ? 600 : 400}
+                        fill={textColor}
+                      >
+                        {shapeLines.map((line, index) => (
+                          <tspan
+                            key={`${shape.id}-text-${index}`}
+                            x={textX}
+                            dy={index === 0 ? 0 : textLineHeight}
+                          >
+                            {line}
+                          </tspan>
+                        ))}
+                      </text>
+                    ) : null}
                   {selected && tool === "select"
-                    ? [
-                        { corner: "nw" as const, x: draggedShape.x, y: draggedShape.y },
-                        {
-                          corner: "ne" as const,
-                          x: draggedShape.x + draggedShape.width,
-                          y: draggedShape.y,
-                        },
-                        {
-                          corner: "sw" as const,
-                          x: draggedShape.x,
-                          y: draggedShape.y + draggedShape.height,
-                        },
-                        {
-                          corner: "se" as const,
-                          x: draggedShape.x + draggedShape.width,
-                          y: draggedShape.y + draggedShape.height,
-                        },
-                      ].map((handle) => (
+                    ? handles.map((handle) => (
                         <rect
-                          key={handle.corner}
-                          className={`shape-resize-handle shape-resize-${handle.corner}`}
-                          x={handle.x - 5}
-                          y={handle.y - 5}
-                          width={10}
-                          height={10}
+                          key={handle.handle}
+                          className={`shape-resize-handle shape-resize-${handle.handle}`}
+                          x={handle.x - 5 * unitsPerPixel}
+                          y={handle.y - 5 * unitsPerPixel}
+                          width={10 * unitsPerPixel}
+                          height={10 * unitsPerPixel}
                           onPointerDown={(event) =>
-                            beginShapeResize(event, shape, handle.corner)
+                            beginShapeResize(event, shape, handle.handle)
                           }
                         />
                       ))
@@ -2040,9 +2514,9 @@ export function SchematicCanvas({
                       x={draggedShape.x + 6}
                       y={centerY - 18}
                       width={Math.max(60, draggedShape.width - 12)}
-                      height={36}
+                      height={Math.max(36, editing.value.split(/\r?\n/).length * 20 + 14)}
                       value={editing.value}
-                      multiline={false}
+                      multiline
                       onCommit={(text) => {
                         onUpdateShape(shape.id, { text });
                         setInlineEditor(null);
@@ -2096,13 +2570,19 @@ export function SchematicCanvas({
                       ),
                       placementRotation,
                     );
+                  } else if (
+                    tool === "rectangle" ||
+                    tool === "ellipse" ||
+                    tool === "note"
+                  ) {
+                    beginShapeDraftFor(tool, event, clientToSvg(event));
                   } else if (tool === "wire") {
                     beginWireAt(clientToSvg(event));
                   } else if (tool === "junction") {
                     onAddJunction(snapPoint(clientToSvg(event)));
                   } else if (tool === "net-label") {
                     const snapped = snapWirePoint(clientToSvg(event));
-                    onAddAnnotation("net", snapped.point, wire.id);
+                    onAddAnnotation("net", netLabelPoint(snapped.point), wire.id);
                   } else if (tool === "text") {
                     onAddAnnotation("text", snapPoint(clientToSvg(event)));
                   } else if (tool === "select") {
@@ -2156,7 +2636,7 @@ export function SchematicCanvas({
                         className="wire-segment-handle"
                         cx={(start.x + end.x) / 2}
                         cy={(start.y + end.y) / 2}
-                        r="5"
+                        r={5 * unitsPerPixel}
                         onPointerDown={(event) =>
                           beginSegmentDrag(
                             event,
@@ -2419,6 +2899,241 @@ export function SchematicCanvas({
           })}
         </g>
 
+        <g className="note-layer">
+          {page.shapes
+            .filter((shape) => shape.kind === "note")
+            .map((shape) => {
+              const draggedShape =
+                shapeDrag?.shape.id === shape.id
+                  ? {
+                      ...shape,
+                      x: shape.x + shapeDrag.delta.x,
+                      y: shape.y + shapeDrag.delta.y,
+                    }
+                  : shapeResize?.shape.id === shape.id
+                    ? {
+                        ...shape,
+                        ...resizeShape(
+                          shapeResize.shape,
+                          shapeResize.corner,
+                          shapeResize.delta,
+                          shapeResize.modifiers,
+                        ),
+                      }
+                    : shape;
+              const centerX = draggedShape.x + draggedShape.width / 2;
+              const centerY = draggedShape.y + draggedShape.height / 2;
+              const transform =
+                draggedShape.rotation === 0
+                  ? undefined
+                  : `rotate(${draggedShape.rotation} ${centerX} ${centerY})`;
+              const selected = isSelected(selection, "shape", shape.id);
+              const editing =
+                inlineEditor?.kind === "shape" && inlineEditor.id === shape.id
+                  ? inlineEditor
+                  : null;
+              const strokeWidth =
+                draggedShape.strokeWidth ?? DEFAULT_NOTE_STROKE_WIDTH;
+              const noteOpacity = draggedShape.opacity ?? 1;
+              const fillOpacity =
+                draggedShape.fillOpacity ?? DEFAULT_NOTE_FILL_OPACITY;
+              const textSize = draggedShape.textSize ?? DEFAULT_SHAPE_TEXT_SIZE;
+              const textColor =
+                draggedShape.textColor ?? DEFAULT_NOTE_TEXT_COLOR;
+              const textAlign = draggedShape.textAlign ?? "start";
+              const noteLines = layoutNoteText(
+                draggedShape.text ?? "",
+                draggedShape.width,
+                textSize,
+              );
+              const rawOffset =
+                noteTextDrag?.shape.id === shape.id
+                  ? noteTextDrag.offset
+                  : draggedShape.textOffset ?? { x: 0, y: 0 };
+              const clampedOffset = clampNoteTextOffset(
+                rawOffset,
+                draggedShape.text ?? "",
+                draggedShape.width,
+                draggedShape.height,
+                textSize,
+              );
+              const noteTextLeft = draggedShape.x + NOTE_PADDING;
+              const noteTextBaseY =
+                draggedShape.y + NOTE_TEXT_TOP + clampedOffset.y;
+              let noteTextOffset = 0;
+              const positionedNoteLines = noteLines.map((line) => {
+                const y = noteTextBaseY + noteTextOffset;
+                noteTextOffset += line.lineHeight;
+                return { ...line, y };
+              });
+              const textX =
+                textAlign === "middle"
+                  ? draggedShape.x + draggedShape.width / 2 + clampedOffset.x
+                  : textAlign === "end"
+                    ? draggedShape.x +
+                      draggedShape.width -
+                      NOTE_PADDING +
+                      clampedOffset.x
+                    : noteTextLeft + clampedOffset.x;
+              const handles: Array<{ handle: ShapeHandle; x: number; y: number }> = [
+                { handle: "nw", x: draggedShape.x, y: draggedShape.y },
+                { handle: "n", x: centerX, y: draggedShape.y },
+                {
+                  handle: "ne",
+                  x: draggedShape.x + draggedShape.width,
+                  y: draggedShape.y,
+                },
+                {
+                  handle: "e",
+                  x: draggedShape.x + draggedShape.width,
+                  y: centerY,
+                },
+                {
+                  handle: "se",
+                  x: draggedShape.x + draggedShape.width,
+                  y: draggedShape.y + draggedShape.height,
+                },
+                { handle: "s", x: centerX, y: draggedShape.y + draggedShape.height },
+                {
+                  handle: "sw",
+                  x: draggedShape.x,
+                  y: draggedShape.y + draggedShape.height,
+                },
+                { handle: "w", x: draggedShape.x, y: centerY },
+              ];
+              return (
+                <g
+                  key={shape.id}
+                  className={`drawing-shape note${selected ? " is-selected" : ""}`}
+                  onPointerDown={(event) => beginShapePointer(event, shape)}
+                  onDoubleClick={(event) => {
+                    if (tool !== "select") {
+                      return;
+                    }
+                    event.stopPropagation();
+                    setInlineEditor({
+                      kind: "shape",
+                      id: shape.id,
+                      value: shape.text ?? "",
+                    });
+                  }}
+                >
+                  <g transform={transform}>
+                    <rect
+                      className={`shape-body note-body${selected && tool === "select" ? " is-selected" : ""}`}
+                      x={draggedShape.x}
+                      y={draggedShape.y}
+                      width={draggedShape.width}
+                      height={draggedShape.height}
+                      rx={Math.min(10, draggedShape.width / 2, draggedShape.height / 2)}
+                      fill={draggedShape.fill}
+                      fillOpacity={fillOpacity}
+                      stroke={draggedShape.stroke}
+                      strokeWidth={strokeWidth}
+                      opacity={noteOpacity}
+                    />
+                    <rect
+                      className="note-border"
+                      x={draggedShape.x}
+                      y={draggedShape.y}
+                      width={draggedShape.width}
+                      height={draggedShape.height}
+                      rx={Math.min(10, draggedShape.width / 2, draggedShape.height / 2)}
+                      fill="none"
+                      stroke="transparent"
+                      strokeWidth={Math.max(8, strokeWidth * 2)}
+                    />
+                    <rect
+                      className="note-hit"
+                      x={draggedShape.x}
+                      y={draggedShape.y}
+                      width={draggedShape.width}
+                      height={Math.min(20, draggedShape.height)}
+                    />
+                    {positionedNoteLines.length > 0 && !editing ? (
+                      <text
+                        className="note-text"
+                        x={textX}
+                        textAnchor={textAlign}
+                        fill={textColor}
+                        fontFamily="Arial, sans-serif"
+                        onPointerDown={(event) => beginNoteTextPointer(event, shape)}
+                        onDoubleClick={(event) => {
+                          if (tool !== "select") {
+                            return;
+                          }
+                          event.stopPropagation();
+                          setInlineEditor({
+                            kind: "shape",
+                            id: shape.id,
+                            value: shape.text ?? "",
+                          });
+                        }}
+                      >
+                        {positionedNoteLines.map((line, index) => (
+                          <tspan
+                            key={`${shape.id}-note-${index}`}
+                            x={textX}
+                            y={line.y}
+                            fontSize={line.fontSize}
+                            fontWeight={line.heading ? 700 : 400}
+                          >
+                            {line.text}
+                          </tspan>
+                        ))}
+                      </text>
+                    ) : null}
+                    {selected && tool === "select"
+                      ? handles.map((handle) => (
+                          <rect
+                            key={handle.handle}
+                            className={`shape-resize-handle shape-resize-${handle.handle}`}
+                            x={handle.x - 5 * unitsPerPixel}
+                            y={handle.y - 5 * unitsPerPixel}
+                            width={10 * unitsPerPixel}
+                            height={10 * unitsPerPixel}
+                            onPointerDown={(event) =>
+                              beginShapeResize(event, shape, handle.handle)
+                            }
+                          />
+                        ))
+                      : null}
+                    {editing ? (
+                      <CanvasInlineEditor
+                        x={noteTextLeft + clampedOffset.x - 6}
+                        y={noteTextBaseY - textSize - 6}
+                        width={Math.max(
+                          80,
+                          draggedShape.width - NOTE_PADDING * 2,
+                        )}
+                        height={Math.max(
+                          36,
+                          noteLines.length * textSize * 1.5 + 16,
+                        )}
+                        value={editing.value}
+                        multiline
+                        onCommit={(text) => {
+                          const height = Math.max(
+                            shape.height,
+                            noteContentHeight(text, shape.width, textSize),
+                          );
+                          onUpdateShape(shape.id, { text, height });
+                          setInlineEditor(null);
+                          onNoteEditingFinished?.();
+                        }}
+                        onCancel={() => {
+                          setInlineEditor(null);
+                          onNoteEditingFinished?.();
+                        }}
+                        onOutsidePointerDown={() => onNoteEditingFinished?.()}
+                      />
+                    ) : null}
+                  </g>
+                </g>
+              );
+            })}
+        </g>
+
         <g className="annotation-layer">
           {page.annotations.map((annotation) => {
             const network = connectivity.networkIdByAnnotation.get(annotation.id);
@@ -2431,13 +3146,31 @@ export function SchematicCanvas({
               inlineEditor?.kind === "annotation" && inlineEditor.id === annotation.id
                 ? inlineEditor
                 : null;
+            const x = annotation.x + delta.x;
+            const y = annotation.y + delta.y;
+            const lines = annotation.text.split(/\r?\n/);
+            const lineHeight = annotation.size * 1.2;
+            const rotation = annotation.rotation ?? 0;
+            const color =
+              annotation.kind === "net"
+                ? (annotation.netId ? netColorById.get(annotation.netId) : undefined) ??
+                  annotation.color ??
+                  DEFAULT_NET_LABEL_COLOR
+                : annotation.color ?? DEFAULT_ANNOTATION_TEXT_COLOR;
             return (
               <text
                 key={annotation.id}
                 className={`annotation annotation-${annotation.kind}${isSelected(selection, "annotation", annotation.id) ? " is-selected" : ""}${highlighted ? " is-net-highlighted" : ""}`}
-                x={annotation.x + delta.x}
-                y={annotation.y + delta.y}
+                x={x}
+                y={y}
                 fontSize={annotation.size}
+                textAnchor={annotation.align ?? "start"}
+                fontWeight={annotation.kind === "net" ? 700 : annotation.bold ? 700 : 400}
+                fontStyle={annotation.italic ? "italic" : undefined}
+                transform={
+                  rotation === 0 ? undefined : `rotate(${rotation} ${x} ${y})`
+                }
+                style={{ "--annotation-color": color } as React.CSSProperties}
                 onPointerDown={(event) => beginAnnotationPointer(event, annotation)}
                 onDoubleClick={(event) => {
                   if (tool !== "select" || placementSymbol) {
@@ -2455,9 +3188,15 @@ export function SchematicCanvas({
               >
                 {editing
                   ? ""
-                  : annotation.kind === "net"
-                    ? `⌁ ${annotation.text}`
-                    : annotation.text}
+                  : lines.map((line, index) => (
+                      <tspan
+                        key={`${annotation.id}-line-${index}`}
+                        x={x}
+                        dy={index === 0 ? 0 : lineHeight}
+                      >
+                        {line}
+                      </tspan>
+                    ))}
               </text>
             );
           })}
@@ -2469,15 +3208,32 @@ export function SchematicCanvas({
                 if (!annotation) {
                   return null;
                 }
+                const lines = inlineEditor.value.split(/\r?\n/);
+                const longest = lines.reduce(
+                  (length, line) => Math.max(length, line.length),
+                  0,
+                );
+                const width = Math.max(
+                  annotation.kind === "net" ? 110 : 160,
+                  (longest + 2) * annotation.size * 0.68,
+                );
+                const height =
+                  annotation.kind === "net"
+                    ? 28
+                    : Math.max(84, lines.length * annotation.size * 1.4 + 24);
+                const align = annotation.align ?? "start";
+                const editorX =
+                  align === "middle"
+                    ? annotation.x - width / 2
+                    : align === "end"
+                      ? annotation.x - width
+                      : annotation.x - 6;
                 return (
                   <CanvasInlineEditor
-                    x={annotation.x - 6}
+                    x={editorX}
                     y={annotation.y - annotation.size - 6}
-                    width={Math.max(
-                      110,
-                      (inlineEditor.value.length + 2) * annotation.size * 0.7,
-                    )}
-                    height={annotation.kind === "text" ? 84 : 28}
+                    width={width}
+                    height={height}
                     value={inlineEditor.value}
                     multiline={annotation.kind === "text"}
                     onCommit={(text) => {
@@ -2555,23 +3311,36 @@ export function SchematicCanvas({
         ) : null}
 
         {shapeDraft ? (
-          <g className="shape-draft" pointerEvents="none">
-            {shapeDraft.kind === "ellipse" ? (
-              <ellipse
-                cx={(shapeDraft.start.x + shapeDraft.current.x) / 2}
-                cy={(shapeDraft.start.y + shapeDraft.current.y) / 2}
-                rx={Math.abs(shapeDraft.current.x - shapeDraft.start.x) / 2}
-                ry={Math.abs(shapeDraft.current.y - shapeDraft.start.y) / 2}
-              />
-            ) : (
-              <rect
-                x={Math.min(shapeDraft.start.x, shapeDraft.current.x)}
-                y={Math.min(shapeDraft.start.y, shapeDraft.current.y)}
-                width={Math.abs(shapeDraft.current.x - shapeDraft.start.x)}
-                height={Math.abs(shapeDraft.current.y - shapeDraft.start.y)}
-              />
-            )}
-          </g>
+          (() => {
+            const bounds = shapeDraftBounds(shapeDraft);
+            return (
+              <g
+                className={`shape-draft${shapeDraft.kind === "note" ? " note-draft" : ""}`}
+                pointerEvents="none"
+              >
+                {shapeDraft.kind === "ellipse" ? (
+                  <ellipse
+                    cx={bounds.x + bounds.width / 2}
+                    cy={bounds.y + bounds.height / 2}
+                    rx={bounds.width / 2}
+                    ry={bounds.height / 2}
+                  />
+                ) : (
+                  <rect
+                    className={shapeDraft.kind === "note" ? "note-draft-body" : undefined}
+                    x={bounds.x}
+                    y={bounds.y}
+                    width={bounds.width}
+                    height={bounds.height}
+                    rx={shapeDraft.kind === "note" ? 10 : 0}
+                    fill={shapeDraft.kind === "note" ? DEFAULT_NOTE_FILL : "none"}
+                    fillOpacity={shapeDraft.kind === "note" ? 0.22 : 1}
+                    stroke={shapeDraft.kind === "note" ? DEFAULT_NOTE_STROKE : undefined}
+                  />
+                )}
+              </g>
+            );
+          })()
         ) : null}
 
         {marquee ? (
@@ -2609,8 +3378,18 @@ export function SchematicCanvas({
         <button type="button" onClick={fitPageToContent}>
           Fit
         </button>
+        <button
+          type="button"
+          aria-pressed={gridVisible}
+          title="Toggle grid (G)"
+          onClick={() => setGridVisible((visible) => !visible)}
+        >
+          Grid
+        </button>
       </div>
-      <div className="canvas-axis-label">Grid {GRID_SIZE} · Wheel zoom · F fit · Space drag</div>
+      <div className="canvas-axis-label">
+        {gridVisible ? `Grid ${GRID_SIZE}` : "Grid off"} · Wheel zoom · F fit · G grid · Space drag
+      </div>
     </div>
   );
 }

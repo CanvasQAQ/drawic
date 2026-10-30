@@ -11,6 +11,7 @@ export type IconName =
   | "text"
   | "rectangle"
   | "ellipse"
+  | "note"
   | "net"
   | "undo"
   | "redo"
@@ -99,6 +100,13 @@ export function Icon({
       return (
         <svg {...common}>
           <ellipse cx="12" cy="12" rx="8" ry="6" />
+        </svg>
+      );
+    case "note":
+      return (
+        <svg {...common}>
+          <path d="M4 4h16v12l-4 4H4z" />
+          <path d="M16 20v-4h4M7 8h10M7 12h6" />
         </svg>
       );
     case "net":

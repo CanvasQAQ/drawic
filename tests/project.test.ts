@@ -66,6 +66,15 @@ describe("Drawic drawing format", () => {
       stroke: "#263d48",
       fill: "transparent",
       text: "Bias network",
+      strokeWidth: 3,
+      dash: "dashed",
+      opacity: 0.6,
+      fillOpacity: 0.35,
+      textSize: 18,
+      textColor: "#1d4ed8",
+      textAlign: "start",
+      textBold: false,
+      textOffset: { x: 8, y: -4 },
     });
     const parsed = parseProjectText(serializeProject(document));
     expect(parsed).toEqual(document);
@@ -151,6 +160,19 @@ describe("Drawic drawing format", () => {
       size: 14,
       wireId: "wire_auto",
       netId: "net_vout",
+    });
+    document.pages[0]!.annotations.push({
+      id: "label_note",
+      kind: "text",
+      text: "Line one\nLine two",
+      x: 30,
+      y: 40,
+      size: 18,
+      color: "#b42318",
+      align: "middle",
+      bold: true,
+      italic: true,
+      rotation: 90,
     });
 
     const parsed = parseProjectText(serializeProject(document));

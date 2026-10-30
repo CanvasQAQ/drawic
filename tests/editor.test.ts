@@ -2,16 +2,21 @@ import { describe, expect, it } from "vitest";
 import { buildConnectivity, pinGraphKey } from "../src/core/connectivity";
 import { resolveWirePoints } from "../src/core/wireMotion";
 import {
+  addAnnotation,
   addComponent,
+  addShape,
   addWire,
   duplicateNode,
   mirrorSelection,
   moveNodes,
   removeSelection,
   renameNet,
+  reorderShape,
   rotateSelection,
+  updateAnnotation,
   updateNode,
   updateNodeLabel,
+  updateShape,
   updateWirePoints,
   updateNetColorForWire,
   updateNetNameForWire,
@@ -424,4 +429,115 @@ describe("page-scoped net editing", () => {
       connectivity.networkIdByWire.get("branch"),
     );
   });
+  it("stores text and shape styling and reorders drawing shapes", () => {
+    let document = createDocument({ pageId: "page_styled" });
+    document = addShape(document, "page_styled", {
+      kind: "rectangle",
+      x: 10,
+      y: 20,
+      width: 100,
+      height: 60,
+      id: "shape_a",
+    });
+    document = addShape(document, "page_styled", {
+      kind: "ellipse",
+      x: 40,
+      y: 60,
+      width: 80,
+      height: 40,
+      id: "shape_b",
+    });
+    const added = pageById(document, "page_styled").shapes[0]!;
+    expect(added).toMatchObject({
+      strokeWidth: 2,
+      dash: "solid",
+      opacity: 1,
+      fillOpacity: 1,
+      textSize: 13,
+      textColor: "#263d48",
+      textAlign: "middle",
+      textBold: true,
+    });
+
+    document = updateShape(document, "page_styled", "shape_a", {
+      stroke: "#b42318",
+      fill: "#ffffff",
+      strokeWidth: 4,
+      dash: "dashed",
+      opacity: 0.5,
+      fillOpacity: 0.3,
+      textSize: 20,
+      textColor: "#1d4ed8",
+      textAlign: "start",
+      textBold: false,
+      textOffset: { x: 6, y: -8 },
+    });
+    expect(pageById(document, "page_styled").shapes[0]).toMatchObject({
+      stroke: "#b42318",
+      fill: "#ffffff",
+      strokeWidth: 4,
+      dash: "dashed",
+      opacity: 0.5,
+      fillOpacity: 0.3,
+      textSize: 20,
+      textColor: "#1d4ed8",
+      textAlign: "start",
+      textBold: false,
+      textOffset: { x: 6, y: -8 },
+    });
+
+    document = reorderShape(document, "page_styled", "shape_a", "forward");
+    expect(pageById(document, "page_styled").shapes.map((shape) => shape.id)).toEqual([
+      "shape_b",
+      "shape_a",
+    ]);
+
+    document = addAnnotation(document, "page_styled", {
+      kind: "text",
+      text: "Line one\nLine two",
+      point: { x: 10, y: 30 },
+      id: "label_1",
+    });
+    document = updateAnnotation(document, "page_styled", "label_1", {
+      color: "#b42318",
+      align: "middle",
+      bold: true,
+      italic: true,
+      rotation: 90,
+      size: 20,
+    });
+    expect(pageById(document, "page_styled").annotations[0]).toMatchObject({
+      text: "Line one\nLine two",
+      color: "#b42318",
+      align: "middle",
+      bold: true,
+      italic: true,
+      rotation: 90,
+      size: 20,
+    });
+  });
+
+
+  it("creates notes with the quick-note visual defaults", () => {
+    let document = createDocument({ pageId: "page_notes" });
+    document = addShape(document, "page_notes", {
+      kind: "note",
+      x: 40,
+      y: 60,
+      width: 240,
+      height: 100,
+      id: "note_1",
+    });
+    expect(pageById(document, "page_notes").shapes[0]).toMatchObject({
+      kind: "note",
+      fill: "#f2c777",
+      fillOpacity: 0.22,
+      stroke: "#b98433",
+      strokeWidth: 1.5,
+      text: "",
+      textAlign: "start",
+      textColor: "#6b4d20",
+    });
+  });
+
 });

@@ -80,7 +80,7 @@ function pointerEvent(type: string, clientX: number, clientY: number, extra = {}
 
 interface RenderOptions {
   page?: DrawingPage;
-  tool?: "select" | "duplicate" | "wire" | "net-label";
+  tool?: "select" | "duplicate" | "wire" | "net-label" | "text" | "rectangle" | "ellipse" | "note";
   placementSymbol?: typeof twoPinSymbol | null;
   selection?: Array<{ kind: "node" | "node-label" | "wire" | "junction" | "annotation" | "shape"; id: string }>;
   onSelectionChange?: (selection: Array<{ kind: "node" | "node-label" | "wire" | "junction" | "annotation" | "shape"; id: string }>) => void;
@@ -93,9 +93,16 @@ interface RenderOptions {
     delta: Point,
   ) => void;
   onUpdateShape?: (shapeId: string, patch: Record<string, unknown>) => void;
+  onUpdateAnnotation?: (annotationId: string, patch: Record<string, unknown>) => void;
   onMoveSelected?: (delta: Point) => void;
   onDuplicateNode?: (nodeId: string, delta: Point) => void;
   onAddAnnotation?: (kind: "text" | "net", point: Point, wireId?: string) => void;
+  onAddShape?: (kind: string, bounds: { x: number; y: number; width: number; height: number }) => void;
+  initialEditAnnotationId?: string | null;
+  onInitialEditConsumed?: () => void;
+  initialEditShapeId?: string | null;
+  onInitialEditShapeConsumed?: () => void;
+  onNoteEditingFinished?: () => void;
 }
 
 function renderCanvas(options: RenderOptions = {}): {
@@ -124,10 +131,15 @@ function renderCanvas(options: RenderOptions = {}): {
         onMoveNodeLabel={options.onMoveNodeLabel ?? vi.fn()}
         onAddJunction={vi.fn()}
         onAddAnnotation={options.onAddAnnotation ?? vi.fn()}
-        onUpdateAnnotation={vi.fn()}
-        onAddShape={vi.fn()}
+        onUpdateAnnotation={options.onUpdateAnnotation ?? vi.fn()}
+        onAddShape={options.onAddShape ?? vi.fn()}
         onUpdateShape={options.onUpdateShape ?? vi.fn()}
         onMoveSelected={options.onMoveSelected ?? vi.fn()}
+        initialEditAnnotationId={options.initialEditAnnotationId ?? null}
+        onInitialEditConsumed={options.onInitialEditConsumed}
+        initialEditShapeId={options.initialEditShapeId ?? null}
+        onInitialEditShapeConsumed={options.onInitialEditShapeConsumed}
+        onNoteEditingFinished={options.onNoteEditingFinished}
       />,
     ),
   );
@@ -477,7 +489,7 @@ describe("canvas interactions", () => {
     );
     expect(onAddAnnotation).toHaveBeenCalledWith(
       "net",
-      { x: 160, y: 100 },
+      { x: 160, y: 92 },
       "wire_label",
     );
     root.unmount();
@@ -970,7 +982,7 @@ describe("canvas interactions", () => {
     expect(onUpdateShape).toHaveBeenCalledWith("shape_box", { x: 70, y: 70 });
     expect(container.querySelector(".shape-text")?.textContent).toBe("Filter");
     const handles = container.querySelectorAll(".shape-resize-handle");
-    expect(handles).toHaveLength(4);
+    expect(handles).toHaveLength(8);
     const southeast = container.querySelector(".shape-resize-se")!;
     flushSync(() => southeast.dispatchEvent(pointerEvent("pointerdown", 160, 120)));
     flushSync(() => southeast.dispatchEvent(pointerEvent("pointermove", 180, 140)));
@@ -985,4 +997,397 @@ describe("canvas interactions", () => {
     });
     root.unmount();
   });
+  it("renders multi-line text and net labels with their net color", () => {
+    const page = createEmptyPage("Styled labels");
+    addTestNet(page, "net_vout", "VOUT").color = "#0f766e";
+    addTestWire(
+      page,
+      "net_vout",
+      "wire_vout",
+      [
+        { x: 100, y: 100 },
+        { x: 200, y: 100 },
+      ],
+    );
+    page.annotations.push({
+      id: "text_1",
+      kind: "text",
+      text: "Line one\nLine two",
+      x: 40,
+      y: 200,
+      size: 18,
+      color: "#b42318",
+      align: "middle",
+      bold: true,
+      italic: true,
+      rotation: 90,
+    });
+    page.annotations.push({
+      id: "net_1",
+      kind: "net",
+      text: "VOUT",
+      x: 100,
+      y: 92,
+      size: 14,
+      wireId: "wire_vout",
+      netId: "net_vout",
+    });
+    const { container, root } = renderCanvas({ page });
+    const text = container.querySelector<SVGTextElement>(".annotation-text")!;
+    expect(text.querySelectorAll("tspan")).toHaveLength(2);
+    expect(text.getAttribute("text-anchor")).toBe("middle");
+    expect(text.getAttribute("font-weight")).toBe("700");
+    expect(text.getAttribute("font-style")).toBe("italic");
+    expect(text.getAttribute("transform")).toBe("rotate(90 40 200)");
+    expect(text.style.getPropertyValue("--annotation-color")).toBe("#b42318");
+    const net = container.querySelector<SVGTextElement>(".annotation-net")!;
+    expect(net.textContent).toBe("VOUT");
+    expect(net.textContent).not.toContain("⌁");
+    expect(net.style.getPropertyValue("--annotation-color")).toBe("#0f766e");
+    root.unmount();
+  });
+
+  it("renders shape stroke, dash, opacity, and text styling", () => {
+    const page = createEmptyPage("Styled shape");
+    page.shapes.push({
+      id: "shape_styled",
+      kind: "rectangle",
+      x: 40,
+      y: 50,
+      width: 120,
+      height: 70,
+      rotation: 0,
+      stroke: "#0f766e",
+      fill: "#ffffff",
+      strokeWidth: 3,
+      dash: "dotted",
+      opacity: 0.5,
+      fillOpacity: 0.4,
+      text: "Note\nline",
+      textSize: 18,
+      textColor: "#1d4ed8",
+      textAlign: "start",
+      textBold: false,
+    });
+    const { container, root } = renderCanvas({
+      page,
+      selection: [{ kind: "shape", id: "shape_styled" }],
+    });
+    const body = container.querySelector(".shape-body")!;
+    expect(body.getAttribute("stroke-width")).toBe("3");
+    expect(body.getAttribute("stroke-dasharray")).toBe("2 4");
+    expect(body.getAttribute("fill")).toBe("#ffffff");
+    expect(body.getAttribute("opacity")).toBe("0.5");
+    expect(body.getAttribute("fill-opacity")).toBe("0.4");
+    const text = container.querySelector<SVGTextElement>(".shape-text")!;
+    expect(text.querySelectorAll("tspan")).toHaveLength(2);
+    expect(text.getAttribute("fill")).toBe("#1d4ed8");
+    expect(text.getAttribute("font-size")).toBe("18");
+    expect(text.getAttribute("text-anchor")).toBe("start");
+    expect(text.getAttribute("font-weight")).toBe("400");
+    root.unmount();
+  });
+
+  it("resizes shapes with shift aspect ratio and alt center modifiers", async () => {
+    const onUpdateShape = vi.fn();
+    const page = createEmptyPage("Shape modifiers");
+    page.shapes.push({
+      id: "shape_mod",
+      kind: "rectangle",
+      x: 40,
+      y: 50,
+      width: 120,
+      height: 70,
+      rotation: 0,
+      stroke: "#263d48",
+      fill: "transparent",
+    });
+    const { container, root } = renderCanvas({
+      page,
+      selection: [{ kind: "shape", id: "shape_mod" }],
+      onUpdateShape,
+    });
+    const southeast = container.querySelector(".shape-resize-se")!;
+    flushSync(() =>
+      southeast.dispatchEvent(pointerEvent("pointerdown", 160, 120, { shiftKey: true })),
+    );
+    flushSync(() =>
+      southeast.dispatchEvent(pointerEvent("pointermove", 180, 125, { shiftKey: true })),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    flushSync(() =>
+      southeast.dispatchEvent(pointerEvent("pointerup", 180, 125, { shiftKey: true })),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const ratioPatch = onUpdateShape.mock.calls.at(-1)?.[1] as {
+      width: number;
+      height: number;
+    };
+    expect(ratioPatch.width).toBe(140);
+    expect(ratioPatch.height).toBeCloseTo((70 * 140) / 120, 4);
+
+    onUpdateShape.mockClear();
+    flushSync(() =>
+      southeast.dispatchEvent(pointerEvent("pointerdown", 160, 120, { altKey: true })),
+    );
+    flushSync(() =>
+      southeast.dispatchEvent(pointerEvent("pointermove", 180, 130, { altKey: true })),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    flushSync(() =>
+      southeast.dispatchEvent(pointerEvent("pointerup", 180, 130, { altKey: true })),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(onUpdateShape).toHaveBeenCalledWith("shape_mod", {
+      x: 20,
+      y: 40,
+      width: 160,
+      height: 90,
+    });
+    root.unmount();
+  });
+
+  it("opens the inline editor for a newly created text annotation", async () => {
+    const page = createEmptyPage("Fresh text");
+    page.annotations.push({
+      id: "label_new",
+      kind: "text",
+      text: "Text",
+      x: 60,
+      y: 90,
+      size: 16,
+    });
+    const onInitialEditConsumed = vi.fn();
+    const { container, root } = renderCanvas({
+      page,
+      selection: [{ kind: "annotation", id: "label_new" }],
+      initialEditAnnotationId: "label_new",
+      onInitialEditConsumed,
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(onInitialEditConsumed).toHaveBeenCalled();
+    const editor = container.querySelector<HTMLTextAreaElement>(
+      ".canvas-inline-editor textarea",
+    );
+    expect(editor).not.toBeNull();
+    expect(editor?.value).toBe("Text");
+    root.unmount();
+  });
+
+  it("draws square shapes with shift and centered shapes with alt", async () => {
+    const onAddShape = vi.fn();
+    const { container, root } = renderCanvas({
+      tool: "rectangle",
+      onAddShape,
+    });
+    const svg = container.querySelector<SVGSVGElement>("svg.schematic-canvas")!;
+    flushSync(() =>
+      svg.dispatchEvent(pointerEvent("pointerdown", 100, 100, { shiftKey: true })),
+    );
+    flushSync(() =>
+      svg.dispatchEvent(pointerEvent("pointermove", 180, 140, { shiftKey: true })),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    flushSync(() =>
+      svg.dispatchEvent(pointerEvent("pointerup", 180, 140, { shiftKey: true })),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(onAddShape).toHaveBeenCalledWith("rectangle", {
+      x: 100,
+      y: 100,
+      width: 80,
+      height: 80,
+    });
+
+    onAddShape.mockClear();
+    flushSync(() =>
+      svg.dispatchEvent(pointerEvent("pointerdown", 100, 100, { altKey: true })),
+    );
+    flushSync(() =>
+      svg.dispatchEvent(pointerEvent("pointermove", 140, 120, { altKey: true })),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    flushSync(() =>
+      svg.dispatchEvent(pointerEvent("pointerup", 140, 120, { altKey: true })),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(onAddShape).toHaveBeenCalledWith("rectangle", {
+      x: 60,
+      y: 80,
+      width: 80,
+      height: 40,
+    });
+    root.unmount();
+  });
+
+
+  it("renders block notes with a header, heading, and translucent fill", () => {
+    const page = createEmptyPage("Notes");
+    page.shapes.push({
+      id: "note_1",
+      kind: "note",
+      x: 20,
+      y: 30,
+      width: 240,
+      height: 120,
+      rotation: 0,
+      stroke: "#b98433",
+      fill: "#f2c777",
+      strokeWidth: 1.5,
+      dash: "solid",
+      opacity: 1,
+      fillOpacity: 0.22,
+      text: "Gain stage\nSets closed-loop gain",
+      textSize: 13,
+      textColor: "#6b4d20",
+      textAlign: "start",
+      textBold: false,
+    });
+    const { container, root } = renderCanvas({
+      page,
+      selection: [{ kind: "shape", id: "note_1" }],
+    });
+    expect(container.querySelector(".note-layer")).not.toBeNull();
+    expect(container.querySelector(".note-tag")).toBeNull();
+    const text = container.querySelector(".note-text")!;
+    expect(text.querySelectorAll("tspan")).toHaveLength(2);
+    expect(text.textContent).toContain("Gain stage");
+    expect(text.textContent).toContain("Sets closed-loop gain");
+    const body = container.querySelector(".note-body")!;
+    expect(body.getAttribute("fill-opacity")).toBe("0.22");
+    expect(container.querySelectorAll(".shape-resize-handle")).toHaveLength(8);
+    root.unmount();
+  });
+
+
+  it("creates a default-size note on a simple click and can start over a wire", async () => {
+    const onAddShape = vi.fn();
+    const page = createEmptyPage("Note creation");
+    addTestNet(page, "net_note", "N1");
+    addTestWire(
+      page,
+      "net_note",
+      "wire_note",
+      [
+        { x: 100, y: 100 },
+        { x: 400, y: 100 },
+      ],
+    );
+    const { container, root } = renderCanvas({
+      page,
+      tool: "note",
+      onAddShape,
+    });
+    const svg = container.querySelector<SVGSVGElement>("svg.schematic-canvas")!;
+    flushSync(() => svg.dispatchEvent(pointerEvent("pointerdown", 120, 120)));
+    flushSync(() => svg.dispatchEvent(pointerEvent("pointerup", 120, 120)));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(onAddShape).toHaveBeenCalledWith("note", {
+      x: 120,
+      y: 120,
+      width: 240,
+      height: 100,
+    });
+
+    onAddShape.mockClear();
+    const wire = container.querySelector(".wire-hit")!;
+    flushSync(() => wire.dispatchEvent(pointerEvent("pointerdown", 200, 100)));
+    flushSync(() => wire.dispatchEvent(pointerEvent("pointermove", 320, 180)));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    flushSync(() => wire.dispatchEvent(pointerEvent("pointerup", 320, 180)));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(onAddShape).toHaveBeenCalledWith("note", {
+      x: 200,
+      y: 100,
+      width: 120,
+      height: 80,
+    });
+    root.unmount();
+  });
+
+
+  it("drags note text freely inside the note frame", async () => {
+    const onUpdateShape = vi.fn();
+    const page = createEmptyPage("Note text drag");
+    page.shapes.push({
+      id: "note_1",
+      kind: "note",
+      x: 20,
+      y: 30,
+      width: 240,
+      height: 140,
+      rotation: 0,
+      stroke: "#b98433",
+      fill: "#f2c777",
+      strokeWidth: 1.5,
+      dash: "solid",
+      opacity: 1,
+      fillOpacity: 0.22,
+      text: "Gain stage\nSets closed-loop gain.",
+      textSize: 13,
+      textColor: "#6b4d20",
+      textAlign: "start",
+      textBold: false,
+    });
+    const { container, root } = renderCanvas({
+      page,
+      selection: [{ kind: "shape", id: "note_1" }],
+      onUpdateShape,
+    });
+    const text = container.querySelector(".note-text")!;
+    flushSync(() => text.dispatchEvent(pointerEvent("pointerdown", 60, 70)));
+    flushSync(() => text.dispatchEvent(pointerEvent("pointermove", 80, 90)));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    flushSync(() => text.dispatchEvent(pointerEvent("pointerup", 80, 90)));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(onUpdateShape).toHaveBeenCalledWith("note_1", {
+      textOffset: { x: 20, y: 20 },
+    });
+    root.unmount();
+  });
+
+
+  it("finishes note editing on the next canvas click instead of creating another note", async () => {
+    const page = createEmptyPage("Note finish");
+    page.shapes.push({
+      id: "note_1",
+      kind: "note",
+      x: 40,
+      y: 50,
+      width: 240,
+      height: 120,
+      rotation: 0,
+      stroke: "#b98433",
+      fill: "#f2c777",
+      strokeWidth: 1.5,
+      dash: "solid",
+      opacity: 1,
+      fillOpacity: 0.22,
+      text: "Gain stage",
+      textSize: 13,
+      textColor: "#6b4d20",
+      textAlign: "start",
+      textBold: false,
+    });
+    const onAddShape = vi.fn();
+    const onNoteEditingFinished = vi.fn();
+    const { container, root } = renderCanvas({
+      page,
+      tool: "note",
+      selection: [{ kind: "shape", id: "note_1" }],
+      initialEditShapeId: "note_1",
+      onNoteEditingFinished,
+      onAddShape,
+    });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(container.querySelector(".canvas-inline-editor textarea")).not.toBeNull();
+    const svg = container.querySelector<SVGSVGElement>("svg.schematic-canvas")!;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    flushSync(() => svg.dispatchEvent(pointerEvent("pointerdown", 500, 400)));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(onNoteEditingFinished).toHaveBeenCalled();
+    expect(onAddShape).not.toHaveBeenCalled();
+    root.unmount();
+  });
+
 });

@@ -3,6 +3,19 @@ import {
   allWires,
   createEmptyNet,
   createIdentifier,
+  DEFAULT_ANNOTATION_FONT_SIZE,
+  DEFAULT_NET_LABEL_FONT_SIZE,
+  DEFAULT_NOTE_FILL,
+  DEFAULT_NOTE_FILL_OPACITY,
+  DEFAULT_NOTE_STROKE,
+  DEFAULT_NOTE_STROKE_WIDTH,
+  DEFAULT_NOTE_TEXT_COLOR,
+  DEFAULT_SHAPE_FILL,
+  DEFAULT_SHAPE_STROKE,
+  DEFAULT_SHAPE_STROKE_WIDTH,
+  DEFAULT_SHAPE_TEXT_ALIGN,
+  DEFAULT_SHAPE_TEXT_COLOR,
+  DEFAULT_SHAPE_TEXT_SIZE,
   findJunction,
   findWire,
   junctionSelectionId,
@@ -534,7 +547,10 @@ export function addAnnotation(
             text: request.text,
             x: Math.round(request.point.x),
             y: Math.round(request.point.y),
-            size: 16,
+            size:
+              request.kind === "net"
+                ? DEFAULT_NET_LABEL_FONT_SIZE
+                : DEFAULT_ANNOTATION_FONT_SIZE,
             ...(request.wireId ? { wireId: request.wireId } : {}),
             ...(located ? { netId: located.net.id } : {}),
           },
@@ -561,6 +577,7 @@ export function addShape(
   if (request.width < 2 || request.height < 2) {
     return document;
   }
+  const isNote = request.kind === "note";
   return updatePage(
     document,
     pageId,
@@ -576,8 +593,21 @@ export function addShape(
           width: request.width,
           height: request.height,
           rotation: 0,
-          stroke: "#263d48",
-          fill: "transparent",
+          stroke: isNote ? DEFAULT_NOTE_STROKE : DEFAULT_SHAPE_STROKE,
+          fill: isNote ? DEFAULT_NOTE_FILL : DEFAULT_SHAPE_FILL,
+          strokeWidth: isNote
+            ? DEFAULT_NOTE_STROKE_WIDTH
+            : DEFAULT_SHAPE_STROKE_WIDTH,
+          dash: "solid",
+          opacity: 1,
+          fillOpacity: isNote ? DEFAULT_NOTE_FILL_OPACITY : 1,
+          textSize: DEFAULT_SHAPE_TEXT_SIZE,
+          textColor: isNote
+            ? DEFAULT_NOTE_TEXT_COLOR
+            : DEFAULT_SHAPE_TEXT_COLOR,
+          textAlign: isNote ? "start" : DEFAULT_SHAPE_TEXT_ALIGN,
+          textBold: !isNote,
+          ...(isNote ? { text: "" } : {}),
         },
       ],
     }),
@@ -1115,7 +1145,21 @@ export function updateAnnotation(
   document: DrawicDocument,
   pageId: string,
   annotationId: string,
-  patch: Partial<Pick<Annotation, "text" | "kind" | "x" | "y" | "size">>,
+  patch: Partial<
+    Pick<
+      Annotation,
+      | "text"
+      | "kind"
+      | "x"
+      | "y"
+      | "size"
+      | "color"
+      | "align"
+      | "bold"
+      | "italic"
+      | "rotation"
+    >
+  >,
   now = new Date().toISOString(),
 ): DrawicDocument {
   return updatePage(
@@ -1132,7 +1176,12 @@ export function updateAnnotation(
         next.kind === target.kind &&
         next.x === target.x &&
         next.y === target.y &&
-        next.size === target.size
+        next.size === target.size &&
+        next.color === target.color &&
+        next.align === target.align &&
+        next.bold === target.bold &&
+        next.italic === target.italic &&
+        next.rotation === target.rotation
       ) {
         return page;
       }
@@ -1379,7 +1428,23 @@ export function updateShape(
   patch: Partial<
     Pick<
       DrawingShape,
-      "x" | "y" | "width" | "height" | "rotation" | "stroke" | "fill" | "text"
+      | "x"
+      | "y"
+      | "width"
+      | "height"
+      | "rotation"
+      | "stroke"
+      | "fill"
+      | "text"
+      | "strokeWidth"
+      | "dash"
+      | "opacity"
+      | "fillOpacity"
+      | "textSize"
+      | "textColor"
+      | "textAlign"
+      | "textBold"
+      | "textOffset"
     >
   >,
   now = new Date().toISOString(),
@@ -1401,7 +1466,17 @@ export function updateShape(
         next.rotation === target.rotation &&
         next.stroke === target.stroke &&
         next.fill === target.fill &&
-        next.text === target.text
+        next.text === target.text &&
+        next.strokeWidth === target.strokeWidth &&
+        next.dash === target.dash &&
+        next.opacity === target.opacity &&
+        next.fillOpacity === target.fillOpacity &&
+        next.textSize === target.textSize &&
+        next.textColor === target.textColor &&
+        next.textAlign === target.textAlign &&
+        next.textBold === target.textBold &&
+        (next.textOffset?.x ?? 0) === (target.textOffset?.x ?? 0) &&
+        (next.textOffset?.y ?? 0) === (target.textOffset?.y ?? 0)
       ) {
         return page;
       }
@@ -1409,6 +1484,37 @@ export function updateShape(
         ...page,
         shapes: page.shapes.map((shape) => (shape.id === shapeId ? next : shape)),
       };
+    },
+    now,
+  );
+}
+
+export function reorderShape(
+  document: DrawicDocument,
+  pageId: string,
+  shapeId: string,
+  direction: "forward" | "backward",
+  now = new Date().toISOString(),
+): DrawicDocument {
+  return updatePage(
+    document,
+    pageId,
+    (page) => {
+      const index = page.shapes.findIndex((shape) => shape.id === shapeId);
+      if (index < 0) {
+        return page;
+      }
+      const targetIndex = direction === "forward" ? index + 1 : index - 1;
+      if (targetIndex < 0 || targetIndex >= page.shapes.length) {
+        return page;
+      }
+      const shapes = [...page.shapes];
+      const [moved] = shapes.splice(index, 1);
+      if (!moved) {
+        return page;
+      }
+      shapes.splice(targetIndex, 0, moved);
+      return { ...page, shapes };
     },
     now,
   );

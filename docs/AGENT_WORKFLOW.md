@@ -27,8 +27,16 @@ Implemented:
   labels, and arc hops for electrically separate crossings;
 - obstacle-aware orthogonal routing for newly created wires, including a
   minimum pin escape that is reapplied on every automatic routing pass;
-- independently movable/hideable device labels plus directly editable text,
-  rectangle, and ellipse objects with resize handles;
+- independently movable/hideable device labels plus directly editable multiline
+  text, rectangle, and ellipse objects with eight-handle resize, Shift/Alt
+  constraints, layer ordering, fill/stroke/dash/opacity/text-style controls, and
+  one-shot placement that returns the toolbar to Select;
+- Net labels drawn in the Net color with a background halo above the wire, with
+  matching canvas and SVG/PDF export styling;
+- a `Note` shape kind rendered as a quiet rounded translucent block callout with
+  a bold heading line, auto-wrapping body copy, and a draggable text offset;
+  layered above components with pass-through body clicks and auto-grown height;
+- screen-constant resize handles and a locally persisted grid visibility toggle;
 - component Reference Name labels with persisted default/automatic placement,
   rich typographic suffixes, GUI/Agent collision policies, and document-level
   sans/serif scaling, plus a Lexical-based direct segment rich-text editor;

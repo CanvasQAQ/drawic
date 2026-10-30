@@ -1229,6 +1229,7 @@ button:not(:disabled) {
   fill: #f5f3ec;
   stroke: #b97d35;
   stroke-width: 2;
+  vector-effect: non-scaling-stroke;
   cursor: move;
 }
 
@@ -1246,15 +1247,10 @@ button:not(:disabled) {
 }
 
 .drawing-shape.is-selected .shape-body {
-  stroke: #c18438;
-  stroke-width: 2;
-  stroke-dasharray: 7 4;
+  filter: drop-shadow(0 0 2px #c18438);
 }
 
 .shape-text {
-  fill: #263d48;
-  font-size: 13px;
-  font-weight: 600;
   pointer-events: none;
   user-select: none;
 }
@@ -1271,6 +1267,37 @@ button:not(:disabled) {
 .shape-resize-ne,
 .shape-resize-sw {
   cursor: nesw-resize;
+}
+
+.shape-resize-n,
+.shape-resize-s {
+  cursor: ns-resize;
+}
+
+.shape-resize-e,
+.shape-resize-w {
+  cursor: ew-resize;
+}
+.note-body {
+  pointer-events: none;
+}
+
+.note-body.is-selected {
+  pointer-events: all;
+  cursor: move;
+}
+
+.note-hit,
+.note-border {
+  fill: transparent;
+  pointer-events: all;
+  cursor: move;
+}
+
+.note-text {
+  pointer-events: all;
+  cursor: move;
+  user-select: none;
 }
 
 .canvas-inline-editor-object {
@@ -1301,15 +1328,19 @@ button:not(:disabled) {
 }
 
 .annotation {
-  fill: #394a52;
+  fill: var(--annotation-color, #394a52);
   font-family: "Segoe UI", sans-serif;
   cursor: move;
 }
 
 .annotation-net {
-  fill: #8b421f;
+  fill: var(--annotation-color, #8b421f);
   font-weight: 700;
   font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+  paint-order: stroke;
+  stroke: #f5f3ec;
+  stroke-width: 4px;
+  stroke-linejoin: round;
 }
 
 .annotation.is-selected {
@@ -1321,6 +1352,8 @@ button:not(:disabled) {
 
 .annotation.is-net-highlighted {
   fill: #087a70;
+  stroke: #f5f3ec;
+  stroke-width: 4px;
 }
 
 .net-pin {
@@ -1376,6 +1409,13 @@ button:not(:disabled) {
   stroke-dasharray: 6 4;
 }
 
+.shape-draft.note-draft rect {
+  fill: #f2c777;
+  fill-opacity: 0.24;
+  stroke: #b98433;
+  stroke-dasharray: 5 4;
+}
+
 .selection-marquee {
   fill: rgb(72 158 148 / 11%);
   stroke: #398f86;
@@ -1420,6 +1460,12 @@ button:not(:disabled) {
 .canvas-controls button:hover {
   background: #e9ece7;
   color: #192e38;
+}
+
+.canvas-controls button[aria-pressed="true"] {
+  background: #dfe8e5;
+  color: #14262f;
+  font-weight: 700;
 }
 
 .panel-rail {
