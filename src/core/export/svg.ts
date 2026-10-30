@@ -22,6 +22,7 @@ import {
   DEFAULT_SHAPE_TEXT_SIZE,
   type DocumentTypography,
   type DrawingPage,
+  type RichTextRun,
   type SymbolDefinition,
 } from "../model";
 import { buildConnectivity } from "../connectivity";
@@ -31,8 +32,14 @@ import {
   NOTE_PADDING,
   NOTE_TEXT_TOP,
   clampNoteTextOffset,
-  layoutNoteText,
+  layoutNoteRichText,
 } from "../noteText";
+import {
+  annotationTextRuns,
+  shapeTextRuns,
+  splitRichTextRunsByLine,
+} from "../textRuns";
+import { resolvePaintOrder } from "../zOrder";
 import {
   DEFAULT_TYPOGRAPHY,
   SUBSCRIPT_BASELINE_DROP,
@@ -64,6 +71,25 @@ function xmlEscape(value: string): string {
 
 function numberOf(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
+}
+
+function richTextTspansMarkup(
+  runs: readonly RichTextRun[],
+  baseFontSize: number,
+  boldWeight = 700,
+): string {
+  let baselineOffset = 0;
+  return runs
+    .map((run, index) => {
+      const metrics = richTextRunMetrics(run, baseFontSize);
+      const dy = metrics.dy - baselineOffset;
+      baselineOffset = metrics.dy;
+      const dx = metrics.dx ? ` dx="${numberOf(metrics.dx)}"` : "";
+      const dyAttribute = dy ? ` dy="${numberOf(dy)}"` : "";
+      const color = run.color ? ` fill="${xmlEscape(run.color)}"` : "";
+      return `<tspan data-rich-role="${run.script === "normal" ? (index === 0 ? "base" : "plain") : run.script}" font-weight="${run.bold ? boldWeight : 400}" font-style="${run.italic ? "italic" : "normal"}" font-size="${numberOf(metrics.fontSize)}"${dx}${dyAttribute}${color}>${xmlEscape(run.text)}</tspan>`;
+    })
+    .join("");
 }
 
 function rotatePointAround(
@@ -236,37 +262,43 @@ export function buildSchematicSvg(
   const width = maxX - minX;
   const height = maxY - minY;
 
-  const wireMarkup = allWires(page)
-    .flatMap(({ net, wire }) => {
-      const points = resolveWirePoints(page, library, wire);
-      return points
-        ? [
-            `    <path class="wire" d="${wirePathData(points, hopPositions.get(wire.id), overlapRanges.get(wire.id))}" fill="none" stroke="${xmlEscape(net.color ?? "#1a2833")}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`,
-          ]
-        : [];
-    })
-    .join("\n");
+  const wireMarkupById = new Map<string, string>();
+  for (const { net, wire } of allWires(page)) {
+    const points = resolveWirePoints(page, library, wire);
+    if (!points) {
+      continue;
+    }
+    wireMarkupById.set(
+      wire.id,
+      `    <path class="wire" d="${wirePathData(points, hopPositions.get(wire.id), overlapRanges.get(wire.id))}" fill="none" stroke="${xmlEscape(net.color ?? "#1a2833")}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`,
+    );
+  }
 
-  const nodeMarkup = page.nodes
-    .map((node) => {
+  const nodeMarkupById = new Map<string, string>(
+    page.nodes.flatMap((node) => {
       const symbol = symbols.get(node.symbolId);
       if (!symbol) {
-        return "";
+        return [];
       }
       return [
-        `    <g class="component" data-symbol="${xmlEscape(symbol.id)}" transform="${symbolTransform(node, symbol)}">`,
-        `      ${symbol.svgBody.trim()}`,
-        `    </g>`,
-        referenceLabelMarkup(node, symbol, typography),
-        valueLabelMarkup(node, symbol, typography),
-      ]
-        .filter(Boolean)
-        .join("\n");
-    })
-    .join("\n");
+        [
+          node.id,
+          [
+            `    <g class="component" data-symbol="${xmlEscape(symbol.id)}" transform="${symbolTransform(node, symbol)}">`,
+            `      ${symbol.svgBody.trim()}`,
+            `    </g>`,
+            referenceLabelMarkup(node, symbol, typography),
+            valueLabelMarkup(node, symbol, typography),
+          ]
+            .filter(Boolean)
+            .join("\n"),
+        ] as const,
+      ];
+    }),
+  );
 
-  const annotationMarkup = page.annotations
-    .map((annotation) => {
+  const annotationMarkupById = new Map<string, string>(
+    page.annotations.map((annotation) => {
       const isNet = annotation.kind === "net";
       const color = isNet
         ? (annotation.netId ? netColorById.get(annotation.netId) : undefined) ??
@@ -287,17 +319,22 @@ export function buildSchematicSvg(
       const halo = isNet
         ? ' paint-order="stroke" stroke="#ffffff" stroke-width="4" stroke-linejoin="round"'
         : "";
-      const lines = annotation.text.split(/\r?\n/);
+      const lines = splitRichTextRunsByLine(
+        annotationTextRuns(annotation),
+      );
       const lineHeight = annotation.size * 1.2;
       const spans = lines
         .map(
-          (line, index) =>
-            `<tspan x="${numberOf(annotation.x)}"${index === 0 ? "" : ` dy="${numberOf(lineHeight)}"`}>${xmlEscape(line)}</tspan>`,
+          (lineRuns, index) =>
+            `<tspan x="${numberOf(annotation.x)}"${index === 0 ? "" : ` dy="${numberOf(lineHeight)}"`}>${richTextTspansMarkup(lineRuns, annotation.size)}</tspan>`,
         )
         .join("");
-      return `    <text class="annotation annotation-${annotation.kind}" x="${numberOf(annotation.x)}" y="${numberOf(annotation.y)}" text-anchor="${align}"${transform}${halo} fill="${xmlEscape(color)}" font-family="${fontFamily}" font-size="${numberOf(annotation.size)}" font-weight="${weight}"${italic}>${spans}</text>`;
-    })
-    .join("\n");
+      return [
+        annotation.id,
+        `    <text class="annotation annotation-${annotation.kind}" x="${numberOf(annotation.x)}" y="${numberOf(annotation.y)}" text-anchor="${align}"${transform}${halo} fill="${xmlEscape(color)}" font-family="${fontFamily}" font-size="${numberOf(annotation.size)}" font-weight="${weight}"${italic}>${spans}</text>`,
+      ] as const;
+    }),
+  );
 
   const junctionMarkup = allJunctions(page)
     .map(
@@ -337,7 +374,6 @@ export function buildSchematicSvg(
         shape.textColor ??
         (shape.kind === "note" ? DEFAULT_NOTE_TEXT_COLOR : DEFAULT_SHAPE_TEXT_COLOR);
       const textAlign = shape.textAlign ?? (shape.kind === "note" ? "start" : DEFAULT_SHAPE_TEXT_ALIGN);
-      const lines = shape.text?.split(/\r?\n/) ?? [];
       const textX =
         textAlign === "middle"
           ? centerX
@@ -346,7 +382,11 @@ export function buildSchematicSvg(
             : shape.x + 14;
 
       if (shape.kind === "note") {
-        const layout = layoutNoteText(shape.text ?? "", shape.width, textSize);
+        const layout = layoutNoteRichText(
+          shapeTextRuns(shape),
+          shape.width,
+          textSize,
+        );
         const offset = clampNoteTextOffset(
           shape.textOffset ?? { x: 0, y: 0 },
           shape.text ?? "",
@@ -366,7 +406,7 @@ export function buildSchematicSvg(
           .map((line) => {
             const y = noteTextTop + lineOffset;
             lineOffset += line.lineHeight;
-            return `<tspan x="${numberOf(noteTextX)}" y="${numberOf(y)}" font-size="${numberOf(line.fontSize)}" font-weight="${line.heading ? 700 : 400}">${xmlEscape(line.text)}</tspan>`;
+            return `<tspan x="${numberOf(noteTextX)}" y="${numberOf(y)}" font-size="${numberOf(line.fontSize)}">${richTextTspansMarkup(line.runs, line.fontSize)}</tspan>`;
           })
           .join("");
         const text =
@@ -375,11 +415,15 @@ export function buildSchematicSvg(
             : "";
         const body = `<rect x="${numberOf(shape.x)}" y="${numberOf(shape.y)}" width="${numberOf(shape.width)}" height="${numberOf(shape.height)}" rx="${numberOf(Math.min(10, shape.width / 2, shape.height / 2))}" fill="${xmlEscape(fill)}" fill-opacity="${numberOf(fillOpacity)}" stroke="${xmlEscape(stroke)}" stroke-width="${numberOf(strokeWidth)}"${opacity === 1 ? "" : ` opacity="${numberOf(opacity)}"`}/>`;
         return {
+          id: shape.id,
           note: true,
           markup: `    <g${transform}>${body}${text}</g>`,
         };
       }
 
+      const shapeRuns = shapeTextRuns(shape);
+      const lines =
+        shapeRuns.length > 0 ? splitRichTextRunsByLine(shapeRuns) : [];
       const paint = `fill="${xmlEscape(fill)}" fill-opacity="${numberOf(fillOpacity)}" stroke="${xmlEscape(stroke)}" stroke-width="${numberOf(strokeWidth)}"${dash}${opacity === 1 ? "" : ` opacity="${numberOf(opacity)}"`}`;
       const shapeElement =
         shape.kind === "ellipse"
@@ -390,8 +434,8 @@ export function buildSchematicSvg(
       const firstY = centerY - ((lines.length - 1) * lineHeight) / 2;
       const spans = lines
         .map(
-          (line, index) =>
-            `<tspan x="${numberOf(textX)}"${index === 0 ? "" : ` dy="${numberOf(lineHeight)}"`}>${xmlEscape(line)}</tspan>`,
+          (lineRuns, index) =>
+            `<tspan x="${numberOf(textX)}"${index === 0 ? "" : ` dy="${numberOf(lineHeight)}"`}>${richTextTspansMarkup(lineRuns, textSize, 600)}</tspan>`,
         )
         .join("");
       const text =
@@ -399,18 +443,22 @@ export function buildSchematicSvg(
           ? `<text x="${numberOf(textX)}" y="${numberOf(firstY)}" text-anchor="${textAlign}" dominant-baseline="central" fill="${xmlEscape(textColor)}" font-family="Arial, sans-serif" font-size="${numberOf(textSize)}" font-weight="${textBold ? 600 : 400}">${spans}</text>`
           : "";
       return {
+        id: shape.id,
         note: false,
         markup: `    <g${transform}>${shapeElement}${text}</g>`,
       };
     })
-  const shapeMarkup = shapeMarkupParts
-    .filter((part) => !part.note)
-    .map((part) => part.markup)
-    .join("\n");
-  const noteMarkup = shapeMarkupParts
-    .filter((part) => part.note)
-    .map((part) => part.markup)
-    .join("\n");
+  const markupById = new Map<string, string>([
+    ...wireMarkupById,
+    ...nodeMarkupById,
+    ...annotationMarkupById,
+  ]);
+  for (const part of shapeMarkupParts) {
+    markupById.set(part.id, part.markup);
+  }
+  const orderedMarkup = resolvePaintOrder(page)
+    .map((entry) => markupById.get(entry.id))
+    .filter((markup): markup is string => markup !== undefined);
 
   const background = options.includeBackground === false
     ? ""
@@ -421,23 +469,11 @@ export function buildSchematicSvg(
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${numberOf(minX)} ${numberOf(minY)} ${numberOf(width)} ${numberOf(height)}" width="${numberOf(width)}" height="${numberOf(height)}" role="img" aria-label="${xmlEscape(page.name)}">`,
     `  <title>${xmlEscape(page.name)} — Drawic schematic</title>`,
     background.trimEnd(),
-    '  <g id="wires">',
-    wireMarkup,
+    '  <g id="objects">',
+    ...orderedMarkup,
     "  </g>",
     '  <g id="junctions">',
     junctionMarkup,
-    "  </g>",
-    '  <g id="shapes">',
-    shapeMarkup,
-    "  </g>",
-    '  <g id="components">',
-    nodeMarkup,
-    "  </g>",
-    '  <g id="notes">',
-    noteMarkup,
-    "  </g>",
-    '  <g id="annotations">',
-    annotationMarkup,
     "  </g>",
     "</svg>",
     "",

@@ -84,15 +84,21 @@ export function deletePage(
   );
 }
 
-export function movePage(
+export function movePageToIndex(
   document: DrawicDocument,
   pageId: string,
-  direction: -1 | 1,
+  targetIndex: number,
   clock: DocumentClock = nowIso,
 ): DrawicDocument {
   const index = document.pages.findIndex((page) => page.id === pageId);
-  const targetIndex = index + direction;
-  if (index < 0 || targetIndex < 0 || targetIndex >= document.pages.length) {
+  if (index < 0) {
+    return document;
+  }
+  const clamped = Math.max(
+    0,
+    Math.min(document.pages.length - 1, Math.round(targetIndex)),
+  );
+  if (clamped === index) {
     return document;
   }
   const pages = [...document.pages];
@@ -100,8 +106,21 @@ export function movePage(
   if (!page) {
     return document;
   }
-  pages.splice(targetIndex, 0, page);
+  pages.splice(clamped, 0, page);
   return touchDocument({ ...document, pages }, clock());
+}
+
+export function movePage(
+  document: DrawicDocument,
+  pageId: string,
+  direction: -1 | 1,
+  clock: DocumentClock = nowIso,
+): DrawicDocument {
+  const index = document.pages.findIndex((page) => page.id === pageId);
+  if (index < 0) {
+    return document;
+  }
+  return movePageToIndex(document, pageId, index + direction, clock);
 }
 
 function remapAnchor(
@@ -143,6 +162,8 @@ export function duplicatePage(
       ),
     ),
   );
+  const annotationIds = new Map<string, string>();
+  const shapeIds = new Map<string, string>();
   const page: DrawingPage = {
     id: options?.pageId ?? makeId("page"),
     name: options?.name ?? `${source.name} copy`,
@@ -195,7 +216,9 @@ export function duplicatePage(
       })),
     })),
     annotations: source.annotations.map((annotation) => {
-      const next = { ...annotation, id: makeId("annotation") };
+      const nextId = makeId("annotation");
+      annotationIds.set(annotation.id, nextId);
+      const next = { ...annotation, id: nextId };
       if (annotation.wireId) {
         const mappedWireId = wireIds.get(annotation.wireId);
         if (mappedWireId) {
@@ -214,11 +237,23 @@ export function duplicatePage(
       }
       return next;
     }),
-    shapes: source.shapes.map((shape) => ({
-      ...shape,
-      id: makeId("shape"),
-    })),
+    shapes: source.shapes.map((shape) => {
+      const nextId = makeId("shape");
+      shapeIds.set(shape.id, nextId);
+      return { ...shape, id: nextId };
+    }),
   };
+  if (source.zOrder) {
+    page.zOrder = source.zOrder
+      .map(
+        (id) =>
+          nodeIds.get(id) ??
+          wireIds.get(id) ??
+          annotationIds.get(id) ??
+          shapeIds.get(id),
+      )
+      .filter((id): id is string => id !== undefined);
+  }
   return addPage(document, page, options?.clock ?? nowIso);
 }
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   defaultDeviceValue,
   loadDeviceLibrary,
@@ -7,6 +7,7 @@ import {
 } from "../core/library";
 import {
   addComponent,
+  duplicateSelection,
   duplicateNode,
   addAnnotation as addAnnotationOperation,
   addShape as addShapeOperation,
@@ -16,7 +17,7 @@ import {
   moveNodes,
   removeSelection,
   renameNet,
-  reorderShape,
+  reorderPageObjects,
   resetNodeLabelStyle,
   rotateSelection,
   updateAnnotation,
@@ -64,11 +65,12 @@ import {
   addPage,
   deletePage,
   duplicatePage,
-  movePage,
+  movePageToIndex,
   renamePage,
 } from "../core/project";
 import { exportSpice, importSpice } from "../core/spice";
 import { canonicalizeDocumentNetGraph } from "../core/netGraph";
+import type { LayerDirection } from "../core/zOrder";
 import type { AppCommand, OpenProjectPayload } from "../shared/bridge";
 import builtInDeviceLibraryJson from "./assets/device-libraries/drawic-built-in.drawiclib.json";
 import { PageBar } from "./components/PageBar";
@@ -83,9 +85,19 @@ import { Icon } from "./components/Icons";
 import { LibraryPanel } from "./components/LibraryPanel";
 import { PropertiesPanel } from "./components/PropertiesPanel";
 import { PinAuditScreen } from "./components/PinAuditScreen";
-import { SchematicCanvas } from "./components/SchematicCanvas";
+import {
+  SchematicCanvas,
+  type CanvasInlineEditingTarget,
+} from "./components/SchematicCanvas";
 import { Toolbar, type EditorTool } from "./components/Toolbar";
 import { TitleBar } from "./components/TitleBar";
+import {
+  beginHistoryPreview,
+  commitHistoryPreviewMutation,
+  createHistoryPreview,
+  finishHistoryPreview,
+  resetHistoryPreview,
+} from "./historyPreview";
 import {
   applyThemeToDocument,
   persistTheme,
@@ -98,7 +110,7 @@ const library = builtInLibrary.symbols;
 
 type NameDialogState =
   | { kind: "new-page"; initial: string }
-  | { kind: "rename-page"; initial: string }
+  | { kind: "rename-page"; initial: string; pageId: string }
   | null;
 
 type PendingAction = () => void | Promise<void>;
@@ -139,6 +151,8 @@ export function App() {
   const [savedText, setSavedText] = useState(() => serializeProject(initialDocument));
   const [filePath, setFilePath] = useState<string | null>(null);
   const [selection, setSelection] = useState<SelectionRef[]>([]);
+  const [inlineEditing, setInlineEditing] =
+    useState<CanvasInlineEditingTarget | null>(null);
   const [tool, setTool] = useState<EditorTool>("select");
   const [placementSymbol, setPlacementSymbol] = useState<SymbolDefinition | null>(null);
   const [libraryVisible, setLibraryVisible] = useState(true);
@@ -160,6 +174,7 @@ export function App() {
   const launchChecked = useRef(false);
   const recoveryChecked = useRef(false);
   const logSequence = useRef(0);
+  const historyPreview = useRef(createHistoryPreview<DrawicDocument>());
 
   const document = history.present;
   const page = useMemo(
@@ -173,12 +188,35 @@ export function App() {
   );
   const dirty = serialized !== savedText;
   const visiblePathName = filePath ?? `${document.title}.drawic.json`;
+  const selectionKey = useMemo(
+    () =>
+      selection
+        .map((item) => `${item.kind}:${item.id}:${item.label ?? ""}`)
+        .join("|"),
+    [selection],
+  );
   const commitDocument = useCallback((next: DrawicDocument) => {
     setHistory((current) => commitHistory(current, next));
   }, []);
 
+  const startHistoryPreview = useCallback(() => {
+    beginHistoryPreview(historyPreview.current, history.present);
+  }, [history.present]);
+
+  const endHistoryPreview = useCallback(() => {
+    const base = historyPreview.current.base;
+    resetHistoryPreview(historyPreview.current);
+    if (base === null) {
+      return;
+    }
+    setHistory((current) => finishHistoryPreview(current, base));
+  }, []);
+
   const commitMutation = useCallback((mutation: (current: DrawicDocument) => DrawicDocument) => {
-    setHistory((current) => commitHistory(current, mutation(current.present)));
+    const previewing = historyPreview.current.active;
+    setHistory((current) =>
+      commitHistoryPreviewMutation(current, mutation, previewing),
+    );
   }, []);
 
   const appendLog = useCallback(
@@ -205,6 +243,7 @@ export function App() {
 
   const replaceDocument = useCallback(
     (next: DrawicDocument, saved: string | null, path: string | null, resetHistory = true) => {
+      resetHistoryPreview(historyPreview.current);
       if (resetHistory) {
         setHistory(createHistory(next));
       } else {
@@ -391,14 +430,20 @@ export function App() {
   );
 
   const undo = useCallback(() => {
+    endHistoryPreview();
     setHistory((current) => undoHistory(current));
     setDiagnostics(null);
-  }, []);
+  }, [endHistoryPreview]);
 
   const redo = useCallback(() => {
+    endHistoryPreview();
     setHistory((current) => redoHistory(current));
     setDiagnostics(null);
-  }, []);
+  }, [endHistoryPreview]);
+
+  useEffect(() => {
+    endHistoryPreview();
+  }, [activePageId, endHistoryPreview, selectionKey]);
 
   const deleteSelection = useCallback(() => {
     if (selection.length === 0) {
@@ -416,19 +461,37 @@ export function App() {
     setDiagnostics(null);
   }, [activePageId, commitMutation, selection]);
 
-  const reorderSelectedShape = useCallback(
-    (direction: "forward" | "backward") => {
-      const selectedShape = selection.find((item) => item.kind === "shape");
-      if (!selectedShape) {
+  const reorderSelected = useCallback(
+    (direction: LayerDirection) => {
+      const ids = selection
+        .filter(
+          (item) =>
+            item.kind === "node" ||
+            item.kind === "wire" ||
+            item.kind === "annotation" ||
+            item.kind === "shape",
+        )
+        .map((item) => item.id);
+      if (ids.length === 0) {
         return;
       }
       commitMutation((current) =>
-        reorderShape(current, page.id, selectedShape.id, direction),
+        reorderPageObjects(current, page.id, ids, direction),
       );
       setDiagnostics(null);
     },
     [commitMutation, page.id, selection],
   );
+
+  const duplicateSelectedObjects = useCallback(() => {
+    const result = duplicateSelection(document, page.id, selection, library);
+    if (result.document === document) {
+      return;
+    }
+    commitDocument(result.document);
+    setSelection(result.selection);
+    setDiagnostics(null);
+  }, [commitDocument, document, library, page.id, selection]);
 
   const mirrorSelected = useCallback(() => {
     commitMutation((current) =>
@@ -737,42 +800,48 @@ export function App() {
     [appendLog, commitMutation],
   );
 
-  const renameActivePage = useCallback(
-    (name: string) => {
-      commitMutation((current) => renamePage(current, activePageId, name));
+  const renamePageById = useCallback(
+    (pageId: string, name: string) => {
+      commitMutation((current) => renamePage(current, pageId, name));
       setNameDialog(null);
     },
-    [activePageId, commitMutation],
+    [commitMutation],
   );
 
-  const duplicateActivePage = useCallback(() => {
-    const pageId = createIdentifier("page");
-    commitMutation((current) =>
-      duplicatePage(current, activePageId, { idFactory: createIdentifier, pageId }),
-    );
-    setActivePageId(pageId);
-    setSelection([]);
-    setDiagnostics(null);
-    appendLog("Page duplicated.");
-  }, [activePageId, appendLog, commitMutation]);
+  const duplicatePageById = useCallback(
+    (pageId: string) => {
+      const newPageId = createIdentifier("page");
+      commitMutation((current) =>
+        duplicatePage(current, pageId, { idFactory: createIdentifier, pageId: newPageId }),
+      );
+      setActivePageId(newPageId);
+      setSelection([]);
+      setDiagnostics(null);
+      appendLog("Page duplicated.");
+    },
+    [appendLog, commitMutation],
+  );
 
-  const deleteActivePage = useCallback(() => {
-    if (document.pages.length <= 1) {
-      return;
-    }
-    const index = document.pages.findIndex((candidate) => candidate.id === activePageId);
-    const fallback = document.pages[index - 1] ?? document.pages[index + 1];
-    commitMutation((current) => deletePage(current, activePageId));
-    if (fallback) {
-      setActivePageId(fallback.id);
-    }
-    setSelection([]);
-    setDiagnostics(null);
-  }, [activePageId, commitMutation, document.pages]);
+  const deletePageById = useCallback(
+    (pageId: string) => {
+      if (document.pages.length <= 1) {
+        return;
+      }
+      const index = document.pages.findIndex((candidate) => candidate.id === pageId);
+      const fallback = document.pages[index - 1] ?? document.pages[index + 1];
+      commitMutation((current) => deletePage(current, pageId));
+      if (pageId === activePageId && fallback) {
+        setActivePageId(fallback.id);
+      }
+      setSelection([]);
+      setDiagnostics(null);
+    },
+    [activePageId, commitMutation, document.pages],
+  );
 
-  const moveActivePage = useCallback(
-    (pageId: string, direction: -1 | 1) => {
-      commitMutation((current) => movePage(current, pageId, direction));
+  const movePageTo = useCallback(
+    (pageId: string, index: number) => {
+      commitMutation((current) => movePageToIndex(current, pageId, index));
     },
     [commitMutation],
   );
@@ -847,8 +916,8 @@ export function App() {
       return;
     }
     const active = pageById(document, activePageId);
-    setSelection((current) =>
-      current.filter((item) => {
+    setSelection((current) => {
+      const next = current.filter((item) => {
         if (item.kind === "node") {
           return active.nodes.some((node) => node.id === item.id);
         }
@@ -867,8 +936,9 @@ export function App() {
           return active.annotations.some((annotation) => annotation.id === item.id);
         }
         return active.shapes.some((shape) => shape.id === item.id);
-      }),
-    );
+      });
+      return next.length === current.length ? current : next;
+    });
   }, [activePageId, document]);
 
   useEffect(() => {
@@ -1150,12 +1220,16 @@ export function App() {
             onAdd={() =>
               setNameDialog({ kind: "new-page", initial: nextPageName(document) })
             }
-            onRename={() =>
-              setNameDialog({ kind: "rename-page", initial: page.name })
+            onRenamePage={(pageId) =>
+              setNameDialog({
+                kind: "rename-page",
+                initial: pageById(document, pageId)?.name ?? page.name,
+                pageId,
+              })
             }
-            onDuplicate={duplicateActivePage}
-            onDelete={deleteActivePage}
-            onMove={moveActivePage}
+            onDuplicatePage={duplicatePageById}
+            onDeletePage={deletePageById}
+            onMoveTo={movePageTo}
           />
           <SchematicCanvas
             page={page}
@@ -1216,6 +1290,10 @@ export function App() {
               commitMutation((current) => updateShape(current, page.id, shapeId, patch))
             }
             onMoveSelected={moveSelected}
+            onReorderObjects={reorderSelected}
+            onDuplicateSelection={duplicateSelectedObjects}
+            onDeleteSelection={deleteSelection}
+            onUpdateNodeReferenceLabel={updateReferenceLabel}
             initialEditAnnotationId={pendingTextAnnotationId}
             onInitialEditConsumed={() => setPendingTextAnnotationId(null)}
             initialEditShapeId={pendingNoteShapeId}
@@ -1223,6 +1301,10 @@ export function App() {
             onNoteEditingFinished={() =>
               setTool((current) => (current === "note" ? "select" : current))
             }
+            onTextEditingFinished={() =>
+              setTool((current) => (current === "text" ? "select" : current))
+            }
+            onInlineEditingChange={setInlineEditing}
           />
         </main>
 
@@ -1260,17 +1342,21 @@ export function App() {
             onUpdateShape={(shapeId, patch) =>
               commitMutation((current) => updateShape(current, page.id, shapeId, patch))
             }
-            onReorderShape={reorderSelectedShape}
             onUpdateNetName={updateNetName}
             onUpdateNetColor={updateNetColor}
+            inlineEditingAnnotationId={
+              inlineEditing?.kind === "annotation" ? inlineEditing.id : null
+            }
+            inlineEditingShapeId={
+              inlineEditing?.kind === "shape" ? inlineEditing.id : null
+            }
+            onPreviewStart={startHistoryPreview}
+            onPreviewEnd={endHistoryPreview}
             onRotate={rotateSelected}
             onMirror={mirrorSelected}
             onMirrorVertical={mirrorSelectedVertical}
             onDelete={deleteSelection}
             onCollapse={() => setPropertiesVisible(false)}
-            onRenamePage={() =>
-              setNameDialog({ kind: "rename-page", initial: page.name })
-            }
           />
         ) : (
           <button
@@ -1355,7 +1441,9 @@ export function App() {
           confirmLabel={nameDialog.kind === "new-page" ? "Create" : "Rename"}
           onCancel={() => setNameDialog(null)}
           onConfirm={
-            nameDialog.kind === "new-page" ? createPageWithName : renameActivePage
+            nameDialog.kind === "new-page"
+              ? createPageWithName
+              : (name) => renamePageById(nameDialog.pageId, name)
           }
         />
       ) : null}

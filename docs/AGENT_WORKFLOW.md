@@ -31,6 +31,9 @@ Implemented:
   text, rectangle, and ellipse objects with eight-handle resize, Shift/Alt
   constraints, layer ordering, fill/stroke/dash/opacity/text-style controls, and
   one-shot placement that returns the toolbar to Select;
+- a unified stacking order shared by components, wires, text annotations, and
+  shapes (including Notes), with to-front/forward/backward/to-back Arrange
+  operations and one paint order for the canvas and SVG/PDF/PNG export;
 - Net labels drawn in the Net color with a background halo above the wire, with
   matching canvas and SVG/PDF export styling;
 - a `Note` shape kind rendered as a quiet rounded translucent block callout with
@@ -40,6 +43,9 @@ Implemented:
 - component Reference Name labels with persisted default/automatic placement,
   rich typographic suffixes, GUI/Agent collision policies, and document-level
   sans/serif scaling, plus a Lexical-based direct segment rich-text editor;
+- unified rich-text editing for Names, Text annotations, and shape/Note labels:
+  partial bold/italic/sub/superscript runs with a selection-aware Lexical
+  toolbar, canvas and SVG run rendering, and legacy whole-label fallbacks;
 - a custom cross-platform window title bar with native macOS traffic lights,
   local light/dark theme switching, and responsive canvas viewBox sizing;
 - persisted per-Net wire colors shared by every wire and preserved in SVG
@@ -178,6 +184,7 @@ DrawingPage
   nets[]
   annotations[]
   shapes[]
+  zOrder?[]
 ```
 
 Each component owns:
@@ -222,6 +229,8 @@ Important invariants:
 
 - at least one page always exists;
 - all stable IDs are unique within a document;
+- `zOrder`, when present, lists every paintable object exactly once, bottom to
+  top; pages without it use the legacy band order;
 - schema version 3 is the current format; version 2 is rejected;
 - page switching is view state and does not modify the document;
 - every wire belongs to exactly one net;

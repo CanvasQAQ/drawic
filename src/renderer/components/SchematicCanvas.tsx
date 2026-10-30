@@ -20,6 +20,10 @@ import {
   symbolLabelPosition,
   symbolTransform,
 } from "../../core/geometry";
+import {
+  referenceFromRichTextRuns,
+  richTextRunsForReference,
+} from "../../core/richText";
 import { routeWireGeometry } from "../../core/routing";
 import {
   pathInkBounds,
@@ -31,10 +35,17 @@ import {
   NOTE_PADDING,
   NOTE_TEXT_TOP,
   clampNoteTextOffset,
-  layoutNoteText,
+  layoutNoteRichText,
   noteContentHeight,
   type NoteTextOffset,
 } from "../../core/noteText";
+import {
+  annotationTextRuns,
+  runsToPlainText,
+  shapeTextRuns,
+  splitRichTextRunsByLine,
+} from "../../core/textRuns";
+import { resolvePaintOrder, type LayerDirection } from "../../core/zOrder";
 import {
   effectiveNameFontSize,
   effectiveValueFontSize,
@@ -77,16 +88,29 @@ import {
   NET_LABEL_BASELINE_OFFSET,
 } from "../../core/model";
 import type { EditorTool } from "./Toolbar";
+import { CanvasRichTextInlineEditor } from "./CanvasRichTextInlineEditor";
 import { ComponentTextLabel } from "./ComponentTextLabel";
+import { ContextMenu, type ContextMenuEntry } from "./ContextMenu";
+import { RichTextTspans } from "./RichTextTspans";
+import { COLOR_SWATCHES, SHAPE_PALETTE } from "../quickPalette";
 
 const BASE_WIDTH = 1600;
 const BASE_HEIGHT = 1000;
 const MIN_VIEW_WIDTH = 320;
 const MAX_VIEW_WIDTH = 5200;
+const RICH_INLINE_TOOLBAR_HEIGHT = 34;
+// Toolbar plus one line box: enough for the 12px/1.35 editor text plus padding
+// and the 1px border, so a single-line edit is never clipped.
+const RICH_INLINE_TEXT_HEIGHT = 26;
 const SNAP_PIXELS = 13;
 
 function netLabelPoint(point: Point): Point {
   return { x: point.x, y: point.y - NET_LABEL_BASELINE_OFFSET };
+}
+
+export interface CanvasInlineEditingTarget {
+  kind: "annotation" | "shape" | "node-label";
+  id: string;
 }
 
 export interface Viewport {
@@ -120,6 +144,11 @@ interface SchematicCanvasProps {
     patch: Partial<Pick<ComponentNode, "reference" | "value">>,
   ) => void;
   onMoveNodeLabel: (nodeId: string, label: NodeLabelKind, delta: Point) => void;
+  onUpdateNodeReferenceLabel?: (
+    nodeId: string,
+    reference: string,
+    runs: readonly import("../../core/model").RichTextRun[],
+  ) => void;
   onAddJunction: (point: Point) => void;
   onAddAnnotation: (
     kind: Annotation["kind"],
@@ -140,6 +169,7 @@ interface SchematicCanvasProps {
         | "bold"
         | "italic"
         | "rotation"
+        | "richText"
       >
     >,
   ) => void;
@@ -154,6 +184,8 @@ interface SchematicCanvasProps {
         | "width"
         | "height"
         | "text"
+        | "stroke"
+        | "fill"
         | "strokeWidth"
         | "dash"
         | "opacity"
@@ -163,15 +195,21 @@ interface SchematicCanvasProps {
         | "textAlign"
         | "textBold"
         | "textOffset"
+        | "richText"
       >
     >,
   ) => void;
   onMoveSelected: (delta: Point) => void;
+  onReorderObjects: (direction: LayerDirection) => void;
+  onDuplicateSelection: () => void;
+  onDeleteSelection: () => void;
   initialEditAnnotationId?: string | null;
   onInitialEditConsumed?: (() => void) | undefined;
   initialEditShapeId?: string | null;
   onInitialEditShapeConsumed?: (() => void) | undefined;
   onNoteEditingFinished?: (() => void) | undefined;
+  onTextEditingFinished?: (() => void) | undefined;
+  onInlineEditingChange?: (target: CanvasInlineEditingTarget | null) => void;
 }
 
 interface DragState {
@@ -794,7 +832,6 @@ function CanvasInlineEditor({
   outsideRef.current = onOutsidePointerDown;
   useEffect(() => {
     const handleOutsidePointerDown = (event: PointerEvent): void => {
-      console.log("OUTSIDE", (event.target as Element | null)?.tagName);
       const target = event.target as Element | null;
       if (target?.closest?.(".canvas-inline-editor-object")) {
         return;
@@ -877,17 +914,23 @@ export function SchematicCanvas({
   onUpdateWire,
   onUpdateNode,
   onMoveNodeLabel,
+  onUpdateNodeReferenceLabel,
   onAddJunction,
   onAddAnnotation,
   onUpdateAnnotation,
   onAddShape,
   onUpdateShape,
   onMoveSelected,
+  onReorderObjects,
+  onDuplicateSelection,
+  onDeleteSelection,
   initialEditAnnotationId,
   onInitialEditConsumed,
   initialEditShapeId,
   onInitialEditShapeConsumed,
   onNoteEditingFinished,
+  onTextEditingFinished,
+  onInlineEditingChange,
 }: SchematicCanvasProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const viewportSizeRef = useRef<{ width: number; height: number } | null>(null);
@@ -913,6 +956,31 @@ export function SchematicCanvas({
   const [shapeResize, setShapeResize] = useState<ShapeResizeState | null>(null);
   const [noteTextDrag, setNoteTextDrag] = useState<NoteTextDragState | null>(null);
   const [inlineEditor, setInlineEditor] = useState<InlineEditorState | null>(null);
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    selection: SelectionRef[];
+  } | null>(null);
+  const rightClickRef = useRef<{
+    clientX: number;
+    clientY: number;
+    moved: boolean;
+    target: SelectionRef | null;
+  } | null>(null);
+
+  useEffect(() => {
+    onInlineEditingChange?.(
+      inlineEditor === null
+        ? null
+        : inlineEditor.kind === "node-label"
+          ? { kind: inlineEditor.kind, id: inlineEditor.nodeId }
+          : { kind: inlineEditor.kind, id: inlineEditor.id },
+    );
+  }, [inlineEditor, onInlineEditingChange]);
+
+  useEffect(() => {
+    setContextMenu(null);
+  }, [page.id]);
   const [gridVisible, setGridVisible] = useState(() => {
     try {
       return window.localStorage.getItem("drawic-canvas-grid") !== "off";
@@ -1789,6 +1857,183 @@ export function SchematicCanvas({
     onSelectionChange(selectionWith(selection, item, event.shiftKey));
   }
 
+  /** Maps a DOM target back to the selectable object that owns it. */
+  function selectionRefFromTarget(target: EventTarget | null): SelectionRef | null {
+    if (!(target instanceof Element)) {
+      return null;
+    }
+    const nodeElement = target.closest("[data-node-id]");
+    if (nodeElement) {
+      return { kind: "node", id: nodeElement.getAttribute("data-node-id") ?? "" };
+    }
+    const shapeElement = target.closest("[data-shape-id]");
+    if (shapeElement) {
+      return { kind: "shape", id: shapeElement.getAttribute("data-shape-id") ?? "" };
+    }
+    const annotationElement = target.closest("[data-annotation-id]");
+    if (annotationElement) {
+      return {
+        kind: "annotation",
+        id: annotationElement.getAttribute("data-annotation-id") ?? "",
+      };
+    }
+    const wireElement = target.closest("[data-wire-id]");
+    if (wireElement) {
+      return { kind: "wire", id: wireElement.getAttribute("data-wire-id") ?? "" };
+    }
+    const junctionElement = target.closest("[data-junction-id]");
+    if (junctionElement) {
+      return {
+        kind: "junction",
+        id: junctionElement.getAttribute("data-junction-id") ?? "",
+      };
+    }
+    return null;
+  }
+
+  function openContextMenuAt(
+    clientX: number,
+    clientY: number,
+    target: SelectionRef | null,
+  ): void {
+    if (!target) {
+      return;
+    }
+    const alreadySelected = selection.some(
+      (item) => item.kind === target.kind && item.id === target.id,
+    );
+    const nextSelection = alreadySelected ? [...selection] : [target];
+    if (!alreadySelected) {
+      onSelectionChange(nextSelection);
+    }
+    setWireDraft(null);
+    setShapeDraft(null);
+    setAnnotationDrag(null);
+    setShapeDrag(null);
+    setShapeResize(null);
+    setNoteTextDrag(null);
+    setInlineEditor(null);
+    setContextMenu({ x: clientX, y: clientY, selection: nextSelection });
+  }
+
+  function contextMenuEntriesFor(
+    menuSelection: readonly SelectionRef[],
+  ): ContextMenuEntry[] {
+    const order = resolvePaintOrder(page).map((entry) => entry.id);
+    const ids = menuSelection
+      .filter(
+        (item) =>
+          item.kind === "node" ||
+          item.kind === "wire" ||
+          item.kind === "annotation" ||
+          item.kind === "shape",
+      )
+      .map((item) => item.id);
+    const indexes = ids
+      .map((id) => order.indexOf(id))
+      .filter((index) => index >= 0);
+    const lowest = indexes.length > 0 ? Math.min(...indexes) : -1;
+    const highest = indexes.length > 0 ? Math.max(...indexes) : -1;
+    const shapeIds = menuSelection
+      .filter((item) => item.kind === "shape")
+      .map((item) => item.id);
+    const textIds = menuSelection
+      .filter(
+        (item) =>
+          item.kind === "annotation" &&
+          page.annotations.find((annotation) => annotation.id === item.id)
+            ?.kind === "text",
+      )
+      .map((item) => item.id);
+    const duplicable =
+      menuSelection.some((item) => item.kind === "node" || item.kind === "shape") ||
+      textIds.length > 0;
+
+    const entries: ContextMenuEntry[] = [
+      {
+        kind: "item",
+        id: "front",
+        label: "Bring to front",
+        disabled: ids.length === 0 || highest >= order.length - 1,
+        onSelect: () => onReorderObjects("front"),
+      },
+      {
+        kind: "item",
+        id: "forward",
+        label: "Bring forward",
+        disabled: ids.length !== 1 || highest >= order.length - 1,
+        onSelect: () => onReorderObjects("forward"),
+      },
+      {
+        kind: "item",
+        id: "backward",
+        label: "Send backward",
+        disabled: ids.length !== 1 || lowest <= 0,
+        onSelect: () => onReorderObjects("backward"),
+      },
+      {
+        kind: "item",
+        id: "back",
+        label: "Send to back",
+        disabled: ids.length === 0 || lowest <= 0,
+        onSelect: () => onReorderObjects("back"),
+      },
+      "separator",
+      {
+        kind: "item",
+        id: "duplicate",
+        label: "Duplicate",
+        disabled: !duplicable,
+        onSelect: () => onDuplicateSelection(),
+      },
+      {
+        kind: "item",
+        id: "delete",
+        label: "Delete",
+        onSelect: () => onDeleteSelection(),
+      },
+    ];
+
+    if (shapeIds.length > 0) {
+      entries.push("separator", {
+        kind: "swatches",
+        id: "shape-palette",
+        label: "Quick colors",
+        colors: SHAPE_PALETTE.map((preset) => ({
+          value: preset.fill,
+          label: preset.label,
+        })),
+        onSelect: (fill) => {
+          const preset = SHAPE_PALETTE.find((candidate) => candidate.fill === fill);
+          if (!preset) {
+            return;
+          }
+          for (const id of shapeIds) {
+            onUpdateShape(id, {
+              fill: preset.fill,
+              stroke: preset.stroke,
+              textColor: preset.text,
+            });
+          }
+        },
+      });
+    }
+    if (textIds.length > 0) {
+      entries.push("separator", {
+        kind: "swatches",
+        id: "text-palette",
+        label: "Text colors",
+        colors: COLOR_SWATCHES,
+        onSelect: (color) => {
+          for (const id of textIds) {
+            onUpdateAnnotation(id, { color });
+          }
+        },
+      });
+    }
+    return entries;
+  }
+
   function beginCanvasPointer(event: ReactPointerEvent<SVGSVGElement>): void {
     if ((event.target as Element).closest?.(".canvas-inline-editor-object")) {
       return;
@@ -1810,6 +2055,20 @@ export function SchematicCanvas({
     }
     if (event.button === 2) {
       event.preventDefault();
+      setContextMenu(null);
+      const target = selectionRefFromTarget(event.target);
+      if (target) {
+        // Remember the press so a stationary right-click can open the object
+        // menu on release; a right-drag keeps its viewport behavior.
+        rightClickRef.current = {
+          clientX: event.clientX,
+          clientY: event.clientY,
+          moved: false,
+          target,
+        };
+        return;
+      }
+      rightClickRef.current = null;
       trySetPointerCapture(event.currentTarget, event.pointerId);
       const next = { start: point, current: point };
       viewportMarqueeRef.current = next;
@@ -1895,6 +2154,16 @@ export function SchematicCanvas({
 
   function movePointer(event: ReactPointerEvent<SVGSVGElement>): void {
     const point = clientToSvg(event);
+    const rightClick = rightClickRef.current;
+    if (
+      rightClick &&
+      Math.hypot(
+        event.clientX - rightClick.clientX,
+        event.clientY - rightClick.clientY,
+      ) > 4
+    ) {
+      rightClick.moved = true;
+    }
     setPointer(point);
     if (tool === "duplicate") {
       setDuplicatePointerActive(true);
@@ -2037,6 +2306,19 @@ export function SchematicCanvas({
   }
 
   function endPointer(event?: ReactPointerEvent<SVGSVGElement>): void {
+    const rightClick = rightClickRef.current;
+    if (rightClick) {
+      rightClickRef.current = null;
+      if (!rightClick.moved && rightClick.target) {
+        event?.preventDefault();
+        openContextMenuAt(
+          rightClick.clientX,
+          rightClick.clientY,
+          rightClick.target,
+        );
+      }
+      return;
+    }
     if (pan) {
       setPan(null);
       return;
@@ -2188,6 +2470,7 @@ export function SchematicCanvas({
   }
 
   function cancelPointer(): void {
+    rightClickRef.current = null;
     setDrag(null);
     setMarquee(null);
     setViewportMarquee(null);
@@ -2288,12 +2571,27 @@ export function SchematicCanvas({
         viewBox={`${view.x} ${view.y} ${view.width} ${view.height}`}
         role="application"
         aria-label={`${page.name} drawing canvas`}
+        tabIndex={0}
+        onKeyDown={(event) => {
+          if (event.key === "F10" && event.shiftKey && selection.length > 0) {
+            event.preventDefault();
+            const rect = svgRef.current?.getBoundingClientRect();
+            if (rect) {
+              setContextMenu({
+                x: rect.left + rect.width / 2,
+                y: rect.top + rect.height / 2,
+                selection: [...selection],
+              });
+            }
+          }
+        }}
         onPointerDown={beginCanvasPointer}
         onPointerMove={movePointer}
         onPointerUp={endPointer}
         onPointerCancel={cancelPointer}
         onWheel={(event: ReactWheelEvent<SVGSVGElement>) => {
           event.preventDefault();
+          setContextMenu(null);
           zoomAt(event.clientX, event.clientY, Math.exp(event.deltaY * 0.0015));
         }}
         onContextMenu={(event) => {
@@ -2345,8 +2643,9 @@ export function SchematicCanvas({
           />
         ) : null}
 
-        <g className="shape-layer">
-          {page.shapes.filter((shape) => shape.kind !== "note").map((shape) => {
+        {(() => {
+          const painted: Array<React.JSX.Element | null> = [
+            ...page.shapes.filter((shape) => shape.kind !== "note").map((shape) => {
             const draggedShape =
               shapeDrag?.shape.id === shape.id
                 ? {
@@ -2388,7 +2687,9 @@ export function SchematicCanvas({
             const textColor = draggedShape.textColor ?? DEFAULT_SHAPE_TEXT_COLOR;
             const textAlign = draggedShape.textAlign ?? DEFAULT_SHAPE_TEXT_ALIGN;
             const textBold = draggedShape.textBold ?? true;
-            const shapeLines = draggedShape.text?.split(/\r?\n/) ?? [];
+            const shapeRuns = shapeTextRuns(draggedShape);
+            const shapeLines =
+              shapeRuns.length > 0 ? splitRichTextRunsByLine(shapeRuns) : [];
             const textX =
               textAlign === "middle"
                 ? centerX
@@ -2427,6 +2728,7 @@ export function SchematicCanvas({
             return (
               <g
                 key={shape.id}
+                data-shape-id={shape.id}
                 className={`drawing-shape${selected ? " is-selected" : ""}`}
                 onPointerDown={(event) => beginShapePointer(event, shape)}
                 onDoubleClick={(event) => {
@@ -2483,13 +2785,17 @@ export function SchematicCanvas({
                         fontWeight={textBold ? 600 : 400}
                         fill={textColor}
                       >
-                        {shapeLines.map((line, index) => (
+                        {shapeLines.map((lineRuns, index) => (
                           <tspan
                             key={`${shape.id}-text-${index}`}
                             x={textX}
                             dy={index === 0 ? 0 : textLineHeight}
                           >
-                            {line}
+                            <RichTextTspans
+                              runs={lineRuns}
+                              baseFontSize={textSize}
+                              boldWeight={600}
+                            />
                           </tspan>
                         ))}
                       </text>
@@ -2510,28 +2816,39 @@ export function SchematicCanvas({
                       ))
                     : null}
                   {editing ? (
-                    <CanvasInlineEditor
+                    <CanvasRichTextInlineEditor
                       x={draggedShape.x + 6}
                       y={centerY - 18}
-                      width={Math.max(60, draggedShape.width - 12)}
-                      height={Math.max(36, editing.value.split(/\r?\n/).length * 20 + 14)}
-                      value={editing.value}
+                      width={Math.max(220, draggedShape.width - 12)}
+                      height={
+                        Math.max(
+                          36,
+                          editing.value.split(/\r?\n/).length * 20 + 14,
+                        ) + RICH_INLINE_TOOLBAR_HEIGHT
+                      }
+                      initialRuns={shapeTextRuns(draggedShape)}
                       multiline
-                      onCommit={(text) => {
-                        onUpdateShape(shape.id, { text });
-                        setInlineEditor(null);
+                      ariaLabel="Editable shape label"
+                      initialFormat={
+                        (draggedShape.text ?? "").trim() ||
+                        (!draggedShape.textBold && draggedShape.kind !== "note")
+                          ? undefined
+                          : "bold"
+                      }
+                      onCommit={(runs) => {
+                        onUpdateShape(shape.id, {
+                          text: runsToPlainText(runs),
+                          richText: runs,
+                        });
                       }}
-                      onCancel={() => setInlineEditor(null)}
+                      onClose={() => setInlineEditor(null)}
                     />
                   ) : null}
                 </g>
               </g>
             );
-          })}
-        </g>
-
-        <g className="wire-layer">
-          {allWires(displayPage).map(({ net, wire }) => {
+            }),
+            ...allWires(displayPage).map(({ net, wire }) => {
             const points = resolveWirePoints(displayPage, library, wire);
             if (!points) {
               return null;
@@ -2550,6 +2867,7 @@ export function SchematicCanvas({
             return (
               <g
                 key={wire.id}
+                data-wire-id={wire.id}
                 className={`wire-group${selected ? " is-selected" : ""}${highlighted ? " is-net-highlighted" : ""}`}
                 style={
                   net.color
@@ -2650,11 +2968,8 @@ export function SchematicCanvas({
                   : null}
               </g>
             );
-          })}
-        </g>
-
-        <g className="component-layer">
-          {displayPage.nodes.map((node) => {
+            }),
+            ...displayPage.nodes.map((node) => {
             const symbol = symbols.get(node.symbolId);
             if (!symbol) {
               return (
@@ -2750,18 +3065,29 @@ export function SchematicCanvas({
                   />
                 ) : null}
                 {editingReference ? (
-                  <CanvasInlineEditor
+                  <CanvasRichTextInlineEditor
                     x={reference.point.x - 4}
                     y={reference.point.y - 17}
-                    width={110}
-                    height={24}
-                    value={editingReference.value}
+                    width={Math.max(220, 110)}
+                    height={RICH_INLINE_TEXT_HEIGHT + RICH_INLINE_TOOLBAR_HEIGHT}
+                    initialRuns={richTextRunsForReference(
+                      node.reference,
+                      node.labelLayout?.reference?.richText,
+                    )}
                     multiline={false}
-                    onCommit={(text) => {
-                      onUpdateNode(node.id, { reference: text });
-                      setInlineEditor(null);
+                    ariaLabel="Editable component Name"
+                    onCommit={(runs) => {
+                      const text = referenceFromRichTextRuns(runs);
+                      if (!text) {
+                        return;
+                      }
+                      if (onUpdateNodeReferenceLabel) {
+                        onUpdateNodeReferenceLabel(node.id, text, runs);
+                      } else {
+                        onUpdateNode(node.id, { reference: text });
+                      }
                     }}
-                    onCancel={() => setInlineEditor(null)}
+                    onClose={() => setInlineEditor(null)}
                   />
                 ) : null}
                 {valueVisible && node.value && !editingValue ? (
@@ -2849,60 +3175,10 @@ export function SchematicCanvas({
                   : null}
               </g>
             );
-          })}
-        </g>
-
-        <g className="junction-layer">
-          {allJunctions(displayPage).map(({ net, junction }) => {
-            const point = junction.point;
-            const selected = isSelected(
-              selection,
-              "junction",
-              junctionSelectionId(junction),
-            );
-            return (
-              <g
-                key={junction.id}
-                className={`junction${selected ? " is-selected" : ""}`}
-                data-junction-id={junctionSelectionId(junction)}
-                style={
-                  net.color
-                    ? ({ "--junction-color": net.color } as React.CSSProperties)
-                    : undefined
-                }
-                onPointerDown={(event) =>
-                  beginJunctionPointer(event, junction)
-                }
-              >
-                {selected ? (
-                  <circle
-                    className="junction-ring"
-                    cx={point.x}
-                    cy={point.y}
-                    r="5.5"
-                  />
-                ) : null}
-                <circle
-                  className="junction-hit"
-                  cx={point.x}
-                  cy={point.y}
-                  r="9"
-                />
-                <circle
-                  cx={point.x}
-                  cy={point.y}
-                  r="3.2"
-                  className="junction-dot junction-explicit"
-                />
-              </g>
-            );
-          })}
-        </g>
-
-        <g className="note-layer">
-          {page.shapes
-            .filter((shape) => shape.kind === "note")
-            .map((shape) => {
+            }),
+            ...page.shapes
+              .filter((shape) => shape.kind === "note")
+              .map((shape) => {
               const draggedShape =
                 shapeDrag?.shape.id === shape.id
                   ? {
@@ -2941,8 +3217,8 @@ export function SchematicCanvas({
               const textColor =
                 draggedShape.textColor ?? DEFAULT_NOTE_TEXT_COLOR;
               const textAlign = draggedShape.textAlign ?? "start";
-              const noteLines = layoutNoteText(
-                draggedShape.text ?? "",
+              const noteLines = layoutNoteRichText(
+                shapeTextRuns(draggedShape),
                 draggedShape.width,
                 textSize,
               );
@@ -3004,6 +3280,7 @@ export function SchematicCanvas({
               return (
                 <g
                   key={shape.id}
+                  data-shape-id={shape.id}
                   className={`drawing-shape note${selected ? " is-selected" : ""}`}
                   onPointerDown={(event) => beginShapePointer(event, shape)}
                   onDoubleClick={(event) => {
@@ -3076,9 +3353,11 @@ export function SchematicCanvas({
                             x={textX}
                             y={line.y}
                             fontSize={line.fontSize}
-                            fontWeight={line.heading ? 700 : 400}
                           >
-                            {line.text}
+                            <RichTextTspans
+                              runs={line.runs}
+                              baseFontSize={line.fontSize}
+                            />
                           </tspan>
                         ))}
                       </text>
@@ -3099,43 +3378,49 @@ export function SchematicCanvas({
                         ))
                       : null}
                     {editing ? (
-                      <CanvasInlineEditor
+                      <CanvasRichTextInlineEditor
                         x={noteTextLeft + clampedOffset.x - 6}
                         y={noteTextBaseY - textSize - 6}
                         width={Math.max(
-                          80,
+                          220,
                           draggedShape.width - NOTE_PADDING * 2,
                         )}
-                        height={Math.max(
-                          36,
-                          noteLines.length * textSize * 1.5 + 16,
-                        )}
-                        value={editing.value}
+                        height={
+                          Math.max(
+                            36,
+                            noteLines.length * textSize * 1.5 + 16,
+                          ) + RICH_INLINE_TOOLBAR_HEIGHT
+                        }
+                        initialRuns={shapeTextRuns(draggedShape)}
                         multiline
-                        onCommit={(text) => {
+                        ariaLabel="Editable note text"
+                        initialFormat={
+                          (draggedShape.text ?? "").trim() ? undefined : "bold"
+                        }
+                        clearFormatOnNewParagraph
+                        onCommit={(runs) => {
+                          const text = runsToPlainText(runs);
                           const height = Math.max(
                             shape.height,
                             noteContentHeight(text, shape.width, textSize),
                           );
-                          onUpdateShape(shape.id, { text, height });
+                          onUpdateShape(shape.id, {
+                            text,
+                            richText: runs,
+                            height,
+                          });
+                        }}
+                        onClose={() => {
                           setInlineEditor(null);
                           onNoteEditingFinished?.();
                         }}
-                        onCancel={() => {
-                          setInlineEditor(null);
-                          onNoteEditingFinished?.();
-                        }}
-                        onOutsidePointerDown={() => onNoteEditingFinished?.()}
                       />
                     ) : null}
                   </g>
                 </g>
               );
-            })}
-        </g>
-
-        <g className="annotation-layer">
-          {page.annotations.map((annotation) => {
+            }),
+            ...page.annotations.map((annotation) => {
             const network = connectivity.networkIdByAnnotation.get(annotation.id);
             const highlighted = network ? highlightedNetworks.has(network) : false;
             const delta =
@@ -3148,7 +3433,9 @@ export function SchematicCanvas({
                 : null;
             const x = annotation.x + delta.x;
             const y = annotation.y + delta.y;
-            const lines = annotation.text.split(/\r?\n/);
+            const lines = splitRichTextRunsByLine(
+              annotationTextRuns(annotation),
+            );
             const lineHeight = annotation.size * 1.2;
             const rotation = annotation.rotation ?? 0;
             const color =
@@ -3160,6 +3447,7 @@ export function SchematicCanvas({
             return (
               <text
                 key={annotation.id}
+                data-annotation-id={annotation.id}
                 className={`annotation annotation-${annotation.kind}${isSelected(selection, "annotation", annotation.id) ? " is-selected" : ""}${highlighted ? " is-net-highlighted" : ""}`}
                 x={x}
                 y={y}
@@ -3188,18 +3476,86 @@ export function SchematicCanvas({
               >
                 {editing
                   ? ""
-                  : lines.map((line, index) => (
+                  : lines.map((lineRuns, index) => (
                       <tspan
                         key={`${annotation.id}-line-${index}`}
                         x={x}
                         dy={index === 0 ? 0 : lineHeight}
                       >
-                        {line}
+                        <RichTextTspans
+                          runs={lineRuns}
+                          baseFontSize={annotation.size}
+                        />
                       </tspan>
                     ))}
               </text>
             );
-          })}
+            }),
+          ];
+          const paintedById = new Map<string, React.JSX.Element>();
+          for (const element of painted) {
+            if (element !== null && element.key !== null) {
+              paintedById.set(String(element.key), element);
+            }
+          }
+          return (
+            <>
+              {resolvePaintOrder(displayPage).map(
+                (entry) => paintedById.get(entry.id) ?? null,
+              )}
+              <g className="junction-layer">
+                {allJunctions(displayPage).map(({ net, junction }) => {
+                  const point = junction.point;
+                  const selected = isSelected(
+                    selection,
+                    "junction",
+                    junctionSelectionId(junction),
+                  );
+                  return (
+                    <g
+                      key={junction.id}
+                      className={`junction${selected ? " is-selected" : ""}`}
+                      data-junction-id={junctionSelectionId(junction)}
+                      style={
+                        net.color
+                          ? ({
+                              "--junction-color": net.color,
+                            } as React.CSSProperties)
+                          : undefined
+                      }
+                      onPointerDown={(event) =>
+                        beginJunctionPointer(event, junction)
+                      }
+                    >
+                      {selected ? (
+                        <circle
+                          className="junction-ring"
+                          cx={point.x}
+                          cy={point.y}
+                          r="5.5"
+                        />
+                      ) : null}
+                      <circle
+                        className="junction-hit"
+                        cx={point.x}
+                        cy={point.y}
+                        r="9"
+                      />
+                      <circle
+                        cx={point.x}
+                        cy={point.y}
+                        r="3.2"
+                        className="junction-dot junction-explicit"
+                      />
+                    </g>
+                  );
+                })}
+              </g>
+            </>
+          );
+        })()}
+
+        <g className="annotation-layer">
           {inlineEditor?.kind === "annotation"
             ? (() => {
                 const annotation = page.annotations.find(
@@ -3228,6 +3584,32 @@ export function SchematicCanvas({
                     : align === "end"
                       ? annotation.x - width
                       : annotation.x - 6;
+                if (annotation.kind === "text") {
+                  return (
+                    <CanvasRichTextInlineEditor
+                      x={editorX}
+                      y={annotation.y - annotation.size - 6}
+                      width={Math.max(220, width)}
+                      height={height + RICH_INLINE_TOOLBAR_HEIGHT}
+                      initialRuns={annotationTextRuns(annotation)}
+                      multiline
+                      ariaLabel="Editable text annotation"
+                      onCommit={(runs) => {
+                        onUpdateAnnotation(annotation.id, {
+                          text: runsToPlainText(runs),
+                          richText: runs,
+                        });
+                      }}
+                      onClose={() => {
+                        setInlineEditor(null);
+                        onTextEditingFinished?.();
+                      }}
+                      onOutsidePointerDown={() =>
+                        onTextEditingFinished?.()
+                      }
+                    />
+                  );
+                }
                 return (
                   <CanvasInlineEditor
                     x={editorX}
@@ -3235,12 +3617,17 @@ export function SchematicCanvas({
                     width={width}
                     height={height}
                     value={inlineEditor.value}
-                    multiline={annotation.kind === "text"}
+                    multiline={false}
                     onCommit={(text) => {
                       onUpdateAnnotation(annotation.id, { text });
                       setInlineEditor(null);
+                      onTextEditingFinished?.();
                     }}
-                    onCancel={() => setInlineEditor(null)}
+                    onCancel={() => {
+                      setInlineEditor(null);
+                      onTextEditingFinished?.();
+                    }}
+                    onOutsidePointerDown={() => onTextEditingFinished?.()}
                   />
                 );
               })()
@@ -3390,6 +3777,15 @@ export function SchematicCanvas({
       <div className="canvas-axis-label">
         {gridVisible ? `Grid ${GRID_SIZE}` : "Grid off"} · Wheel zoom · F fit · G grid · Space drag
       </div>
+      {contextMenu ? (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          label="Object actions"
+          entries={contextMenuEntriesFor(contextMenu.selection)}
+          onClose={() => setContextMenu(null)}
+        />
+      ) : null}
     </div>
   );
 }

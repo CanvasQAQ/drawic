@@ -11,6 +11,7 @@ import {
   duplicatePage,
   addJunction,
   movePage,
+  movePageToIndex,
 } from "../src/core/project";
 import {
   addTestNet,
@@ -33,6 +34,68 @@ describe("Drawic drawing format", () => {
     expect(parsed.kind).toBe(DOCUMENT_KIND);
     expect(parsed.schemaVersion).toBe(DOCUMENT_SCHEMA_VERSION);
     expect(serializeProject(parsed)).toBe(serializeProject(document));
+  });
+
+  it("preserves rich text runs on annotations and drawing shapes", () => {
+    const document = createDocument({
+      title: "Rich text",
+      id: "project_rich_text",
+      pageId: "page_rich_text",
+    });
+    document.pages[0]!.annotations.push({
+      id: "text_rich",
+      kind: "text",
+      text: "Bold and italic",
+      x: 20,
+      y: 30,
+      size: 16,
+      richText: [
+        { text: "Bold", bold: true, italic: false, script: "normal" },
+        { text: " and ", bold: false, italic: false, script: "normal" },
+        { text: "italic", bold: false, italic: true, script: "normal" },
+      ],
+    });
+    document.pages[0]!.shapes.push({
+      id: "note_rich",
+      kind: "note",
+      x: 30,
+      y: 40,
+      width: 240,
+      height: 100,
+      rotation: 0,
+      stroke: "#b98433",
+      fill: "#f2c777",
+      text: "Heading\nBody",
+      richText: [
+        { text: "Heading\n", bold: true, italic: false, script: "normal" },
+        { text: "Body", bold: false, italic: true, script: "normal" },
+      ],
+    });
+
+    const parsed = parseProjectText(serializeProject(document));
+    expect(parsed).toEqual(document);
+    expect(parsed.pages[0]?.annotations[0]?.richText).toHaveLength(3);
+    expect(parsed.pages[0]?.shapes[0]?.richText).toHaveLength(2);
+  });
+
+  it("rejects rich text runs that do not compose the stored text", () => {
+    const document = createDocument({
+      title: "Invalid rich text",
+      id: "project_invalid_rich_text",
+      pageId: "page_invalid_rich_text",
+    });
+    document.pages[0]!.annotations.push({
+      id: "text_bad",
+      kind: "text",
+      text: "Visible",
+      x: 20,
+      y: 30,
+      size: 16,
+      richText: [
+        { text: "Different", bold: true, italic: false, script: "normal" },
+      ],
+    });
+    expect(() => parseProjectText(serializeProject(document))).toThrow();
   });
 
   it("preserves canvas-edited labels and shape text", () => {
@@ -272,6 +335,58 @@ describe("Drawic drawing format", () => {
       "page_copy",
       "page_b",
     ]);
+  });
+
+  it("moves a page to an explicit index for tab dragging", () => {
+    const document = createDocument({ pageId: "page_a" });
+    document.pages.push(
+      createEmptyPage("Power", "page_b"),
+      createEmptyPage("Signals", "page_c"),
+    );
+    expect(
+      movePageToIndex(document, "page_c", 0).pages.map((page) => page.id),
+    ).toEqual(["page_c", "page_a", "page_b"]);
+    expect(
+      movePageToIndex(document, "page_a", 2).pages.map((page) => page.id),
+    ).toEqual(["page_b", "page_c", "page_a"]);
+    expect(movePageToIndex(document, "page_a", 0)).toBe(document);
+    expect(movePageToIndex(document, "missing", 1)).toBe(document);
+  });
+
+  it("remaps the stacking order when a page is duplicated", () => {
+    const document = createDocument({ pageId: "page_layers" });
+    const page = document.pages[0]!;
+    page.nodes.push(
+      {
+        id: "node_a",
+        symbolId: "resistor",
+        reference: "R1",
+        value: "1k",
+        x: 0,
+        y: 0,
+        rotation: 0,
+        mirrored: false,
+      },
+      {
+        id: "node_b",
+        symbolId: "resistor",
+        reference: "R2",
+        value: "1k",
+        x: 40,
+        y: 0,
+        rotation: 0,
+        mirrored: false,
+      },
+    );
+    page.zOrder = ["node_b", "node_a"];
+    let index = 0;
+    const duplicated = duplicatePage(document, "page_layers", {
+      pageId: "page_copy",
+      idFactory: (prefix) => `${prefix}_${++index}`,
+    });
+    const copy = duplicated.pages[1]!;
+    expect(copy.nodes.map((node) => node.id)).toEqual(["node_1", "node_2"]);
+    expect(copy.zOrder).toEqual(["node_2", "node_1"]);
   });
 
   it("joins crossing nets at a stable junction and splits both wire edges", () => {

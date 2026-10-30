@@ -44,6 +44,14 @@ import {
   type WireEndpoint,
 } from "./model";
 import { defaultDeviceValue, suggestedReference } from "./library";
+import { richTextRunsEqual, runsToPlainText } from "./textRuns";
+import {
+  prunePaintOrder,
+  reorderPaintEntries,
+  withPaintEntry,
+  withoutPaintEntries,
+  type LayerDirection,
+} from "./zOrder";
 import {
   DEFAULT_TYPOGRAPHY,
   layoutNodeLabels,
@@ -377,15 +385,18 @@ export function addComponent(
           placement: "default",
         };
       }
-      return {
-        ...page,
-        nodes: [
-          ...page.nodes,
-          Object.keys(labelLayout).length > 0
-            ? { ...component, labelLayout }
-            : component,
-        ],
-      };
+      return withPaintEntry(
+        {
+          ...page,
+          nodes: [
+            ...page.nodes,
+            Object.keys(labelLayout).length > 0
+              ? { ...component, labelLayout }
+              : component,
+          ],
+        },
+        { kind: "node", id: component.id },
+      );
     },
     request.now,
   );
@@ -427,13 +438,125 @@ export function duplicateNode(
         },
         delta,
       );
-      return {
-        ...page,
-        nodes: [...page.nodes, moved],
-      };
+      return withPaintEntry(
+        {
+          ...page,
+          nodes: [...page.nodes, moved],
+        },
+        { kind: "node", id: moved.id },
+      );
     },
     now,
   );
+}
+
+/** Offset applied to copies created from the canvas context menu. */
+const DUPLICATE_OFFSET: Point = { x: 14, y: 14 };
+
+/**
+ * Copies every selected component, shape, or text annotation once, offset a
+ * little, and stacks each copy above its source. Wires, junctions, and net
+ * labels are skipped because a copy has no meaningful electrical identity.
+ */
+export function duplicateSelection(
+  document: DrawicDocument,
+  pageId: string,
+  selection: readonly SelectionRef[],
+  library: readonly SymbolDefinition[],
+  now = new Date().toISOString(),
+): { document: DrawicDocument; selection: SelectionRef[] } {
+  const created: SelectionRef[] = [];
+  const next = updatePage(
+    document,
+    pageId,
+    (page) => {
+      let working = page;
+      for (const item of selection) {
+        if (item.kind === "node") {
+          const source = page.nodes.find((node) => node.id === item.id);
+          const symbol = source
+            ? library.find((candidate) => candidate.id === source.symbolId)
+            : undefined;
+          if (!source || !symbol) {
+            continue;
+          }
+          const id = createIdentifier("node");
+          const reference = suggestedReference(
+            symbol,
+            working.nodes.map((node) => node.reference.trim()),
+          );
+          const copy = translateNodeLabelLayouts(
+            {
+              ...source,
+              id,
+              reference,
+              x: source.x + DUPLICATE_OFFSET.x,
+              y: source.y + DUPLICATE_OFFSET.y,
+            },
+            DUPLICATE_OFFSET,
+          );
+          working = withPaintEntry(
+            { ...working, nodes: [...working.nodes, copy] },
+            { kind: "node", id },
+          );
+          created.push({ kind: "node", id });
+          continue;
+        }
+        if (item.kind === "shape") {
+          const source = page.shapes.find((shape) => shape.id === item.id);
+          if (!source) {
+            continue;
+          }
+          const id = createIdentifier("shape");
+          working = withPaintEntry(
+            {
+              ...working,
+              shapes: [
+                ...working.shapes,
+                {
+                  ...source,
+                  id,
+                  x: source.x + DUPLICATE_OFFSET.x,
+                  y: source.y + DUPLICATE_OFFSET.y,
+                },
+              ],
+            },
+            { kind: "shape", id },
+          );
+          created.push({ kind: "shape", id });
+          continue;
+        }
+        if (item.kind === "annotation") {
+          const source = page.annotations.find(
+            (annotation) => annotation.id === item.id,
+          );
+          if (!source || source.kind !== "text") {
+            continue;
+          }
+          const id = createIdentifier("annotation");
+          working = withPaintEntry(
+            {
+              ...working,
+              annotations: [
+                ...working.annotations,
+                {
+                  ...source,
+                  id,
+                  x: source.x + DUPLICATE_OFFSET.x,
+                  y: source.y + DUPLICATE_OFFSET.y,
+                },
+              ],
+            },
+            { kind: "annotation", id },
+          );
+          created.push({ kind: "annotation", id });
+        }
+      }
+      return working;
+    },
+    now,
+  );
+  return { document: next, selection: created };
 }
 
 export function addWire(
@@ -491,20 +614,23 @@ export function addWire(
         start,
         end,
       };
-      return canonicalizePageNetGraph({
-        ...next,
-        nets: next.nets.map((net) =>
-          net.id === merged.netId
-            ? {
-                ...net,
-                ...(request.name?.trim()
-                  ? { name: request.name.trim() }
-                  : {}),
-                wires: [...net.wires, wire],
-              }
-            : net,
-        ),
-      });
+      return withPaintEntry(
+        canonicalizePageNetGraph({
+          ...next,
+          nets: next.nets.map((net) =>
+            net.id === merged.netId
+              ? {
+                  ...net,
+                  ...(request.name?.trim()
+                    ? { name: request.name.trim() }
+                    : {}),
+                  wires: [...net.wires, wire],
+                }
+              : net,
+          ),
+        }),
+        { kind: "wire", id: wire.id },
+      );
     },
     request.now,
   );
@@ -531,31 +657,34 @@ export function addAnnotation(
         : null;
       const netName =
         request.kind === "net" ? request.text.trim() : "";
-      return canonicalizePageNetGraph({
-        ...page,
-        nets:
-          located && netName
-            ? page.nets.map((net) =>
-                net.id === located.net.id ? { ...net, name: netName } : net,
-              )
-            : page.nets,
-        annotations: [
-          ...page.annotations,
-          {
-            id: request.id,
-            kind: request.kind,
-            text: request.text,
-            x: Math.round(request.point.x),
-            y: Math.round(request.point.y),
-            size:
-              request.kind === "net"
-                ? DEFAULT_NET_LABEL_FONT_SIZE
-                : DEFAULT_ANNOTATION_FONT_SIZE,
-            ...(request.wireId ? { wireId: request.wireId } : {}),
-            ...(located ? { netId: located.net.id } : {}),
-          },
-        ],
-      });
+      return withPaintEntry(
+        canonicalizePageNetGraph({
+          ...page,
+          nets:
+            located && netName
+              ? page.nets.map((net) =>
+                  net.id === located.net.id ? { ...net, name: netName } : net,
+                )
+              : page.nets,
+          annotations: [
+            ...page.annotations,
+            {
+              id: request.id,
+              kind: request.kind,
+              text: request.text,
+              x: Math.round(request.point.x),
+              y: Math.round(request.point.y),
+              size:
+                request.kind === "net"
+                  ? DEFAULT_NET_LABEL_FONT_SIZE
+                  : DEFAULT_ANNOTATION_FONT_SIZE,
+              ...(request.wireId ? { wireId: request.wireId } : {}),
+              ...(located ? { netId: located.net.id } : {}),
+            },
+          ],
+        }),
+        { kind: "annotation", id: request.id },
+      );
     },
     request.now,
   );
@@ -581,36 +710,40 @@ export function addShape(
   return updatePage(
     document,
     pageId,
-    (page) => ({
-      ...page,
-      shapes: [
-        ...page.shapes,
+    (page) =>
+      withPaintEntry(
         {
-          id: request.id,
-          kind: request.kind,
-          x: request.x,
-          y: request.y,
-          width: request.width,
-          height: request.height,
-          rotation: 0,
-          stroke: isNote ? DEFAULT_NOTE_STROKE : DEFAULT_SHAPE_STROKE,
-          fill: isNote ? DEFAULT_NOTE_FILL : DEFAULT_SHAPE_FILL,
-          strokeWidth: isNote
-            ? DEFAULT_NOTE_STROKE_WIDTH
-            : DEFAULT_SHAPE_STROKE_WIDTH,
-          dash: "solid",
-          opacity: 1,
-          fillOpacity: isNote ? DEFAULT_NOTE_FILL_OPACITY : 1,
-          textSize: DEFAULT_SHAPE_TEXT_SIZE,
-          textColor: isNote
-            ? DEFAULT_NOTE_TEXT_COLOR
-            : DEFAULT_SHAPE_TEXT_COLOR,
-          textAlign: isNote ? "start" : DEFAULT_SHAPE_TEXT_ALIGN,
-          textBold: !isNote,
-          ...(isNote ? { text: "" } : {}),
+          ...page,
+          shapes: [
+            ...page.shapes,
+            {
+              id: request.id,
+              kind: request.kind,
+              x: request.x,
+              y: request.y,
+              width: request.width,
+              height: request.height,
+              rotation: 0,
+              stroke: isNote ? DEFAULT_NOTE_STROKE : DEFAULT_SHAPE_STROKE,
+              fill: isNote ? DEFAULT_NOTE_FILL : DEFAULT_SHAPE_FILL,
+              strokeWidth: isNote
+                ? DEFAULT_NOTE_STROKE_WIDTH
+                : DEFAULT_SHAPE_STROKE_WIDTH,
+              dash: "solid",
+              opacity: 1,
+              fillOpacity: isNote ? DEFAULT_NOTE_FILL_OPACITY : 1,
+              textSize: DEFAULT_SHAPE_TEXT_SIZE,
+              textColor: isNote
+                ? DEFAULT_NOTE_TEXT_COLOR
+                : DEFAULT_SHAPE_TEXT_COLOR,
+              textAlign: isNote ? "start" : DEFAULT_SHAPE_TEXT_ALIGN,
+              textBold: !isNote,
+              ...(isNote ? { text: "" } : {}),
+            },
+          ],
         },
-      ],
-    }),
+        { kind: "shape", id: request.id },
+      ),
     request.now,
   );
 }
@@ -676,7 +809,7 @@ export function removeSelection(
         }))
         .filter((net) => net.wires.length > 0 || net.junctions.length > 0);
       const remainingNetIds = new Set(nets.map((net) => net.id));
-      return canonicalizePageNetGraph({
+      const next = canonicalizePageNetGraph({
         ...page,
         nodes: page.nodes
           .filter((node) => !nodeIds.has(node.id))
@@ -704,6 +837,7 @@ export function removeSelection(
         ),
         shapes: page.shapes.filter((shape) => !shapeIds.has(shape.id)),
       });
+      return prunePaintOrder(next);
     },
     now,
   );
@@ -1158,6 +1292,7 @@ export function updateAnnotation(
       | "bold"
       | "italic"
       | "rotation"
+      | "richText"
     >
   >,
   now = new Date().toISOString(),
@@ -1170,7 +1305,16 @@ export function updateAnnotation(
       if (!target) {
         return page;
       }
-      const next = { ...target, ...patch };
+      let next = { ...target, ...patch };
+      if (
+        patch.text !== undefined &&
+        patch.richText === undefined &&
+        next.richText &&
+        runsToPlainText(next.richText) !== next.text
+      ) {
+        const { richText: _richText, ...withoutRichText } = next;
+        next = withoutRichText;
+      }
       if (
         next.text === target.text &&
         next.kind === target.kind &&
@@ -1181,7 +1325,11 @@ export function updateAnnotation(
         next.align === target.align &&
         next.bold === target.bold &&
         next.italic === target.italic &&
-        next.rotation === target.rotation
+        next.rotation === target.rotation &&
+        richTextRunsEqual(
+          next.richText ?? [],
+          target.richText ?? [],
+        )
       ) {
         return page;
       }
@@ -1385,6 +1533,7 @@ export function resetNodeLabelStyle(
         fontWeight: _fontWeight,
         fontStyle: _fontStyle,
         script: _script,
+        richText: _richText,
         ...base
       } = layout;
       const updated: DrawingPage = {
@@ -1445,6 +1594,7 @@ export function updateShape(
       | "textAlign"
       | "textBold"
       | "textOffset"
+      | "richText"
     >
   >,
   now = new Date().toISOString(),
@@ -1457,7 +1607,16 @@ export function updateShape(
       if (!target) {
         return page;
       }
-      const next = { ...target, ...patch };
+      let next = { ...target, ...patch };
+      if (
+        patch.text !== undefined &&
+        patch.richText === undefined &&
+        next.richText &&
+        runsToPlainText(next.richText) !== next.text
+      ) {
+        const { richText: _richText, ...withoutRichText } = next;
+        next = withoutRichText;
+      }
       if (
         next.x === target.x &&
         next.y === target.y &&
@@ -1476,7 +1635,11 @@ export function updateShape(
         next.textAlign === target.textAlign &&
         next.textBold === target.textBold &&
         (next.textOffset?.x ?? 0) === (target.textOffset?.x ?? 0) &&
-        (next.textOffset?.y ?? 0) === (target.textOffset?.y ?? 0)
+        (next.textOffset?.y ?? 0) === (target.textOffset?.y ?? 0) &&
+        richTextRunsEqual(
+          next.richText ?? [],
+          target.richText ?? [],
+        )
       ) {
         return page;
       }
@@ -1489,33 +1652,21 @@ export function updateShape(
   );
 }
 
-export function reorderShape(
+/**
+ * Applies one Arrange operation to the given object ids. Works across shapes,
+ * wires, components, and annotations because they share one stacking order.
+ */
+export function reorderPageObjects(
   document: DrawicDocument,
   pageId: string,
-  shapeId: string,
-  direction: "forward" | "backward",
+  ids: readonly string[],
+  direction: LayerDirection,
   now = new Date().toISOString(),
 ): DrawicDocument {
   return updatePage(
     document,
     pageId,
-    (page) => {
-      const index = page.shapes.findIndex((shape) => shape.id === shapeId);
-      if (index < 0) {
-        return page;
-      }
-      const targetIndex = direction === "forward" ? index + 1 : index - 1;
-      if (targetIndex < 0 || targetIndex >= page.shapes.length) {
-        return page;
-      }
-      const shapes = [...page.shapes];
-      const [moved] = shapes.splice(index, 1);
-      if (!moved) {
-        return page;
-      }
-      shapes.splice(targetIndex, 0, moved);
-      return { ...page, shapes };
-    },
+    (page) => reorderPaintEntries(page, ids, direction),
     now,
   );
 }

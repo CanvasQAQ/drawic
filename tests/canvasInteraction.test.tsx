@@ -95,6 +95,9 @@ interface RenderOptions {
   onUpdateShape?: (shapeId: string, patch: Record<string, unknown>) => void;
   onUpdateAnnotation?: (annotationId: string, patch: Record<string, unknown>) => void;
   onMoveSelected?: (delta: Point) => void;
+  onReorderObjects?: (direction: "front" | "forward" | "backward" | "back") => void;
+  onDuplicateSelection?: () => void;
+  onDeleteSelection?: () => void;
   onDuplicateNode?: (nodeId: string, delta: Point) => void;
   onAddAnnotation?: (kind: "text" | "net", point: Point, wireId?: string) => void;
   onAddShape?: (kind: string, bounds: { x: number; y: number; width: number; height: number }) => void;
@@ -103,6 +106,7 @@ interface RenderOptions {
   initialEditShapeId?: string | null;
   onInitialEditShapeConsumed?: () => void;
   onNoteEditingFinished?: () => void;
+  onTextEditingFinished?: () => void;
 }
 
 function renderCanvas(options: RenderOptions = {}): {
@@ -135,11 +139,15 @@ function renderCanvas(options: RenderOptions = {}): {
         onAddShape={options.onAddShape ?? vi.fn()}
         onUpdateShape={options.onUpdateShape ?? vi.fn()}
         onMoveSelected={options.onMoveSelected ?? vi.fn()}
+        onReorderObjects={options.onReorderObjects ?? vi.fn()}
+        onDuplicateSelection={options.onDuplicateSelection ?? vi.fn()}
+        onDeleteSelection={options.onDeleteSelection ?? vi.fn()}
         initialEditAnnotationId={options.initialEditAnnotationId ?? null}
         onInitialEditConsumed={options.onInitialEditConsumed}
         initialEditShapeId={options.initialEditShapeId ?? null}
         onInitialEditShapeConsumed={options.onInitialEditShapeConsumed}
         onNoteEditingFinished={options.onNoteEditingFinished}
+        onTextEditingFinished={options.onTextEditingFinished}
       />,
     ),
   );
@@ -790,6 +798,9 @@ describe("canvas interactions", () => {
           onAddShape={vi.fn()}
           onUpdateShape={vi.fn()}
           onMoveSelected={onMoveSelected}
+          onReorderObjects={vi.fn()}
+          onDuplicateSelection={vi.fn()}
+          onDeleteSelection={vi.fn()}
         />,
       ),
     );
@@ -1034,7 +1045,7 @@ describe("canvas interactions", () => {
     });
     const { container, root } = renderCanvas({ page });
     const text = container.querySelector<SVGTextElement>(".annotation-text")!;
-    expect(text.querySelectorAll("tspan")).toHaveLength(2);
+    expect(text.children).toHaveLength(2);
     expect(text.getAttribute("text-anchor")).toBe("middle");
     expect(text.getAttribute("font-weight")).toBe("700");
     expect(text.getAttribute("font-style")).toBe("italic");
@@ -1044,6 +1055,59 @@ describe("canvas interactions", () => {
     expect(net.textContent).toBe("VOUT");
     expect(net.textContent).not.toContain("⌁");
     expect(net.style.getPropertyValue("--annotation-color")).toBe("#0f766e");
+    root.unmount();
+  });
+
+  it("renders partial rich text formatting in annotations and notes", () => {
+    const page = createEmptyPage("Rich text rendering");
+    page.annotations.push({
+      id: "text_rich",
+      kind: "text",
+      text: "Bold and italic",
+      x: 40,
+      y: 200,
+      size: 18,
+      richText: [
+        { text: "Bold", bold: true, italic: false, script: "normal" },
+        { text: " and ", bold: false, italic: false, script: "normal" },
+        { text: "italic", bold: false, italic: true, script: "normal" },
+      ],
+    });
+    page.shapes.push({
+      id: "note_rich",
+      kind: "note",
+      x: 40,
+      y: 300,
+      width: 240,
+      height: 130,
+      rotation: 0,
+      stroke: "#b98433",
+      fill: "#f2c777",
+      text: "Heading\nBody",
+      textSize: 13,
+      richText: [
+        { text: "Heading\n", bold: true, italic: false, script: "normal" },
+        { text: "Body", bold: false, italic: true, script: "normal" },
+      ],
+    });
+    const { container, root } = renderCanvas({ page });
+    const annotation = container.querySelector(".annotation-text")!;
+    expect(annotation.textContent).toBe("Bold and italic");
+    expect(
+      annotation.querySelector('tspan[font-weight="700"]')?.textContent,
+    ).toBe("Bold");
+    expect(
+      annotation.querySelector('tspan[font-style="italic"]')?.textContent,
+    ).toBe("italic");
+
+    const note = container.querySelector(".note-text")!;
+    expect(note.textContent).toBe("HeadingBody");
+    expect(
+      note.querySelector('tspan[font-weight="700"]')?.textContent,
+    ).toBe("Heading");
+    expect(
+      note.querySelector('tspan[font-style="italic"]')?.textContent,
+    ).toBe("Body");
     root.unmount();
   });
 
@@ -1080,7 +1144,7 @@ describe("canvas interactions", () => {
     expect(body.getAttribute("opacity")).toBe("0.5");
     expect(body.getAttribute("fill-opacity")).toBe("0.4");
     const text = container.querySelector<SVGTextElement>(".shape-text")!;
-    expect(text.querySelectorAll("tspan")).toHaveLength(2);
+    expect(text.children).toHaveLength(2);
     expect(text.getAttribute("fill")).toBe("#1d4ed8");
     expect(text.getAttribute("font-size")).toBe("18");
     expect(text.getAttribute("text-anchor")).toBe("start");
@@ -1166,11 +1230,11 @@ describe("canvas interactions", () => {
     });
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(onInitialEditConsumed).toHaveBeenCalled();
-    const editor = container.querySelector<HTMLTextAreaElement>(
-      ".canvas-inline-editor textarea",
+    const editor = container.querySelector(
+      '[aria-label="Editable text annotation"]',
     );
     expect(editor).not.toBeNull();
-    expect(editor?.value).toBe("Text");
+    expect(editor?.textContent).toBe("Text");
     root.unmount();
   });
 
@@ -1247,16 +1311,170 @@ describe("canvas interactions", () => {
       page,
       selection: [{ kind: "shape", id: "note_1" }],
     });
-    expect(container.querySelector(".note-layer")).not.toBeNull();
+    expect(container.querySelector(".note-body")).not.toBeNull();
     expect(container.querySelector(".note-tag")).toBeNull();
     const text = container.querySelector(".note-text")!;
-    expect(text.querySelectorAll("tspan")).toHaveLength(2);
+    expect(text.children).toHaveLength(2);
     expect(text.textContent).toContain("Gain stage");
     expect(text.textContent).toContain("Sets closed-loop gain");
     const body = container.querySelector(".note-body")!;
     expect(body.getAttribute("fill-opacity")).toBe("0.22");
     expect(container.querySelectorAll(".shape-resize-handle")).toHaveLength(8);
     root.unmount();
+  });
+
+  it("opens an object menu on right-click, selects the hit object, and runs actions", () => {
+    const page = createEmptyPage("Context menu");
+    page.nodes.push({
+      id: "r1",
+      symbolId: "resistor",
+      reference: "R1",
+      value: "1k",
+      x: 100,
+      y: 100,
+      rotation: 0,
+      mirrored: false,
+    });
+    const onSelectionChange = vi.fn();
+    const onDeleteSelection = vi.fn();
+    const { container, root } = renderCanvas({
+      page,
+      onSelectionChange,
+      onDeleteSelection,
+    });
+    const node = container.querySelector<SVGElement>('[data-node-id="r1"]')!;
+    flushSync(() =>
+      node.dispatchEvent(pointerEvent("pointerdown", 100, 100, { button: 2 })),
+    );
+    flushSync(() =>
+      node.dispatchEvent(pointerEvent("pointerup", 100, 100, { button: 2 })),
+    );
+    expect(onSelectionChange).toHaveBeenCalledWith([{ kind: "node", id: "r1" }]);
+    const menu = container.querySelector('[role="menu"]');
+    expect(menu).not.toBeNull();
+    const front = [...container.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')].find(
+      (candidate) => candidate.textContent === "Bring to front",
+    );
+    expect(front?.disabled).toBe(true);
+    const item = [...container.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')].find(
+      (candidate) => candidate.textContent === "Delete",
+    );
+    flushSync(() => item!.click());
+    expect(onDeleteSelection).toHaveBeenCalledOnce();
+    root.unmount();
+    container.remove();
+  });
+
+  it("stays closed after a right-button drag over an object", () => {
+    const page = createEmptyPage("Context drag");
+    page.nodes.push({
+      id: "r1",
+      symbolId: "resistor",
+      reference: "R1",
+      value: "1k",
+      x: 100,
+      y: 100,
+      rotation: 0,
+      mirrored: false,
+    });
+    const { container, root } = renderCanvas({ page });
+    const node = container.querySelector<SVGElement>('[data-node-id="r1"]')!;
+    flushSync(() =>
+      node.dispatchEvent(pointerEvent("pointerdown", 100, 100, { button: 2 })),
+    );
+    flushSync(() =>
+      node.dispatchEvent(pointerEvent("pointermove", 160, 100, { button: 2 })),
+    );
+    flushSync(() =>
+      node.dispatchEvent(pointerEvent("pointerup", 160, 100, { button: 2 })),
+    );
+    expect(container.querySelector('[role="menu"]')).toBeNull();
+    root.unmount();
+    container.remove();
+  });
+
+  it("applies a quick colour combination from the object menu", () => {
+    const page = createEmptyPage("Context palette");
+    page.shapes.push({
+      id: "shape_1",
+      kind: "rectangle",
+      x: 40,
+      y: 40,
+      width: 120,
+      height: 60,
+      rotation: 0,
+      stroke: "#263d48",
+      fill: "#ffffff",
+    });
+    const onUpdateShape = vi.fn();
+    const { container, root } = renderCanvas({
+      page,
+      selection: [{ kind: "shape", id: "shape_1" }],
+      onUpdateShape,
+    });
+    const shape = container.querySelector<SVGElement>('[data-shape-id="shape_1"]')!;
+    flushSync(() =>
+      shape.dispatchEvent(pointerEvent("pointerdown", 60, 60, { button: 2 })),
+    );
+    flushSync(() =>
+      shape.dispatchEvent(pointerEvent("pointerup", 60, 60, { button: 2 })),
+    );
+    const swatch = container.querySelector<HTMLButtonElement>(
+      '.context-menu [aria-label="Note"]',
+    );
+    expect(swatch).not.toBeNull();
+    flushSync(() => swatch!.click());
+    expect(onUpdateShape).toHaveBeenCalledWith("shape_1", {
+      fill: "#f2c777",
+      stroke: "#b98433",
+      textColor: "#6b4d20",
+    });
+    root.unmount();
+    container.remove();
+  });
+
+  it("paints objects in the stored stacking order", () => {
+    const page = createEmptyPage("Stacking");
+    page.nodes.push({
+      id: "node_1",
+      symbolId: "resistor",
+      reference: "R1",
+      value: "1k",
+      x: 100,
+      y: 100,
+      rotation: 0,
+      mirrored: false,
+    });
+    page.shapes.push({
+      id: "note_1",
+      kind: "note",
+      x: 60,
+      y: 60,
+      width: 220,
+      height: 140,
+      rotation: 0,
+      stroke: "#b98433",
+      fill: "#f2c777",
+      text: "Note",
+    });
+
+    const above = renderCanvas({ page });
+    const aboveOrder = Array.from(
+      above.container.querySelectorAll(".note-body, .component-node"),
+    );
+    expect(aboveOrder[0]?.classList.contains("component-node")).toBe(true);
+    above.root.unmount();
+    above.container.remove();
+
+    const behind = renderCanvas({
+      page: { ...page, zOrder: ["note_1", "node_1"] },
+    });
+    const behindOrder = Array.from(
+      behind.container.querySelectorAll(".note-body, .component-node"),
+    );
+    expect(behindOrder[0]?.classList.contains("note-body")).toBe(true);
+    behind.root.unmount();
+    behind.container.remove();
   });
 
 
@@ -1380,7 +1598,9 @@ describe("canvas interactions", () => {
       onAddShape,
     });
     await new Promise((resolve) => setTimeout(resolve, 20));
-    expect(container.querySelector(".canvas-inline-editor textarea")).not.toBeNull();
+    expect(
+      container.querySelector('[aria-label="Editable note text"]'),
+    ).not.toBeNull();
     const svg = container.querySelector<SVGSVGElement>("svg.schematic-canvas")!;
     await new Promise((resolve) => setTimeout(resolve, 20));
     flushSync(() => svg.dispatchEvent(pointerEvent("pointerdown", 500, 400)));
@@ -1390,4 +1610,35 @@ describe("canvas interactions", () => {
     root.unmount();
   });
 
+  it("finishes text editing on the next canvas click instead of creating another text", async () => {
+    const page = createEmptyPage("Text finish");
+    page.annotations.push({
+      id: "text_1",
+      kind: "text",
+      text: "Hello",
+      x: 120,
+      y: 140,
+      size: 16,
+    });
+    const onAddAnnotation = vi.fn();
+    const onTextEditingFinished = vi.fn();
+    const { container, root } = renderCanvas({
+      page,
+      tool: "text",
+      selection: [{ kind: "annotation", id: "text_1" }],
+      initialEditAnnotationId: "text_1",
+      onTextEditingFinished,
+      onAddAnnotation,
+    });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(
+      container.querySelector('[aria-label="Editable text annotation"]'),
+    ).not.toBeNull();
+    const svg = container.querySelector<SVGSVGElement>("svg.schematic-canvas")!;
+    flushSync(() => svg.dispatchEvent(pointerEvent("pointerdown", 500, 400)));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(onTextEditingFinished).toHaveBeenCalled();
+    expect(onAddAnnotation).not.toHaveBeenCalled();
+    root.unmount();
+  });
 });

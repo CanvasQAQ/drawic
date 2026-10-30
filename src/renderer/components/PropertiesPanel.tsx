@@ -1,4 +1,4 @@
-import React, { useEffect, useState, type ReactNode } from "react";
+import React, { useEffect, useRef, useState, type ReactNode } from "react";
 import { nodeLabelVisible } from "../../core/geometry";
 import {
   clampNoteTextOffset,
@@ -27,19 +27,20 @@ import {
   findWire,
   junctionIdFromSelectionId,
 } from "../../core/model";
+import {
+  annotationTextRuns,
+  runsToPlainText,
+  shapeTextRuns,
+} from "../../core/textRuns";
 import { Icon } from "./Icons";
+import { NumberStepperField, SliderField } from "./NumberControls";
+import { RichTextEditor } from "./RichTextEditor";
 import { RichLabelEditor } from "./RichLabelEditor";
-
-const COLOR_PRESETS = [
-  "#263d48",
-  "#0f766e",
-  "#1d4ed8",
-  "#b42318",
-  "#7e22ce",
-  "#15803d",
-  "#b45309",
-  "#475569",
-];
+import {
+  COLOR_PRESETS,
+  SHAPE_PALETTE,
+  type ShapePalettePreset,
+} from "../quickPalette";
 
 function hexColorOr(value: string | undefined, fallback: string): string {
   return value && /^#[0-9a-fA-F]{6}$/.test(value) ? value : fallback;
@@ -111,11 +112,13 @@ function CommitField({
   value,
   onCommit,
   multiline = false,
+  action,
 }: {
   label: string;
   value: string;
   onCommit: (value: string) => void;
   multiline?: boolean;
+  action?: ReactNode;
 }) {
   const [draft, setDraft] = useState(value);
   useEffect(() => setDraft(value), [value]);
@@ -126,7 +129,10 @@ function CommitField({
   };
   return (
     <label className="property-field">
-      <span>{label}</span>
+      <span className={action ? "property-label-row" : undefined}>
+        {label}
+        {action}
+      </span>
       {multiline ? (
         <textarea
           value={draft}
@@ -147,6 +153,125 @@ function CommitField({
         />
       )}
     </label>
+  );
+}
+
+function ShapePaletteRow({
+  onSelect,
+}: {
+  onSelect: (preset: ShapePalettePreset) => void;
+}): ReactNode {
+  return (
+    <div className="property-field palette-field">
+      <span>Quick colors</span>
+      <div
+        className="palette-row"
+        role="group"
+        aria-label="Quick color combinations"
+      >
+        {SHAPE_PALETTE.map((preset) => (
+          <button
+            key={preset.id}
+            type="button"
+            className="palette-swatch"
+            aria-label={`${preset.label} colors`}
+            title={preset.label}
+            style={{
+              backgroundColor: preset.fill,
+              borderColor: preset.stroke,
+            }}
+            onClick={() => onSelect(preset)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ColorPresetRow({
+  label,
+  onSelect,
+}: {
+  label: string;
+  onSelect: (color: string) => void;
+}): ReactNode {
+  return (
+    <div className="property-field palette-field">
+      <span>{label}</span>
+      <div className="palette-row" role="group" aria-label={label}>
+        {COLOR_PRESETS.map((color) => (
+          <button
+            key={color}
+            type="button"
+            className="palette-swatch"
+            aria-label={`Use ${color}`}
+            title={color}
+            style={{ backgroundColor: color }}
+            onClick={() => onSelect(color)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function RichTextField({
+  label,
+  ariaLabel,
+  initialRuns,
+  multiline = false,
+  initialFormat,
+  clearFormatOnNewParagraph = false,
+  onChange,
+  onFinish,
+  onPreviewStart,
+  onPreviewEnd,
+}: {
+  label: string;
+  ariaLabel: string;
+  initialRuns: readonly RichTextRun[];
+  multiline?: boolean;
+  initialFormat?: "bold" | "italic" | "subscript" | "superscript" | undefined;
+  clearFormatOnNewParagraph?: boolean;
+  /** Applied to the document on every keystroke so the canvas tracks the edit. */
+  onChange?: ((runs: RichTextRun[]) => void) | undefined;
+  onFinish: (runs: RichTextRun[]) => void;
+  onPreviewStart?: (() => void) | undefined;
+  onPreviewEnd?: (() => void) | undefined;
+}) {
+  const previewing = useRef(false);
+  const endPreview = (): void => {
+    if (!previewing.current) {
+      return;
+    }
+    previewing.current = false;
+    onPreviewEnd?.();
+  };
+  return (
+    <div className="property-field rich-property-field">
+      <span>{label}</span>
+      <RichTextEditor
+        initialRuns={initialRuns}
+        ariaLabel={ariaLabel}
+        multiline={multiline}
+        initialFormat={initialFormat}
+        clearFormatOnNewParagraph={clearFormatOnNewParagraph}
+        toolbarLabel={`${label} formatting`}
+        onChange={(runs) => {
+          if (!previewing.current) {
+            previewing.current = true;
+            onPreviewStart?.();
+          }
+          onChange?.(runs);
+        }}
+        onFinish={(runs) => {
+          if (runs) {
+            onFinish(runs);
+          }
+          endPreview();
+        }}
+      />
+    </div>
   );
 }
 
@@ -184,6 +309,7 @@ interface PropertiesPanelProps {
         | "bold"
         | "italic"
         | "rotation"
+        | "richText"
       >
     >,
   ) => void;
@@ -208,18 +334,21 @@ interface PropertiesPanelProps {
         | "textAlign"
         | "textBold"
         | "textOffset"
+        | "richText"
       >
     >,
   ) => void;
-  onReorderShape: (direction: "forward" | "backward") => void;
   onUpdateNetName: (wireId: string, name: string) => void;
   onUpdateNetColor: (wireId: string, color: string | null) => void;
+  inlineEditingAnnotationId?: string | null;
+  inlineEditingShapeId?: string | null;
+  onPreviewStart?: (() => void) | undefined;
+  onPreviewEnd?: (() => void) | undefined;
   onRotate: () => void;
   onMirror: () => void;
   onMirrorVertical: () => void;
   onDelete: () => void;
   onCollapse: () => void;
-  onRenamePage: () => void;
 }
 
 function PropertiesSection({
@@ -249,15 +378,17 @@ export function PropertiesPanel({
   onUpdateTypography,
   onUpdateAnnotation,
   onUpdateShape,
-  onReorderShape,
   onUpdateNetName,
   onUpdateNetColor,
+  inlineEditingAnnotationId,
+  inlineEditingShapeId,
+  onPreviewStart,
+  onPreviewEnd,
   onRotate,
   onMirror,
   onMirrorVertical,
   onDelete,
   onCollapse,
-  onRenamePage,
 }: PropertiesPanelProps) {
   const selectedNode =
     selection.length === 1 && selection[0]?.kind === "node"
@@ -297,6 +428,28 @@ export function PropertiesPanel({
       ? page.shapes.find((shape) => shape.id === selection[0]?.id)
       : undefined;
   const isNoteShape = selectedShape?.kind === "note";
+  const applyShapeText = (runs: RichTextRun[]): void => {
+    if (!selectedShape) {
+      return;
+    }
+    const text = runsToPlainText(runs);
+    onUpdateShape(selectedShape.id, {
+      text,
+      richText: runs,
+      ...(selectedShape.kind === "note"
+        ? {
+            height: Math.max(
+              selectedShape.height,
+              noteContentHeight(
+                text,
+                selectedShape.width,
+                selectedShape.textSize ?? DEFAULT_SHAPE_TEXT_SIZE,
+              ),
+            ),
+          }
+        : {}),
+    });
+  };
   const selectedJunction =
     selection.length === 1 && selection[0]?.kind === "junction"
       ? findJunction(
@@ -333,11 +486,67 @@ export function PropertiesPanel({
             label="Reference"
             value={selectedNode.reference}
             onCommit={(reference) => onUpdateNode(selectedNode.id, { reference })}
+            action={
+              <button
+                type="button"
+                className="label-visibility-toggle"
+                aria-label={`${
+                  nodeLabelVisible(selectedNode, "reference") ? "Hide" : "Show"
+                } reference label`}
+                aria-pressed={nodeLabelVisible(selectedNode, "reference")}
+                title={
+                  nodeLabelVisible(selectedNode, "reference")
+                    ? "Hide reference label"
+                    : "Show reference label"
+                }
+                onClick={(event) => {
+                  event.preventDefault();
+                  onUpdateNodeLabel(selectedNode.id, "reference", {
+                    hidden: nodeLabelVisible(selectedNode, "reference"),
+                  });
+                }}
+              >
+                <Icon
+                  name={
+                    nodeLabelVisible(selectedNode, "reference")
+                      ? "eye"
+                      : "eye-off"
+                  }
+                />
+              </button>
+            }
           />
           <CommitField
             label="Value / model"
             value={selectedNode.value}
             onCommit={(value) => onUpdateNode(selectedNode.id, { value })}
+            action={
+              <button
+                type="button"
+                className="label-visibility-toggle"
+                aria-label={`${
+                  nodeLabelVisible(selectedNode, "value") ? "Hide" : "Show"
+                } value label`}
+                aria-pressed={nodeLabelVisible(selectedNode, "value")}
+                title={
+                  nodeLabelVisible(selectedNode, "value")
+                    ? "Hide value label"
+                    : "Show value label"
+                }
+                onClick={(event) => {
+                  event.preventDefault();
+                  onUpdateNodeLabel(selectedNode.id, "value", {
+                    hidden: nodeLabelVisible(selectedNode, "value"),
+                  });
+                }}
+              >
+                <Icon
+                  name={
+                    nodeLabelVisible(selectedNode, "value") ? "eye" : "eye-off"
+                  }
+                />
+              </button>
+            }
           />
           <dl className="property-grid">
             <div>
@@ -369,26 +578,6 @@ export function PropertiesPanel({
             <button type="button" onClick={onMirrorVertical}>
               <Icon name="mirror" /> Flip V
             </button>
-            <button
-              type="button"
-              onClick={() =>
-                onUpdateNodeLabel(selectedNode.id, "reference", {
-                  hidden: nodeLabelVisible(selectedNode, "reference"),
-                })
-              }
-            >
-              Reference: {nodeLabelVisible(selectedNode, "reference") ? "shown" : "hidden"}
-            </button>
-            <button
-              type="button"
-              onClick={() =>
-                onUpdateNodeLabel(selectedNode.id, "value", {
-                  hidden: nodeLabelVisible(selectedNode, "value"),
-                })
-              }
-            >
-              Value: {nodeLabelVisible(selectedNode, "value") ? "shown" : "hidden"}
-            </button>
           </div>
         </PropertiesSection>
       ) : null}
@@ -399,19 +588,21 @@ export function PropertiesPanel({
             <span className="kind-swatch kind-text" />
             {selection[0]?.label === "value" ? "Value label" : "Reference label"}
           </div>
-          <p className="property-hint">
-            Drag the label directly on the canvas, double-click it to rename it, or delete it to
-            hide it without removing the component.
-          </p>
           {selection[0]?.label !== "value" ? (
             <div className="property-field">
               <span>Name builder</span>
               <RichLabelEditor
-                key={`${selectedNodeLabel.id}-${selectedNodeLabel.reference}`}
-                nodeId={selectedNodeLabel.id}
+                key={`name-${selectedNodeLabel.id}`}
                 reference={selectedNodeLabel.reference}
                 storedRuns={selectedNodeLabelLayout?.richText}
                 typography={typography}
+                onChange={(reference, runs) =>
+                  onUpdateReferenceLabel(
+                    selectedNodeLabel.id,
+                    reference,
+                    runs,
+                  )
+                }
                 onCommit={(reference, runs) =>
                   onUpdateReferenceLabel(
                     selectedNodeLabel.id,
@@ -419,60 +610,29 @@ export function PropertiesPanel({
                     runs,
                   )
                 }
+                onPreviewStart={onPreviewStart}
+                onPreviewEnd={onPreviewEnd}
               />
             </div>
           ) : null}
-          <CommitField
+          <SliderField
             label="Font size scale"
-            value={String(selectedNodeLabelLayout?.fontSizeScale ?? 1)}
-            onCommit={(value) => {
-              const scale = Number(value);
-              if (Number.isFinite(scale) && scale > 0) {
-                onUpdateNodeLabel(
-                  selectedNodeLabel.id,
-                  selection[0]?.label ?? "reference",
-                  { fontSizeScale: Math.max(0.25, Math.min(4, scale)) },
-                );
-              }
-            }}
+            value={selectedNodeLabelLayout?.fontSizeScale ?? 1}
+            min={0.25}
+            max={4}
+            step={0.05}
+            formatValue={(value) => `${value.toFixed(2)}×`}
+            onCommit={(scale) =>
+              onUpdateNodeLabel(
+                selectedNodeLabel.id,
+                selection[0]?.label ?? "reference",
+                { fontSizeScale: scale },
+              )
+            }
+            onPreviewStart={onPreviewStart}
+            onPreviewEnd={onPreviewEnd}
           />
           <div className="button-row">
-            <button
-              type="button"
-              aria-pressed={(selectedNodeLabelLayout?.fontWeight ?? 400) === 700}
-              onClick={() =>
-                onUpdateNodeLabel(
-                  selectedNodeLabel.id,
-                  selection[0]?.label ?? "reference",
-                  {
-                    fontWeight:
-                      (selectedNodeLabelLayout?.fontWeight ?? 400) === 700
-                        ? 400
-                        : 700,
-                  },
-                )
-              }
-            >
-              Bold
-            </button>
-            <button
-              type="button"
-              aria-pressed={selectedNodeLabelLayout?.fontStyle === "italic"}
-              onClick={() =>
-                onUpdateNodeLabel(
-                  selectedNodeLabel.id,
-                  selection[0]?.label ?? "reference",
-                  {
-                    fontStyle:
-                      selectedNodeLabelLayout?.fontStyle === "italic"
-                        ? "normal"
-                        : "italic",
-                  },
-                )
-              }
-            >
-              Italic
-            </button>
             <label className="inline-color-control">
               <span>Color</span>
               <input
@@ -489,27 +649,6 @@ export function PropertiesPanel({
               />
             </label>
           </div>
-          <label className="property-field">
-            <span>Script</span>
-            <select
-              value={selectedNodeLabelLayout?.script ?? "normal"}
-              onChange={(event) =>
-                onUpdateNodeLabel(
-                  selectedNodeLabel.id,
-                  selection[0]?.label ?? "reference",
-                  {
-                    script: event.currentTarget.value as NonNullable<
-                      NodeLabelLayout["script"]
-                    >,
-                  },
-                )
-              }
-            >
-              <option value="normal">Normal</option>
-              <option value="subscript">Subscript</option>
-              <option value="superscript">Superscript</option>
-            </select>
-          </label>
           <button
             type="button"
             className="text-button"
@@ -592,28 +731,6 @@ export function PropertiesPanel({
               </button>
             </div>
           </div>
-          <dl className="property-grid">
-            <div>
-              <dt>Vertices</dt>
-              <dd>{selectedWire.points.length}</dd>
-            </div>
-            <div>
-              <dt>Start</dt>
-              <dd>
-                {selectedWire.points[0]?.x}, {selectedWire.points[0]?.y}
-              </dd>
-            </div>
-            <div>
-              <dt>End</dt>
-              <dd>
-                {selectedWire.points.at(-1)?.x}, {selectedWire.points.at(-1)?.y}
-              </dd>
-            </div>
-          </dl>
-          <p className="property-hint">
-            The default name is hidden on the canvas. Use the Net Label tool to
-            show a name, or place a junction to join crossing wires.
-          </p>
         </PropertiesSection>
       ) : null}
 
@@ -623,53 +740,55 @@ export function PropertiesPanel({
             <span className="kind-swatch kind-text" />
             {selectedAnnotation.kind === "net" ? "Electrical net name" : "Free text"}
           </div>
-          <CommitField
-            label={selectedAnnotation.kind === "net" ? "Net" : "Text"}
-            value={selectedAnnotation.text}
-            multiline={selectedAnnotation.kind === "text"}
-            onCommit={(text) => onUpdateAnnotation(selectedAnnotation.id, { text })}
-          />
           {selectedAnnotation.kind === "net" ? (
-            <p className="property-hint">
-              {selectedAnnotationWire
-                  ? `Attached to ${
-                    netNameByWire.get(selectedAnnotationWire.id) ??
-                    defaultNetName(
-                      Math.max(
-                        0,
-                        page.nets.findIndex((net) =>
-                          net.wires.some(
-                            (wire) => wire.id === selectedAnnotationWire.id,
-                          ),
-                        ),
-                      ),
-                    )
-                  }.`
-                : selectedAnnotation.wireId
-                  ? "Attached wire is missing."
-                  : "Legacy label attached by canvas position."}{" "}
-              Color follows the net color; set it on any wire of the net.
-            </p>
-          ) : (
-            <p className="property-hint">
-              Double-click the text on the canvas to edit. Line breaks are
-              preserved in the canvas and exports.
-            </p>
-          )}
-          <CommitField
-            label="Font size"
-            value={String(selectedAnnotation.size)}
-            onCommit={(value) => {
-              const size = Number(value);
-              if (Number.isFinite(size)) {
-                onUpdateAnnotation(selectedAnnotation.id, {
-                  size: Math.max(8, Math.min(64, size)),
-                });
+            <CommitField
+              label="Net"
+              value={selectedAnnotation.text}
+              onCommit={(text) =>
+                onUpdateAnnotation(selectedAnnotation.id, { text })
               }
-            }}
+            />
+          ) : inlineEditingAnnotationId === selectedAnnotation.id ? null : (
+            <RichTextField
+              key={`text-${selectedAnnotation.id}`}
+              label="Text"
+              ariaLabel="Editable text annotation"
+              initialRuns={annotationTextRuns(selectedAnnotation)}
+              multiline
+              onChange={(runs) =>
+                onUpdateAnnotation(selectedAnnotation.id, {
+                  text: runsToPlainText(runs),
+                  richText: runs,
+                })
+              }
+              onFinish={(runs) =>
+                onUpdateAnnotation(selectedAnnotation.id, {
+                  text: runsToPlainText(runs),
+                  richText: runs,
+                })
+              }
+              onPreviewStart={onPreviewStart}
+              onPreviewEnd={onPreviewEnd}
+            />
+          )}
+          <NumberStepperField
+            label="Font size"
+            value={selectedAnnotation.size}
+            min={8}
+            max={64}
+            step={1}
+            onCommit={(size) =>
+              onUpdateAnnotation(selectedAnnotation.id, { size })
+            }
           />
           {selectedAnnotation.kind === "text" ? (
             <>
+              <ColorPresetRow
+                label="Quick colors"
+                onSelect={(color) =>
+                  onUpdateAnnotation(selectedAnnotation.id, { color })
+                }
+              />
               <ColorField
                 label="Text color"
                 value={
@@ -700,28 +819,6 @@ export function PropertiesPanel({
                 </select>
               </label>
               <div className="button-row">
-                <button
-                  type="button"
-                  aria-pressed={selectedAnnotation.bold === true}
-                  onClick={() =>
-                    onUpdateAnnotation(selectedAnnotation.id, {
-                      bold: selectedAnnotation.bold !== true,
-                    })
-                  }
-                >
-                  Bold
-                </button>
-                <button
-                  type="button"
-                  aria-pressed={selectedAnnotation.italic === true}
-                  onClick={() =>
-                    onUpdateAnnotation(selectedAnnotation.id, {
-                      italic: selectedAnnotation.italic !== true,
-                    })
-                  }
-                >
-                  Italic
-                </button>
                 <button
                   type="button"
                   onClick={() =>
@@ -779,6 +876,15 @@ export function PropertiesPanel({
               <dd>{selectedShape.rotation}°</dd>
             </div>
           </dl>
+          <ShapePaletteRow
+            onSelect={(preset) =>
+              onUpdateShape(selectedShape.id, {
+                fill: preset.fill,
+                stroke: preset.stroke,
+                textColor: preset.text,
+              })
+            }
+          />
           <ColorField
             label="Stroke"
             value={shortHex(selectedShape.stroke, "#263d48")}
@@ -790,17 +896,18 @@ export function PropertiesPanel({
             allowTransparent
             onChange={(fill) => onUpdateShape(selectedShape.id, { fill })}
           />
-          <CommitField
+          <SliderField
             label="Line width"
-            value={String(selectedShape.strokeWidth ?? 2)}
-            onCommit={(value) => {
-              const width = Number(value);
-              if (Number.isFinite(width)) {
-                onUpdateShape(selectedShape.id, {
-                  strokeWidth: Math.max(0.5, Math.min(24, width)),
-                });
-              }
-            }}
+            value={selectedShape.strokeWidth ?? 2}
+            min={0.5}
+            max={24}
+            step={0.5}
+            formatValue={(value) => `${value} px`}
+            onCommit={(strokeWidth) =>
+              onUpdateShape(selectedShape.id, { strokeWidth })
+            }
+            onPreviewStart={onPreviewStart}
+            onPreviewEnd={onPreviewEnd}
           />
           <label className="property-field">
             <span>Line style</span>
@@ -817,72 +924,76 @@ export function PropertiesPanel({
               <option value="dotted">Dotted</option>
             </select>
           </label>
-          <CommitField
-            label="Opacity %"
-            value={String(Math.round((selectedShape.opacity ?? 1) * 100))}
-            onCommit={(value) => {
-              const percent = Number(value);
-              if (Number.isFinite(percent)) {
-                onUpdateShape(selectedShape.id, {
-                  opacity: Math.max(0, Math.min(100, percent)) / 100,
-                });
-              }
-            }}
+          <SliderField
+            label="Opacity"
+            value={Math.round((selectedShape.opacity ?? 1) * 100)}
+            min={0}
+            max={100}
+            step={1}
+            formatValue={(value) => `${value}%`}
+            onCommit={(percent) =>
+              onUpdateShape(selectedShape.id, { opacity: percent / 100 })
+            }
+            onPreviewStart={onPreviewStart}
+            onPreviewEnd={onPreviewEnd}
           />
-          <CommitField
-            label="Fill opacity %"
-            value={String(Math.round((selectedShape.fillOpacity ?? 1) * 100))}
-            onCommit={(value) => {
-              const percent = Number(value);
-              if (Number.isFinite(percent)) {
-                onUpdateShape(selectedShape.id, {
-                  fillOpacity: Math.max(0, Math.min(100, percent)) / 100,
-                });
-              }
-            }}
+          <SliderField
+            label="Fill opacity"
+            value={Math.round((selectedShape.fillOpacity ?? 1) * 100)}
+            min={0}
+            max={100}
+            step={1}
+            formatValue={(value) => `${value}%`}
+            onCommit={(percent) =>
+              onUpdateShape(selectedShape.id, { fillOpacity: percent / 100 })
+            }
+            onPreviewStart={onPreviewStart}
+            onPreviewEnd={onPreviewEnd}
           />
-          <CommitField
-            label={isNoteShape ? "Note text" : "Label"}
-            value={selectedShape.text ?? ""}
-            multiline
-            onCommit={(text) => {
-              if (!isNoteShape) {
-                onUpdateShape(selectedShape.id, { text });
-                return;
+          {inlineEditingShapeId === selectedShape.id ? null : (
+            <RichTextField
+              key={`shape-${selectedShape.id}`}
+              label={isNoteShape ? "Note text" : "Label"}
+              ariaLabel={
+                isNoteShape ? "Editable note text" : "Editable shape label"
               }
-              const textSize = selectedShape.textSize ?? DEFAULT_SHAPE_TEXT_SIZE;
-              onUpdateShape(selectedShape.id, {
-                text,
-                height: Math.max(
-                  selectedShape.height,
-                  noteContentHeight(text, selectedShape.width, textSize),
-                ),
-              });
-            }}
-          />
-          <CommitField
+              initialRuns={shapeTextRuns(selectedShape)}
+              multiline
+              initialFormat={
+                (selectedShape.text ?? "").trim() ||
+                (!isNoteShape && selectedShape.textBold === false)
+                  ? undefined
+                  : "bold"
+              }
+              clearFormatOnNewParagraph={isNoteShape}
+              onChange={applyShapeText}
+              onFinish={applyShapeText}
+              onPreviewStart={onPreviewStart}
+              onPreviewEnd={onPreviewEnd}
+            />
+          )}
+          <NumberStepperField
             label="Label size"
-            value={String(selectedShape.textSize ?? DEFAULT_SHAPE_TEXT_SIZE)}
-            onCommit={(value) => {
-              const size = Number(value);
-              if (Number.isFinite(size)) {
-                const textSize = Math.max(4, Math.min(200, size));
-                onUpdateShape(selectedShape.id, {
-                  textSize,
-                  ...(isNoteShape
-                    ? {
-                        height: Math.max(
-                          selectedShape.height,
-                          noteContentHeight(
-                            selectedShape.text ?? "",
-                            selectedShape.width,
-                            textSize,
-                          ),
+            value={selectedShape.textSize ?? DEFAULT_SHAPE_TEXT_SIZE}
+            min={4}
+            max={200}
+            step={1}
+            onCommit={(textSize) => {
+              onUpdateShape(selectedShape.id, {
+                textSize,
+                ...(isNoteShape
+                  ? {
+                      height: Math.max(
+                        selectedShape.height,
+                        noteContentHeight(
+                          selectedShape.text ?? "",
+                          selectedShape.width,
+                          textSize,
                         ),
-                      }
-                    : {}),
-                });
-              }
+                      ),
+                    }
+                  : {}),
+              });
             }}
           />
           <ColorField
@@ -910,29 +1021,14 @@ export function PropertiesPanel({
               <option value="end">Right</option>
             </select>
           </label>
-          <div className="button-row">
-            <button
-              type="button"
-              aria-pressed={selectedShape.textBold !== false}
-              onClick={() =>
-                onUpdateShape(selectedShape.id, {
-                  textBold: selectedShape.textBold === false,
-                })
-              }
-            >
-              Bold label
-            </button>
-          </div>
+
           {isNoteShape ? (
             <>
-              <CommitField
+              <NumberStepperField
                 label="Text offset X"
-                value={String(Math.round(selectedShape.textOffset?.x ?? 0))}
-                onCommit={(value) => {
-                  const x = Number(value);
-                  if (!Number.isFinite(x)) {
-                    return;
-                  }
+                value={Math.round(selectedShape.textOffset?.x ?? 0)}
+                step={1}
+                onCommit={(x) => {
                   const offset = clampNoteTextOffset(
                     {
                       x,
@@ -944,18 +1040,18 @@ export function PropertiesPanel({
                     selectedShape.textSize ?? DEFAULT_SHAPE_TEXT_SIZE,
                   );
                   onUpdateShape(selectedShape.id, {
-                    textOffset: { x: Math.round(offset.x), y: Math.round(offset.y) },
+                    textOffset: {
+                      x: Math.round(offset.x),
+                      y: Math.round(offset.y),
+                    },
                   });
                 }}
               />
-              <CommitField
+              <NumberStepperField
                 label="Text offset Y"
-                value={String(Math.round(selectedShape.textOffset?.y ?? 0))}
-                onCommit={(value) => {
-                  const y = Number(value);
-                  if (!Number.isFinite(y)) {
-                    return;
-                  }
+                value={Math.round(selectedShape.textOffset?.y ?? 0)}
+                step={1}
+                onCommit={(y) => {
                   const offset = clampNoteTextOffset(
                     {
                       x: selectedShape.textOffset?.x ?? 0,
@@ -967,7 +1063,10 @@ export function PropertiesPanel({
                     selectedShape.textSize ?? DEFAULT_SHAPE_TEXT_SIZE,
                   );
                   onUpdateShape(selectedShape.id, {
-                    textOffset: { x: Math.round(offset.x), y: Math.round(offset.y) },
+                    textOffset: {
+                      x: Math.round(offset.x),
+                      y: Math.round(offset.y),
+                    },
                   });
                 }}
               />
@@ -985,33 +1084,9 @@ export function PropertiesPanel({
               </div>
             </>
           ) : null}
-          <p className="property-hint">
-            {isNoteShape
-              ? "The first line becomes the note heading. Drag the border or top edge to move the note, drag the text to place it inside the frame, and double-click the text to edit. Body clicks pass through to components below."
-              : "Drag the corner or edge handles to resize. Hold Shift to keep the aspect ratio and Alt to resize from the center."}
-          </p>
           <div className="button-row">
             <button type="button" onClick={onRotate}>
               <Icon name="rotate" /> Rotate
-            </button>
-            <button
-              type="button"
-              disabled={
-                page.shapes.findIndex((shape) => shape.id === selectedShape.id) >=
-                page.shapes.length - 1
-              }
-              onClick={() => onReorderShape("forward")}
-            >
-              Bring forward
-            </button>
-            <button
-              type="button"
-              disabled={
-                page.shapes.findIndex((shape) => shape.id === selectedShape.id) <= 0
-              }
-              onClick={() => onReorderShape("backward")}
-            >
-              Send backward
             </button>
           </div>
         </PropertiesSection>
@@ -1031,9 +1106,6 @@ export function PropertiesPanel({
               </dd>
             </div>
           </dl>
-          <p className="property-hint">
-            A junction joins wires at this point. Press Delete to remove it.
-          </p>
         </PropertiesSection>
       ) : null}
 
@@ -1087,22 +1159,16 @@ export function PropertiesPanel({
                 <dd>{page.shapes.length}</dd>
               </div>
             </dl>
-            <div className="button-row">
-              <button type="button" onClick={onRenamePage}>
-                Rename page
-              </button>
-            </div>
-            <CommitField
+            <SliderField
               label="Type scale"
-              value={String(typography?.scale ?? 1)}
-              onCommit={(value) => {
-                const scale = Number(value);
-                if (Number.isFinite(scale) && scale > 0) {
-                  onUpdateTypography({
-                    scale: Math.max(0.5, Math.min(3, scale)),
-                  });
-                }
-              }}
+              value={typography?.scale ?? 1}
+              min={0.5}
+              max={3}
+              step={0.05}
+              formatValue={(value) => `${value.toFixed(2)}×`}
+              onCommit={(scale) => onUpdateTypography({ scale })}
+              onPreviewStart={onPreviewStart}
+              onPreviewEnd={onPreviewEnd}
             />
             <label className="property-field">
               <span>Diagram font</span>
@@ -1119,27 +1185,8 @@ export function PropertiesPanel({
               </select>
             </label>
           </PropertiesSection>
-          <PropertiesSection title="Selection">
-            <p className="property-hint">
-              Select a component, wire, label, or drawing shape to edit its details. Drag
-              empty paper to marquee-select; hold Shift to add or remove items.
-            </p>
-          </PropertiesSection>
         </>
       ) : null}
-
-      <PropertiesSection title="Roadmap">
-        <ul className="roadmap-list">
-          <li>
-            <span>User-editable device libraries</span>
-            <em>Not implemented</em>
-          </li>
-          <li>
-            <span>Spectre / SCS netlists</span>
-            <em>Not implemented</em>
-          </li>
-        </ul>
-      </PropertiesSection>
     </aside>
   );
 }

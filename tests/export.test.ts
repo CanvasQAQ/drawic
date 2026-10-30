@@ -195,6 +195,110 @@ describe("export formats", () => {
   });
 
 
+  it("exports partial rich text formatting on text and notes", () => {
+    const page = createEmptyPage("Rich text export");
+    page.annotations.push({
+      id: "text_rich",
+      kind: "text",
+      text: "Bold and italic",
+      x: 40,
+      y: 200,
+      size: 18,
+      richText: [
+        { text: "Bold", bold: true, italic: false, script: "normal" },
+        { text: " and ", bold: false, italic: false, script: "normal" },
+        { text: "italic", bold: false, italic: true, script: "normal" },
+      ],
+    });
+    page.shapes.push({
+      id: "note_rich",
+      kind: "note",
+      x: 40,
+      y: 300,
+      width: 240,
+      height: 130,
+      rotation: 0,
+      stroke: "#b98433",
+      fill: "#f2c777",
+      text: "Heading\nBody",
+      textSize: 13,
+      richText: [
+        { text: "Heading\n", bold: true, italic: false, script: "normal" },
+        { text: "Body", bold: false, italic: true, script: "normal" },
+      ],
+    });
+    const svg = buildSchematicSvg(page, testLibrary);
+    expect(svg).toContain(
+      'font-weight="700" font-style="normal" font-size="18">Bold</tspan>',
+    );
+    expect(svg).toContain(
+      'font-weight="400" font-style="italic" font-size="18">italic</tspan>',
+    );
+    expect(svg).toContain(
+      'font-weight="700" font-style="normal" font-size="15">Heading</tspan>',
+    );
+    expect(svg).toContain(
+      'font-weight="400" font-style="italic" font-size="13">Body</tspan>',
+    );
+  });
+
+  it("keeps the lighter bold weight for drawing shape labels", () => {
+    const page = createEmptyPage("Shape label weight");
+    page.shapes.push({
+      id: "rect_label",
+      kind: "rectangle",
+      x: 40,
+      y: 300,
+      width: 200,
+      height: 80,
+      rotation: 0,
+      stroke: "#203a45",
+      fill: "#ffffff",
+      text: "Label",
+      textSize: 14,
+      textBold: true,
+    });
+    const svg = buildSchematicSvg(page, testLibrary);
+    expect(svg).toContain(
+      'font-weight="600" font-style="normal" font-size="14">Label</tspan>',
+    );
+  });
+
+  it("exports objects in the stored stacking order", () => {
+    const page = createEmptyPage("Stacking");
+    page.nodes.push({
+      id: "node_1",
+      symbolId: "resistor",
+      reference: "R1",
+      value: "1k",
+      x: 100,
+      y: 100,
+      rotation: 0,
+      mirrored: false,
+    });
+    page.annotations.push({
+      id: "text_1",
+      kind: "text",
+      text: "Label",
+      x: 10,
+      y: 20,
+      size: 16,
+    });
+
+    const base = buildSchematicSvg(page, testLibrary);
+    expect(base.indexOf('class="component"')).toBeLessThan(
+      base.indexOf('class="annotation annotation-text"'),
+    );
+
+    const behind = buildSchematicSvg(
+      { ...page, zOrder: ["text_1", "node_1"] },
+      testLibrary,
+    );
+    expect(behind.indexOf('class="annotation annotation-text"')).toBeLessThan(
+      behind.indexOf('class="component"'),
+    );
+  });
+
   it("exports block notes with header and heading text", () => {
     const page = createEmptyPage("Note export");
     page.shapes.push({

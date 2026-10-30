@@ -1,3 +1,6 @@
+import { runsToPlainText } from "./textRuns";
+import { resolvePaintOrder } from "./zOrder";
+
 export const DOCUMENT_SCHEMA_VERSION = 3 as const;
 export const DOCUMENT_KIND = "drawic-drawing" as const;
 
@@ -175,6 +178,7 @@ export interface Annotation {
   bold?: boolean;
   italic?: boolean;
   rotation?: Rotation;
+  richText?: RichTextRun[];
 }
 
 export type ShapeKind = "rectangle" | "ellipse" | "note";
@@ -215,6 +219,7 @@ export interface DrawingShape {
   textAlign?: AnnotationAlign;
   textBold?: boolean;
   textOffset?: Point;
+  richText?: RichTextRun[];
 }
 
 export interface DrawingPage {
@@ -224,6 +229,8 @@ export interface DrawingPage {
   nets: Net[];
   annotations: Annotation[];
   shapes: DrawingShape[];
+  /** Object ids in paint order, bottom to top. Missing ids use the legacy order. */
+  zOrder?: string[];
 }
 
 export interface DrawicDocument {
@@ -612,10 +619,10 @@ function parseNodeLabelLayout(
 }
 
 function parseRichTextRuns(value: unknown, field: string): RichTextRun[] {
-  if (!Array.isArray(value) || value.length === 0) {
+  if (!Array.isArray(value)) {
     throw new ProjectFormatError(
       "invalid-field",
-      `${field} must be a non-empty array.`,
+      `${field} must be an array.`,
     );
   }
   return value.map((run, index) => {
@@ -860,10 +867,21 @@ function parseAnnotation(value: unknown, index: number): Annotation {
   if (value.kind !== "text" && value.kind !== "net") {
     throw new ProjectFormatError("invalid-field", `${field}.kind is not supported.`);
   }
+  const text = expectString(value.text, `${field}.text`);
+  const richText =
+    value.richText === undefined
+      ? undefined
+      : parseRichTextRuns(value.richText, `${field}.richText`);
+  if (richText && runsToPlainText(richText) !== text) {
+    throw new ProjectFormatError(
+      "invalid-field",
+      `${field}.richText does not compose the annotation text.`,
+    );
+  }
   return {
     id: expectString(value.id, `${field}.id`),
     kind: value.kind,
-    text: expectString(value.text, `${field}.text`),
+    text,
     x: expectFinite(value.x, `${field}.x`),
     y: expectFinite(value.y, `${field}.y`),
     size: expectFinite(value.size, `${field}.size`),
@@ -888,6 +906,7 @@ function parseAnnotation(value: unknown, index: number): Annotation {
     ...(value.rotation === undefined
       ? {}
       : { rotation: expectRotation(value.rotation, `${field}.rotation`) }),
+    ...(richText ? { richText } : {}),
   };
 }
 
@@ -899,6 +918,20 @@ function parseShape(value: unknown, index: number): DrawingShape {
   ) {
     throw new ProjectFormatError("invalid-field", `${field} has an invalid shape.`);
   }
+  const text =
+    value.text === undefined
+      ? undefined
+      : expectString(value.text, `${field}.text`);
+  const richText =
+    value.richText === undefined
+      ? undefined
+      : parseRichTextRuns(value.richText, `${field}.richText`);
+  if (richText && (text === undefined || runsToPlainText(richText) !== text)) {
+    throw new ProjectFormatError(
+      "invalid-field",
+      `${field}.richText does not compose the shape text.`,
+    );
+  }
   return {
     id: expectString(value.id, `${field}.id`),
     kind: value.kind,
@@ -909,9 +942,7 @@ function parseShape(value: unknown, index: number): DrawingShape {
     rotation: expectRotation(value.rotation, `${field}.rotation`),
     stroke: expectString(value.stroke, `${field}.stroke`),
     fill: expectString(value.fill, `${field}.fill`),
-    ...(value.text === undefined
-      ? {}
-      : { text: expectString(value.text, `${field}.text`) }),
+    ...(text === undefined ? {} : { text }),
     ...(value.strokeWidth === undefined
       ? {}
       : {
@@ -963,6 +994,7 @@ function parseShape(value: unknown, index: number): DrawingShape {
     ...(value.textOffset === undefined
       ? {}
       : { textOffset: parsePoint(value.textOffset, `${field}.textOffset`) }),
+    ...(richText ? { richText } : {}),
   };
 }
 
@@ -977,13 +1009,39 @@ function parsePage(value: unknown, index: number): DrawingPage {
   ) {
     throw new ProjectFormatError("invalid-field", `${field} has an invalid shape.`);
   }
-  return {
+  const page: DrawingPage = {
     id: expectString(value.id, `${field}.id`),
     name: expectString(value.name, `${field}.name`),
     nodes: value.nodes.map(parseNode),
     nets: value.nets.map(parseNet),
     annotations: value.annotations.map(parseAnnotation),
     shapes: value.shapes.map(parseShape),
+  };
+  if (value.zOrder === undefined) {
+    return page;
+  }
+  if (!Array.isArray(value.zOrder)) {
+    throw new ProjectFormatError(
+      "invalid-field",
+      `${field}.zOrder must be an array.`,
+    );
+  }
+  for (const [orderIndex, id] of value.zOrder.entries()) {
+    if (typeof id !== "string") {
+      throw new ProjectFormatError(
+        "invalid-field",
+        `${field}.zOrder[${orderIndex}] must be a string.`,
+      );
+    }
+  }
+  // Stale and duplicate ids are dropped and missing objects are appended, so a
+  // document always paints every object exactly once.
+  return {
+    ...page,
+    zOrder: resolvePaintOrder({
+      ...page,
+      zOrder: value.zOrder as string[],
+    }).map((entry) => entry.id),
   };
 }
 

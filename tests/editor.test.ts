@@ -7,11 +7,12 @@ import {
   addShape,
   addWire,
   duplicateNode,
+  duplicateSelection,
   mirrorSelection,
   moveNodes,
   removeSelection,
   renameNet,
-  reorderShape,
+  reorderPageObjects,
   rotateSelection,
   updateAnnotation,
   updateNode,
@@ -80,6 +81,60 @@ describe("page-scoped net editing", () => {
     const document = twoAnchorDocument();
     expect(pageById(document, "page_a").nodes).toHaveLength(2);
     expect(pageById(document, "page_b").nodes).toHaveLength(0);
+  });
+
+  it("duplicates a mixed selection above the originals", () => {
+    let document = createDocument({ pageId: "page_duplicate_selection" });
+    document = addComponent(document, "page_duplicate_selection", {
+      symbol: twoPinSymbol,
+      reference: "R1",
+      value: "1k",
+      point: { x: 100, y: 100 },
+      id: "r1",
+      library: testLibrary,
+    });
+    document = addShape(document, "page_duplicate_selection", {
+      kind: "rectangle",
+      x: 0,
+      y: 0,
+      width: 40,
+      height: 30,
+      id: "shape_1",
+    });
+    document = addAnnotation(document, "page_duplicate_selection", {
+      kind: "text",
+      text: "Note",
+      point: { x: 20, y: 20 },
+      id: "text_1",
+    });
+
+    const result = duplicateSelection(
+      document,
+      "page_duplicate_selection",
+      [
+        { kind: "node", id: "r1" },
+        { kind: "shape", id: "shape_1" },
+        { kind: "annotation", id: "text_1" },
+      ],
+      testLibrary,
+      "2026-10-25T00:00:00.000Z",
+    );
+
+    expect(result.selection).toHaveLength(3);
+    const page = pageById(result.document, "page_duplicate_selection");
+    const nodeCopy = page.nodes.find((node) => node.id !== "r1")!;
+    expect(nodeCopy).toMatchObject({ reference: "R2", x: 114, y: 114 });
+    const shapeCopy = page.shapes.find((shape) => shape.id !== "shape_1")!;
+    expect([shapeCopy.x, shapeCopy.y]).toEqual([14, 14]);
+    const textCopy = page.annotations.find(
+      (annotation) => annotation.id !== "text_1",
+    )!;
+    expect(textCopy).toMatchObject({ kind: "text", text: "Note", x: 34, y: 34 });
+
+    const order = page.zOrder ?? [];
+    expect(order.indexOf(nodeCopy.id)).toBe(order.indexOf("r1") + 1);
+    expect(order.indexOf(shapeCopy.id)).toBe(order.indexOf("shape_1") + 1);
+    expect(order.indexOf(textCopy.id)).toBe(order.indexOf("text_1") + 1);
   });
 
   it("duplicates a device with a new ID, unique Reference, and shifted labels", () => {
@@ -486,10 +541,30 @@ describe("page-scoped net editing", () => {
       textOffset: { x: 6, y: -8 },
     });
 
-    document = reorderShape(document, "page_styled", "shape_a", "forward");
-    expect(pageById(document, "page_styled").shapes.map((shape) => shape.id)).toEqual([
+    const shapeRuns = [
+      { text: "Bo", bold: true, italic: false, script: "normal" as const },
+      { text: "dy", bold: false, italic: true, script: "normal" as const },
+    ];
+    document = updateShape(document, "page_styled", "shape_a", {
+      richText: shapeRuns,
+    });
+    expect(pageById(document, "page_styled").shapes[0]?.richText).toEqual(
+      shapeRuns,
+    );
+    expect(
+      updateShape(document, "page_styled", "shape_a", {
+        richText: shapeRuns.map((run) => ({ ...run })),
+      }),
+    ).toBe(document);
+
+    document = reorderPageObjects(document, "page_styled", ["shape_a"], "forward");
+    expect(pageById(document, "page_styled").zOrder).toEqual([
       "shape_b",
       "shape_a",
+    ]);
+    expect(pageById(document, "page_styled").shapes.map((shape) => shape.id)).toEqual([
+      "shape_a",
+      "shape_b",
     ]);
 
     document = addAnnotation(document, "page_styled", {
@@ -506,6 +581,21 @@ describe("page-scoped net editing", () => {
       rotation: 90,
       size: 20,
     });
+    const annotationRuns = [
+      { text: "Line one\n", bold: true, italic: false, script: "normal" as const },
+      { text: "Line two", bold: false, italic: true, script: "normal" as const },
+    ];
+    document = updateAnnotation(document, "page_styled", "label_1", {
+      richText: annotationRuns,
+    });
+    expect(
+      pageById(document, "page_styled").annotations[0]?.richText,
+    ).toEqual(annotationRuns);
+    expect(
+      updateAnnotation(document, "page_styled", "label_1", {
+        richText: annotationRuns.map((run) => ({ ...run })),
+      }),
+    ).toBe(document);
     expect(pageById(document, "page_styled").annotations[0]).toMatchObject({
       text: "Line one\nLine two",
       color: "#b42318",
@@ -517,6 +607,47 @@ describe("page-scoped net editing", () => {
     });
   });
 
+
+  it("clears stale rich text when plain text changes without runs", () => {
+    let document = createDocument({ pageId: "page_stale_rich" });
+    document = addShape(document, "page_stale_rich", {
+      kind: "rectangle",
+      x: 10,
+      y: 20,
+      width: 100,
+      height: 60,
+      id: "shape_rich",
+    });
+    document = addAnnotation(document, "page_stale_rich", {
+      kind: "text",
+      text: "Old",
+      point: { x: 10, y: 30 },
+      id: "text_rich",
+    });
+    const shapeRuns = [
+      { text: "Old", bold: true, italic: false, script: "normal" as const },
+    ];
+    document = updateShape(document, "page_stale_rich", "shape_rich", {
+      text: "Old",
+      richText: shapeRuns,
+    });
+    document = updateShape(document, "page_stale_rich", "shape_rich", {
+      text: "New",
+    });
+    expect(
+      pageById(document, "page_stale_rich").shapes[0]?.richText,
+    ).toBeUndefined();
+
+    document = updateAnnotation(document, "page_stale_rich", "text_rich", {
+      richText: shapeRuns,
+    });
+    document = updateAnnotation(document, "page_stale_rich", "text_rich", {
+      text: "New",
+    });
+    expect(
+      pageById(document, "page_stale_rich").annotations[0]?.richText,
+    ).toBeUndefined();
+  });
 
   it("creates notes with the quick-note visual defaults", () => {
     let document = createDocument({ pageId: "page_notes" });

@@ -23,7 +23,9 @@ export type IconName =
   | "audit"
   | "check"
   | "close"
-  | "chevron";
+  | "chevron"
+  | "eye"
+  | "eye-off";
 
 export function Icon({
   name,
@@ -185,6 +187,21 @@ export function Icon({
       return (
         <svg {...common}>
           <path d="m9 5 7 7-7 7" />
+        </svg>
+      );
+    case "eye":
+      return (
+        <svg {...common}>
+          <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z" />
+          <circle cx="12" cy="12" r="2.6" />
+        </svg>
+      );
+    case "eye-off":
+      return (
+        <svg {...common}>
+          <path d="m4 5 16 14" />
+          <path d="M9.5 6.6A11 11 0 0 1 12 6c6.5 0 10 6 10 6a17 17 0 0 1-3.2 3.9" />
+          <path d="M6.3 8.2A17 17 0 0 0 2 12s3.5 6 10 6a10 10 0 0 0 4.2-.9" />
         </svg>
       );
   }
