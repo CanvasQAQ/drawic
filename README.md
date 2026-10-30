@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="build/icon.png" width="96" height="96" alt="Drawic app icon" />
+</p>
+
 # Drawic
 
 Drawic is a local-first, cross-platform schematic editor for analog and
@@ -6,7 +10,8 @@ on the local machine, and performs no runtime network requests.
 
 This repository is an original implementation. See [CLEAN_ROOM.md](CLEAN_ROOM.md)
 for the development boundary and [PROVENANCE.md](PROVENANCE.md) for asset and
-dependency lineage.
+dependency lineage. Brand and icon asset rules are documented in
+[docs/BRAND_ASSETS.md](docs/BRAND_ASSETS.md).
 
 Local implementation agents must begin with [AGENTS.md](AGENTS.md) and
 [docs/AGENT_WORKFLOW.md](docs/AGENT_WORKFLOW.md).

@@ -8,6 +8,22 @@
 - License: MIT for original Drawic source.
 - Upstream schematic-editor code: none.
 
+## Brand assets
+
+- Origin: original Drawic brand concept `drawic-icon.svg`, a MOSFET symbol on a
+  warm paper tile, supplied by CanvasQAQ, repository owner.
+- Transformation: adapted into the production icon in `build/icon.svg` with
+  standard icon-grid clear space, optical centering, regularized stroke
+  geometry, and compact 16 px and 32 px variants. The in-app mark in
+  `src/renderer/components/DrawicMark.tsx` mirrors the 32 px variant.
+- Derived files: `build/icon.png`, `build/icon.ico`, `build/icon.icns`,
+  `build/icons/`, and the runtime favicon/window icons under
+  `src/renderer/public/`. All are generated from the repository-local SVGs.
+- Third-party material: no icon set, icon font, wordmark font, or templates are
+  bundled. Rasterization uses local development tools only and those tools are
+  not packaged with Drawic.
+- Details and regeneration commands: [docs/BRAND_ASSETS.md](docs/BRAND_ASSETS.md).
+
 ## Device symbols
 
 - Supplied collection: `analog-canvas-device-svg-20261024/device-svg-export`

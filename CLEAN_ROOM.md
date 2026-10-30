@@ -13,6 +13,8 @@ and a newly initialized Git repository.
 ## Allowed inputs
 
 - The Drawic product brief supplied by CanvasQAQ.
+- The original Drawic brand concept supplied by CanvasQAQ and documented in
+  [docs/BRAND_ASSETS.md](docs/BRAND_ASSETS.md).
 - Public language, runtime, format, and operating-system documentation.
 - Public standards such as SPICE syntax and the SVG, PNG, and PDF formats.
 - `analog-canvas-device-svg-20261023/device-svg-export`, limited to its

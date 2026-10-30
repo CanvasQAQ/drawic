@@ -7,6 +7,7 @@ const documents = [
   "CLEAN_ROOM.md",
   "PROVENANCE.md",
   "docs/AGENT_WORKFLOW.md",
+  "docs/BRAND_ASSETS.md",
   "docs/COMPONENT_NAME_LABELS.md",
   "docs/DEVICE_PIN_AUDIT.md",
   "docs/adr/005-pages-and-single-file-device-library.md",

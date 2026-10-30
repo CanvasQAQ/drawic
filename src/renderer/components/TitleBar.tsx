@@ -1,5 +1,6 @@
 import React, { useEffect, useState, type ReactNode } from "react";
 import type { Theme } from "../theme";
+import { DrawicMark } from "./DrawicMark";
 
 interface TitleBarProps {
   documentTitle: string;
@@ -63,12 +64,8 @@ export function TitleBar({
           }
         }}
       >
-        <span className="window-titlebar-mark" aria-hidden="true">
-          <svg viewBox="0 0 32 32">
-            <path d="M5 8h8l5 5v13H5z" />
-            <path d="M18 6h9v9l-9 9-9-9z" />
-            <circle cx="13" cy="13" r="2" />
-          </svg>
+        <span className="window-titlebar-mark">
+          <DrawicMark />
         </span>
         <span className="window-titlebar-brand">Drawic</span>
         <span className="window-titlebar-title">{documentTitle}</span>

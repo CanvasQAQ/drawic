@@ -83,7 +83,7 @@
       }
     ],
     "win": {
-      "icon": "build/icon.png",
+      "icon": "build/icon.ico",
       "target": [
         {
           "target": "zip",
@@ -95,7 +95,7 @@
       "artifactName": "Drawic-${version}-Unsigned-Preview-windows-${arch}.${ext}"
     },
     "mac": {
-      "icon": "build/icon.png",
+      "icon": "build/icon.icns",
       "category": "public.app-category.developer-tools",
       "identity": null,
       "hardenedRuntime": false,
@@ -118,7 +118,7 @@
       "artifactName": "Drawic-${version}-Unsigned-Preview-macos-${arch}.${ext}"
     },
     "linux": {
-      "icon": "build/icon.png",
+      "icon": "build/icons",
       "category": "Development",
       "maintainer": "CanvasQAQ <CanvasQAQ@users.noreply.github.com>",
       "target": [

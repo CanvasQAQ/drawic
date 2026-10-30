@@ -1,20 +1,28 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" role="img" aria-label="Drawic">
   <defs>
-    <linearGradient id="shell" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#263c46"/>
-      <stop offset="1" stop-color="#101920"/>
+    <linearGradient id="paper" x1="144" y1="112" x2="900" y2="928" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF6E7"/>
+      <stop offset="0.54" stop-color="#FFEDD6"/>
+      <stop offset="1" stop-color="#FFE1B8"/>
     </linearGradient>
-    <linearGradient id="signal" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#f6c77f"/>
-      <stop offset="1" stop-color="#d99140"/>
+    <linearGradient id="ink" x1="248" y1="300" x2="760" y2="780" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#17324F"/>
+      <stop offset="1" stop-color="#0E2236"/>
     </linearGradient>
   </defs>
-  <rect x="32" y="32" width="960" height="960" rx="224" fill="url(#shell)"/>
-  <rect x="52" y="52" width="920" height="920" rx="204" fill="none" stroke="#425863" stroke-width="12"/>
-  <path d="M212 300H430L584 454V824H212Z" fill="none" stroke="url(#signal)" stroke-width="54" stroke-linejoin="round"/>
-  <path d="M584 260H812V488L698 602L584 488Z" fill="none" stroke="#74d0c2" stroke-width="54" stroke-linejoin="round"/>
-  <circle cx="382" cy="520" r="54" fill="#e5a455"/>
-  <path d="M584 454H700" fill="none" stroke="#e5a455" stroke-width="34" stroke-linecap="round"/>
-  <path d="M382 574V690" fill="none" stroke="#e5a455" stroke-width="34" stroke-linecap="round"/>
+  <rect x="80" y="80" width="864" height="864" rx="192" fill="url(#paper)"/>
+  <g transform="translate(114 80) scale(1.6875)" fill="none" stroke="url(#ink)" stroke-width="16" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M87 263H201"/>
+    <path d="M201 193V334"/>
+    <path d="M243 168V360"/>
+    <path d="M243 206H314V117Q314 92 339 92H385"/>
+    <path d="M243 334H314V391Q314 421 344 421H385"/>
+    <path d="M314 334V293H277"/>
+  </g>
+  <g transform="translate(114 80) scale(1.6875)">
+    <path d="M243 293L277 275V311L243 293Z" fill="url(#ink)"/>
+    <circle cx="87" cy="263" r="28" fill="url(#ink)"/>
+    <circle cx="385" cy="92" r="28" fill="url(#ink)"/>
+    <circle cx="385" cy="421" r="28" fill="url(#ink)"/>
+  </g>
 </svg>

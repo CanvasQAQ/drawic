@@ -81,6 +81,16 @@ describe("window chrome", () => {
     root.unmount();
   });
 
+  it("renders the Drawic brand mark in the title bar", () => {
+    const { container, root } = renderTitleBar("linux");
+    const mark = container.querySelector(".window-titlebar-mark svg");
+    expect(mark).not.toBeNull();
+    expect(mark?.querySelector("rect")).not.toBeNull();
+    expect(mark?.querySelectorAll("circle").length).toBe(3);
+    root.unmount();
+    container.remove();
+  });
+
   it("routes window and theme actions through the typed bridge", () => {
     const onToggleTheme = vi.fn();
     const { container, root } = renderTitleBar("win32", onToggleTheme);

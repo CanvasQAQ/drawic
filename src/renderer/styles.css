@@ -147,22 +147,12 @@ button:not(:disabled) {
   height: 22px;
   display: grid;
   place-items: center;
-  border: 1px solid color-mix(in srgb, var(--amber) 58%, transparent);
-  border-radius: 7px;
-  background: color-mix(in srgb, var(--amber) 12%, transparent);
 }
 
 .window-titlebar-mark svg {
-  width: 16px;
-  height: 16px;
-  fill: none;
-  stroke: var(--amber);
-  stroke-width: 1.8;
-}
-
-.window-titlebar-mark circle {
-  fill: var(--amber);
-  stroke: none;
+  width: 20px;
+  height: 20px;
+  display: block;
 }
 
 .window-titlebar-brand {

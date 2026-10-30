@@ -7,6 +7,7 @@ import {
   session,
   type MenuItemConstructorOptions,
 } from "electron";
+import { existsSync } from "node:fs";
 import { mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { basename, dirname, extname, join, resolve } from "node:path";
 import { buildBitmapPdf } from "../core/export/pdf";
@@ -76,6 +77,10 @@ for (const argument of process.argv) {
 
 function settingsPath(): string {
   return join(app.getPath("userData"), "settings.json");
+}
+
+function brandIconPath(): string {
+  return join(__dirname, "../renderer/icon.png");
 }
 
 function recoveryDirectory(): string {
@@ -648,7 +653,8 @@ function createWindow(): BrowserWindow {
     minWidth: WINDOW_MIN_WIDTH,
     minHeight: WINDOW_MIN_HEIGHT,
     show: !smokeMode,
-    title: "Drawic",
+    title: "Drawic — Schematic Editor",
+    icon: brandIconPath(),
     backgroundColor: "#111820",
     webPreferences: {
       preload: join(__dirname, "../preload/index.js"),
@@ -738,7 +744,12 @@ async function runSmokeCheck(window: BrowserWindow): Promise<void> {
         width: number;
         height: number;
       };
-      if (state.canvas && state.brand && state.titleBar && state.title === "Drawic") {
+      if (
+        state.canvas &&
+        state.brand &&
+        state.titleBar &&
+        state.title === "Drawic — Schematic Editor"
+      ) {
         const editState = (await window.webContents.executeJavaScript(
           `(async () => {
             const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -1054,6 +1065,9 @@ if (!singleInstance) {
 
   app.whenReady().then(async () => {
     app.setAppUserModelId("com.canvasqaq.drawic");
+    if (process.platform === "darwin" && !app.isPackaged && existsSync(brandIconPath())) {
+      app.dock?.setIcon(brandIconPath());
+    }
     const smokeUserData = process.argv.find((argument) =>
       argument.startsWith("--smoke-user-data="),
     );

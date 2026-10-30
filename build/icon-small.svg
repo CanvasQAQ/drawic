@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" fill="none" role="img" aria-label="Drawic">
+  <rect width="32" height="32" rx="7.1" fill="#FFEBCF"/>
+  <g fill="none" stroke="#102A45" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M5.4 16.4H13.2"/>
+    <path d="M13.2 11.4V21.4"/>
+    <path d="M17.6 9.6V23.2"/>
+    <path d="M17.6 13H23.2V7.2Q23.2 5.2 25.2 5.2H27.2"/>
+    <path d="M17.6 19.8H23.2V24.8Q23.2 26.8 25.2 26.8H27.2"/>
+  </g>
+  <circle cx="5.4" cy="16.4" r="2.4" fill="#102A45"/>
+  <circle cx="27.2" cy="5.2" r="2.4" fill="#102A45"/>
+  <circle cx="27.2" cy="26.8" r="2.4" fill="#102A45"/>
+</svg>
