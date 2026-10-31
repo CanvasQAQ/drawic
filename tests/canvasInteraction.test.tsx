@@ -223,6 +223,12 @@ describe("canvas interactions", () => {
       onPlace,
     });
     const svg = container.querySelector<SVGSVGElement>("svg.schematic-canvas")!;
+    // Snapping tolerance is screen-scaled, so exercise it at the 100% view.
+    flushSync(() =>
+      container
+        .querySelector<HTMLButtonElement>('[aria-label="Reset zoom to 100%"]')!
+        .click(),
+    );
     flushSync(() => svg.dispatchEvent(pointerEvent("pointermove", 103, 125)));
     flushSync(() => svg.dispatchEvent(pointerEvent("pointerdown", 103, 125)));
     expect(onPlace).toHaveBeenCalledWith({ x: 100, y: 120 }, 0);
@@ -247,6 +253,12 @@ describe("canvas interactions", () => {
       onMoveSelected,
     });
     const node = container.querySelector<SVGElement>('[data-node-id="r1"]')!;
+    // Snapping tolerance is screen-scaled, so exercise it at the 100% view.
+    flushSync(() =>
+      container
+        .querySelector<HTMLButtonElement>('[aria-label="Reset zoom to 100%"]')!
+        .click(),
+    );
     flushSync(() => node.dispatchEvent(pointerEvent("pointerdown", 100, 100)));
     flushSync(() => node.dispatchEvent(pointerEvent("pointermove", 100, 130)));
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -275,6 +287,18 @@ describe("canvas interactions", () => {
       2,
     );
     expect(fitted).toEqual({ x: 0, y: 100, width: 1600, height: 800 });
+  });
+
+  it("opens at 300% zoom so one device reads comfortably", () => {
+    const { container, root } = renderCanvas();
+    const svg = container.querySelector("svg.schematic-canvas")!;
+    const viewBox = svg.getAttribute("viewBox")!.split(" ").map(Number);
+    expect(viewBox[2]).toBeCloseTo(1600 / 3, 1);
+    expect(container.querySelector(".canvas-controls")?.textContent).toContain(
+      "300%",
+    );
+    root.unmount();
+    container.remove();
   });
 
   it("supports direct wheel zoom and F fit without a modifier key", async () => {

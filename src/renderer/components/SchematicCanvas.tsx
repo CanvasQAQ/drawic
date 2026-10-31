@@ -96,6 +96,8 @@ import { COLOR_SWATCHES, SHAPE_PALETTE } from "../quickPalette";
 
 const BASE_WIDTH = 1600;
 const BASE_HEIGHT = 1000;
+/** Opens at 300% so one device fills a comfortable part of the canvas. */
+const DEFAULT_ZOOM = 3;
 const MIN_VIEW_WIDTH = 320;
 const MAX_VIEW_WIDTH = 5200;
 const RICH_INLINE_TOOLBAR_HEIGHT = 34;
@@ -939,8 +941,8 @@ export function SchematicCanvas({
   const [view, setView] = useState<Viewport>({
     x: 0,
     y: 0,
-    width: BASE_WIDTH,
-    height: BASE_HEIGHT,
+    width: BASE_WIDTH / DEFAULT_ZOOM,
+    height: BASE_HEIGHT / DEFAULT_ZOOM,
   });
   const [pointer, setPointer] = useState<Point>({ x: 0, y: 0 });
   const [drag, setDrag] = useState<DragState | null>(null);
@@ -3756,7 +3758,11 @@ export function SchematicCanvas({
         <button type="button" onClick={() => zoomAtCanvasCenter(1.2)}>
           Zoom in
         </button>
-        <button type="button" onClick={() => setView({ x: 0, y: 0, width: BASE_WIDTH, height: BASE_HEIGHT })}>
+        <button
+          type="button"
+          aria-label="Reset zoom to 100%"
+          onClick={() => setView({ x: 0, y: 0, width: BASE_WIDTH, height: BASE_HEIGHT })}
+        >
           {zoomPercent}%
         </button>
         <button type="button" onClick={() => zoomAtCanvasCenter(1 / 1.2)}>
