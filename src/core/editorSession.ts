@@ -1,5 +1,5 @@
 import { agentRequest, type AgentRequest } from "./agentCommands";
-import { addComponent, addWire } from "./editor";
+import { addComponent, addWire, mirrorSelection, mirrorSelectionVertical, rotateSelection, updateNode } from "./editor";
 import { nodePinPosition, pointsEqual } from "./geometry";
 import { commitHistory, createHistory, type HistoryState } from "./history";
 import {
@@ -8,6 +8,7 @@ import {
 } from "./model";
 import { findNetGraphViolations } from "./netGraph";
 import { routeWireGeometry } from "./routing";
+import { resolveWirePoints } from "./wireMotion";
 
 type EditRequest = Extract<AgentRequest, { tool: "edit_page" }>;
 type DocumentHistory = HistoryState<DrawicDocument>;
@@ -23,13 +24,20 @@ function readPage(page: DrawingPage, library: readonly SymbolDefinition[], reque
   const wires = allWires(page);
   return {
     pageId: page.id, pageName: page.name, grid: 10,
+    orientation: { rotations: [0, 90, 180, 270], mirrored: "horizontal", mirroredVertically: "vertical" },
     nodeCount: page.nodes.length, wireCount: wires.length, symbolCount: library.length,
-    nodes: page.nodes.slice(offset, offset + PAGE_SIZE).map(({ id, symbolId, x, y, reference, value, rotation }) =>
-      ({ id, symbolId, x, y, reference, value, rotation })),
+    nodes: page.nodes.slice(offset, offset + PAGE_SIZE).map(node => {
+      const definition = library.find(item => item.id === node.symbolId);
+      return { id: node.id, symbolId: node.symbolId, x: node.x, y: node.y,
+        reference: node.reference, value: node.value, rotation: node.rotation,
+        mirrored: node.mirrored, mirroredVertically: node.mirroredVertically ?? false,
+        pins: definition?.pins.map((pin, index) => ({ key: pin.key, ...nodePinPosition(node, definition, index) })) ?? [] };
+    }),
     wires: wires.slice(offset, offset + PAGE_SIZE).map(({ wire }) =>
-      ({ id: wire.id, start: wire.start, end: wire.end })),
+      ({ id: wire.id, start: wire.start, end: wire.end, points: resolveWirePoints(page, library, wire) ?? wire.points })),
     symbols: library.slice(offset, offset + PAGE_SIZE).map(item => item.id),
-    ...(symbol ? { pins: symbol.pins.map(({ key, x, y, side }) => ({ key, x, y, side })) } : {}),
+    ...(symbol ? { pins: symbol.pins.map(({ key, x, y, side, role }) => ({ key, x, y, side, role })) ,
+      frame: symbol.frame } : {}),
   };
 }
 
@@ -46,8 +54,8 @@ function applyBatch(document: DrawicDocument, library: readonly SymbolDefinition
   for (const op of request.operations) {
     const page = pageById(candidate, request.pageId);
     const wires = allWires(page);
-    if (page.nodes.length + wires.length >= 2000) throw new Error("page_limit");
-    if (page.nodes.some(node => node.id === op.id) || wires.some(({ wire }) => wire.id === op.id)) {
+    if (op.type !== "transform" && page.nodes.length + wires.length >= 2000) throw new Error("page_limit");
+    if (op.type !== "transform" && (page.nodes.some(node => node.id === op.id) || wires.some(({ wire }) => wire.id === op.id))) {
       throw new Error("duplicate_id");
     }
     if (op.type === "place") {
@@ -55,7 +63,26 @@ function applyBatch(document: DrawicDocument, library: readonly SymbolDefinition
       if (!symbol) throw new Error("unknown_symbol");
       candidate = addComponent(candidate, page.id, {
         id: op.id, symbol, library, point: { x: op.x, y: op.y }, placementMode: "agent",
+        ...(op.rotation !== undefined ? { rotation: op.rotation } : {}),
+        ...(op.mirrored !== undefined ? { mirrored: op.mirrored } : {}),
+        ...(op.mirroredVertically !== undefined ? { mirroredVertically: op.mirroredVertically } : {}),
       });
+    } else if (op.type === "transform") {
+      if (op.x === undefined && op.y === undefined && op.rotation === undefined &&
+          op.mirrored === undefined && op.mirroredVertically === undefined) throw new Error("empty_transform");
+      const node = page.nodes.find(item => item.id === op.id);
+      if (!node) throw new Error("unknown_node");
+      candidate = updateNode(candidate, page.id, op.id, { x: op.x ?? node.x, y: op.y ?? node.y }, library);
+      const selection = [{ kind: "node" as const, id: op.id }];
+      for (let turn = 0; turn < ((op.rotation ?? node.rotation) - node.rotation + 360) % 360 / 90; turn++) {
+        candidate = rotateSelection(candidate, page.id, selection, library);
+      }
+      if (op.mirrored !== undefined && op.mirrored !== node.mirrored) {
+        candidate = mirrorSelection(candidate, page.id, selection, library);
+      }
+      if (op.mirroredVertically !== undefined && op.mirroredVertically !== (node.mirroredVertically ?? false)) {
+        candidate = mirrorSelectionVertical(candidate, page.id, selection, library);
+      }
     } else {
       const start = pinPosition(page, library, op.start);
       const end = pinPosition(page, library, op.end);
@@ -77,6 +104,7 @@ function applyBatch(document: DrawicDocument, library: readonly SymbolDefinition
   }
   // Enforce document-wide uniqueness, including other pages and other object kinds.
   parseProjectText(serializeProject(candidate));
+  if (candidate === document) throw new Error("no_effect");
   return candidate;
 }
 

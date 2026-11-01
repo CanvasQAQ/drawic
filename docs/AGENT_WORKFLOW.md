@@ -60,7 +60,7 @@ Implemented:
   ERC, and SVG/PNG/PDF export;
 - draw.io `mxlibrary` conversion helpers for device libraries.
 
-The optional [local MCP adapter](LOCAL_AGENT.md) reads the active page and commits versioned device placement and pin connection batches to the shared editor history.
+The optional [local MCP adapter](LOCAL_AGENT.md) reads the active page and commits versioned device placement, orientation and movement, and pin connection batches to the shared editor history.
 
 Not yet implemented in the UI:
 

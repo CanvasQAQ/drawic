@@ -332,6 +332,8 @@ export function addComponent(
     placementMode?: "gui" | "agent";
     library?: readonly SymbolDefinition[];
     rotation?: Rotation;
+    mirrored?: boolean;
+    mirroredVertically?: boolean;
     now?: string;
   },
 ): DrawicDocument {
@@ -357,7 +359,8 @@ export function addComponent(
         x: point.x,
         y: point.y,
         rotation: request.rotation ?? 0,
-        mirrored: false,
+        mirrored: request.mirrored ?? false,
+        ...(request.mirroredVertically ? { mirroredVertically: true } : {}),
       };
       const labelLayout = layoutNodeLabels(
         component,
