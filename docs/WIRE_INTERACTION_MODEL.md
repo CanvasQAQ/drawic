@@ -1,6 +1,6 @@
 # Drawic wire interaction model
 
-Status: normative, schema version 3, 2026-10-24
+Status: normative, schema version 4, 2026-10-24
 
 This document defines how schematic wires are represented, resolved, edited, and
 committed. Implementations must use one path fact for rendering, hit testing,
@@ -48,11 +48,11 @@ Intermediate bends use world-canvas coordinates. Segment identity, when present,
 must remain stable so labels, probes, and other attachments do not depend on a
 segment's current array index.
 
-Current Drawic schema version 3 stores nets, junction IDs, endpoint references,
-and bend points. Version 2 is rejected. Stable segment identity and per-segment
-direction mode remain reserved extension points. An optional six-digit
-hexadecimal Net color is additive within version 3 and does not affect
-connectivity.
+Current Drawic schema version 4 stores nets, junction IDs, endpoint references,
+and bend points. Version 3 is accepted and normalized to version 4, and version
+2 or earlier is rejected. Stable segment identity and per-segment direction mode
+remain reserved extension points. An optional six-digit hexadecimal Net color is
+additive within version 3 and does not affect connectivity.
 
 The editor implements shared endpoint/path resolution, topology-driven wire
 split/merge, rigid internal wire movement, local boundary stretching, grouped

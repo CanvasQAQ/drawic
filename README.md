@@ -20,8 +20,9 @@ Local implementation agents must begin with [AGENTS.md](AGENTS.md) and
 
 Version 0.3.0 is an **Unsigned Preview**. The editor uses independent drawing
 pages and a single-file device library, and can produce project, SPICE, SVG, PNG,
-and PDF files. User-editable libraries, Spectre/SCS, and local MCP are explicitly
-not implemented.
+and PDF files. Spectre/SCS and local MCP are explicitly not implemented.
+The capabilities below describe the current source tree; tagged packages may
+lag behind it.
 
 Tagged Preview releases publish Windows x64, macOS x64/arm64, and Linux x64
 packages. Windows SmartScreen and macOS Gatekeeper warnings are expected because
@@ -31,13 +32,21 @@ no signing identities are configured. Verify downloads against
 Use tags such as `v0.3.0-preview` for Preview releases. A plain semantic version
 tag such as `v1.0.0` is treated as a formal release.
 
-## Implemented in 0.3
+## Implemented capabilities
 
 - Searchable, category-filtered symbol library with 109 primary symbols, 11
   alternate appearances, and continuous placement mode. All device records are
   stored in one
   `.drawiclib.json` file, with sanitized themeable artwork, exact pin positions,
   label anchors, search terms, and SPICE metadata.
+- A user device library with a Browse / Audit / Custom manager. Custom devices
+  can be drawn in-app with line, polyline, rectangle, circle, ellipse, arc, and
+  text primitives; pins are placed on the frame edge and edited with their
+  direction and role. The user library imports and exports `.drawiclib.json`,
+  and referenced custom devices are embedded in saved project files so a shared
+  project opens without the author's local library.
+- Built-in pin directions can be reviewed in the manager's Audit tab, with the
+  same JSON correction export as before.
 - Selection, Shift multi-selection, marquee selection, grid movement, deletion,
   rotation, and mirroring.
 - A compact, hidden-by-default session console for editor activity and errors.
@@ -49,8 +58,9 @@ tag such as `v1.0.0` is treated as a formal release.
 - Shared wire endpoint resolution and movement planning, with rigid internal
   paths, locally stretched boundary wires, live previews, one undo entry per
   gesture, and fixed electrical endpoints.
-- Schema v3 stores explicit Net graphs: each net owns stable wire edges and
-  junctions, and each wire spans exactly two electrical endpoints.
+- The current schema v4 retains the explicit Net graph introduced in v3: each
+  net owns stable wire edges and junctions, and each wire spans exactly two
+  electrical endpoints.
 - Obstacle-aware orthogonal routing when creating new wires, plus handles on
   every wire segment. Automatic routes keep a two-grid-step pin escape and
   preserve endpoint devices as obstacles.
@@ -130,6 +140,12 @@ chmod 4755 node_modules/electron/dist/chrome-sandbox
 The production application loads a local Vite build. Drawic never starts an HTTP
 development server in normal application execution.
 
+For layout and interaction checks in Codex's side panel browser, run
+`npm run preview:browser` and open the fixed address in
+[docs/BROWSER_PREVIEW.md](docs/BROWSER_PREVIEW.md). This entry uses sample data
+and cannot verify real file operations or Electron IPC. The preview guide also
+describes its full scope and shutdown instructions.
+
 ```bash
 npm run verify:offline
 npm run verify:clean-room
@@ -144,16 +160,18 @@ newest formal release, then removes superseded Release entries and tags.
 
 ## Project files and local data
 
-Projects use the `.drawic.json` extension. Schema version 3 is strict: a document
-with an unknown future version is rejected rather than guessed at. The retired
-Cell-oriented preview format is explicitly rejected and is not migrated. IDs are
-stable UUIDs. Project saves write a temporary sibling file, flush it, and
-atomically rename it over the destination.
+Projects use the `.drawic.json` extension. Schema version 4 is current: version
+3 documents are accepted and normalized to version 4, while an unknown future
+version is rejected rather than guessed at. The retired Cell-oriented preview
+format is explicitly rejected and is not migrated. IDs are stable UUIDs. Project
+saves write a temporary sibling file, flush it, and atomically rename it over
+the destination.
 
 Electron stores mutable desktop data under its platform-specific `userData`
 directory:
 
 - `settings.json`: the ten most recent project paths.
+- `device-libraries/user.drawiclib.json`: the saved custom device library.
 - `recovery/*.drawic.json`: atomic unsaved-work checkpoints.
 - `recovery/latest.json`: the newest checkpoint pointer.
 
@@ -170,6 +188,11 @@ service, sync, account, telemetry, or update-check request.
 
 - Choose a symbol in the library, then click the canvas repeatedly to place
   copies. Press Escape to leave placement mode.
+- Open **Manage devices** from the palette to browse, audit, or edit custom
+  devices. **Save device** updates the library draft; **Save library** persists
+  it. Returning from an editor with unsaved device edits prompts to save or
+  discard. Existing project snapshots change only when **Refresh project
+  devices** is selected.
 - The Wire tool supports click-start, move preview, and click-finish. Clicking a
   device port before and after creates a wire bound to both ports.
 - The wheel zooms around the pointer. `F` fits the drawing, Ctrl+0 resets the

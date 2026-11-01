@@ -1,0 +1,17 @@
+.preview-mode-notice {
+  position: fixed;
+  z-index: 10000;
+  left: 50%;
+  bottom: 42px;
+  transform: translateX(-50%);
+  max-width: calc(100vw - 32px);
+  padding: 8px 14px;
+  border: 1px solid #e6b65c;
+  border-radius: 8px;
+  background: #293341;
+  color: #fff2d5;
+  box-shadow: 0 6px 20px #0008;
+  font: 13px/1.4 system-ui, sans-serif;
+  text-align: center;
+  pointer-events: none;
+}

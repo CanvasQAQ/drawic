@@ -17,6 +17,7 @@ export type AppCommand =
   | "import-spice"
   | "export-spice"
   | "run-erc"
+  | "manage-devices"
   | "toggle-library"
   | "toggle-properties";
 
@@ -60,6 +61,21 @@ export interface PinAuditExportRequest {
   content: string;
 }
 
+export interface SaveDeviceLibraryRequest {
+  content: string;
+}
+
+export interface DeviceLibraryImportResult {
+  canceled: boolean;
+  content?: string;
+  path?: string;
+}
+
+export interface DeviceLibraryExportRequest {
+  suggestedName: string;
+  content: string;
+}
+
 export interface RecoveryPayload {
   path: string;
   content: string;
@@ -75,6 +91,10 @@ export interface DrawicBridge {
   importSpice: () => Promise<OpenProjectPayload | null>;
   saveSpice: (suggestedName: string, content: string) => Promise<ExportResult>;
   savePinAudit: (request: PinAuditExportRequest) => Promise<ExportResult>;
+  loadUserDeviceLibrary: () => Promise<string | null>;
+  saveUserDeviceLibrary: (request: SaveDeviceLibraryRequest) => Promise<void>;
+  importDeviceLibrary: () => Promise<DeviceLibraryImportResult>;
+  exportDeviceLibrary: (request: DeviceLibraryExportRequest) => Promise<ExportResult>;
   checkpoint: (request: { projectId: string; content: string }) => Promise<void>;
   clearRecovery: (projectId: string) => Promise<void>;
   getRecovery: () => Promise<RecoveryPayload | null>;

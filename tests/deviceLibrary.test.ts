@@ -5,9 +5,12 @@ import {
   DEVICE_LIBRARY_FORMAT,
   deviceLibraryToMxLibrary,
   loadDeviceLibrary,
-  parseMxLibraryTitles,
   parseDeviceLibrary,
+  parseMxLibraryTitles,
+  serializeDeviceLibraryFile,
+  type DeviceLibraryRecord,
 } from "../src/core/library";
+import { buildDeviceLibraryFile } from "../src/core/deviceLibraryRegistry";
 import {
   NAME_BASE_FONT_SIZE,
   layoutNodeLabels,
@@ -229,5 +232,123 @@ describe("single-file device library", () => {
     expect(parseMxLibraryTitles(mxLibrary)).toHaveLength(120);
     expect(mxLibrary).toContain('"title": "Resistor"');
     expect(mxLibrary).toContain("data:image/svg+xml;base64,");
+  });
+});
+
+describe("editable device artwork in library schema version 2", () => {
+  function recordWithShapes(
+    shapes: DeviceLibraryRecord["artwork"]["shapes"] = [
+      { id: "shape-1", kind: "circle", cx: 0, cy: 0, r: 6 },
+    ],
+  ): DeviceLibraryRecord {
+    return {
+      id: "custom-a",
+      title: "Custom A",
+      category: "custom",
+      keywords: [],
+      electrical: true,
+      palette: true,
+      frame: { x: -10, y: -10, width: 20, height: 20 },
+      artwork: {
+        type: "svg",
+        viewBox: "-10 -10 20 20",
+        body: "",
+        shapes,
+        source: "custom.svg",
+        sourceSha256: "0",
+      },
+      pins: [
+        {
+          id: "1",
+          key: "1",
+          name: "1",
+          role: "passive",
+          direction: "west",
+          side: "west",
+          x: -10,
+          y: 0,
+        },
+      ],
+      labelAnchors: {
+        reference: { x: 10, y: -3, anchor: "start" },
+        value: { x: 10, y: 6, anchor: "start" },
+      },
+      spice: { prefix: "X", defaultValue: "", supported: false },
+      metadata: { sourceCollection: "user", sourceRevision: null },
+    };
+  }
+
+  it("regenerates the rendered body from shapes and ignores a tampered body", () => {
+    const library = buildDeviceLibraryFile({
+      id: "drawic-user",
+      title: "Custom devices",
+      collection: "user",
+      devices: [recordWithShapes()],
+    });
+    expect(library.schemaVersion).toBe(2);
+    const raw = JSON.parse(serializeDeviceLibraryFile(library)) as {
+      schemaVersion: number;
+      devices: DeviceLibraryRecord[];
+    };
+    raw.devices[0]!.artwork.body = '<rect x="0" y="0" width="1" height="1"/>';
+
+    const parsed = parseDeviceLibrary(raw, { sanitize: true });
+    expect(parsed.schemaVersion).toBe(2);
+    expect(parsed.devices[0]!.artwork.shapes).toHaveLength(1);
+    expect(parsed.devices[0]!.artwork.body).toContain("<circle");
+    expect(parsed.devices[0]!.artwork.body).not.toContain("<rect");
+  });
+
+  it("escapes text primitives instead of emitting markup", () => {
+    const library = buildDeviceLibraryFile({
+      id: "drawic-user",
+      title: "Custom devices",
+      collection: "user",
+      devices: [
+        recordWithShapes([
+          {
+            id: "shape-1",
+            kind: "text",
+            x: 0,
+            y: 0,
+            text: "<script>alert(1)</script>",
+          },
+        ]),
+      ],
+    });
+    const parsed = parseDeviceLibrary(
+      JSON.parse(serializeDeviceLibraryFile(library)),
+      { sanitize: true },
+    );
+    const body = parsed.devices[0]!.artwork.body;
+    expect(body).toContain("&lt;script&gt;");
+    expect(body).not.toMatch(/<script\b/i);
+  });
+
+  it("still accepts version 1 libraries with an opaque body", () => {
+    const versionOne = {
+      format: DEVICE_LIBRARY_FORMAT,
+      schemaVersion: 1,
+      id: "drawic-user",
+      title: "Custom devices",
+      revision: "legacy",
+      source: { collection: "user", manifestVersion: 1, entryCount: 1 },
+      devices: [
+        {
+          ...recordWithShapes(),
+          artwork: {
+            type: "svg",
+            viewBox: "-10 -10 20 20",
+            body: '<rect x="-4" y="-4" width="8" height="8" fill="#000"/>',
+            source: "custom.svg",
+            sourceSha256: "0",
+          },
+        },
+      ],
+    };
+    const parsed = parseDeviceLibrary(versionOne, { sanitize: true });
+    expect(parsed.schemaVersion).toBe(1);
+    expect(parsed.devices[0]!.artwork.shapes).toBeUndefined();
+    expect(parsed.devices[0]!.artwork.body).toContain('fill="currentColor"');
   });
 });

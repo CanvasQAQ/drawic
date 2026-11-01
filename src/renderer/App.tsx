@@ -3,8 +3,17 @@ import {
   defaultDeviceValue,
   loadDeviceLibrary,
   parseDeviceLibrary,
+  parseDeviceLibraryText,
+  serializeDeviceLibraryFile,
   suggestedReference,
+  type DeviceLibraryFile,
 } from "../core/library";
+import {
+  embedReferencedDevices,
+  emptyUserDeviceLibrary,
+  mergeDeviceSymbols,
+  missingSymbolIds,
+} from "../core/deviceLibraryRegistry";
 import {
   addComponent,
   duplicateSelection,
@@ -84,7 +93,7 @@ import { ErcPanel } from "./components/ErcPanel";
 import { Icon } from "./components/Icons";
 import { LibraryPanel } from "./components/LibraryPanel";
 import { PropertiesPanel } from "./components/PropertiesPanel";
-import { PinAuditScreen } from "./components/PinAuditScreen";
+import { DeviceLibraryScreen } from "./components/DeviceLibraryScreen";
 import {
   SchematicCanvas,
   type CanvasInlineEditingTarget,
@@ -105,8 +114,8 @@ import {
   type Theme,
 } from "./theme";
 
-const builtInLibrary = loadDeviceLibrary(parseDeviceLibrary(builtInDeviceLibraryJson));
-const library = builtInLibrary.symbols;
+const builtInLibraryFile = parseDeviceLibrary(builtInDeviceLibraryJson);
+const builtInLibrary = loadDeviceLibrary(builtInLibraryFile);
 
 type NameDialogState =
   | { kind: "new-page"; initial: string }
@@ -163,7 +172,12 @@ export function App() {
   const [nameDialog, setNameDialog] = useState<NameDialogState>(null);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
-  const [pinAuditOpen, setPinAuditOpen] = useState(false);
+  const [deviceLibraryOpen, setDeviceLibraryOpen] = useState(false);
+  const [userLibraryFile, setUserLibraryFile] = useState<DeviceLibraryFile | null>(
+    null,
+  );
+  const [savedUserLibraryFile, setSavedUserLibraryFile] =
+    useState<DeviceLibraryFile | null>(null);
   const [pendingTextAnnotationId, setPendingTextAnnotationId] = useState<string | null>(null);
   const [pendingNoteShapeId, setPendingNoteShapeId] = useState<string | null>(null);
   const [theme, setTheme] = useState<Theme>(() => resolveInitialTheme());
@@ -173,10 +187,24 @@ export function App() {
   } | null>(null);
   const launchChecked = useRef(false);
   const recoveryChecked = useRef(false);
+  const userLibraryChecked = useRef(false);
   const logSequence = useRef(0);
   const historyPreview = useRef(createHistoryPreview<DrawicDocument>());
 
   const document = history.present;
+  const library = useMemo(
+    () =>
+      mergeDeviceSymbols({
+        builtIn: builtInLibrary,
+        ...(document.embeddedLibrary
+          ? { embedded: loadDeviceLibrary(document.embeddedLibrary) }
+          : {}),
+        ...(userLibraryFile
+          ? { user: loadDeviceLibrary(userLibraryFile) }
+          : {}),
+      }),
+    [document.embeddedLibrary, userLibraryFile],
+  );
   const page = useMemo(
     () => document.pages.find((candidate) => candidate.id === activePageId) ?? document.pages[0]!,
     [activePageId, document],
@@ -184,8 +212,21 @@ export function App() {
   const serialized = useMemo(() => serializeProject(document), [document]);
   const pageConnectivity = useMemo(
     () => buildConnectivity(page, library),
-    [page],
+    [library, page],
   );
+  const userLibraryText = useMemo(
+    () =>
+      userLibraryFile ? serializeDeviceLibraryFile(userLibraryFile) : null,
+    [userLibraryFile],
+  );
+  const savedUserLibraryText = useMemo(
+    () =>
+      savedUserLibraryFile
+        ? serializeDeviceLibraryFile(savedUserLibraryFile)
+        : null,
+    [savedUserLibraryFile],
+  );
+  const userLibraryDirty = userLibraryText !== savedUserLibraryText;
   const dirty = serialized !== savedText;
   const visiblePathName = filePath ?? `${document.title}.drawic.json`;
   const selectionKey = useMemo(
@@ -265,7 +306,11 @@ export function App() {
   const saveProject = useCallback(
     async (forceDialog = false): Promise<boolean> => {
       try {
-        const content = serializeProject(history.present);
+        const embedded = embedReferencedDevices(history.present, {
+          builtIn: builtInLibrary,
+          ...(userLibraryFile ? { userLibrary: userLibraryFile } : {}),
+        });
+        const content = serializeProject(embedded.document);
         const result = await window.drawic.saveProject({
           path: forceDialog ? null : filePath,
           suggestedName: projectNameFromPath(filePath),
@@ -276,16 +321,27 @@ export function App() {
           return false;
         }
         setFilePath(result.path);
+        setHistory((current) =>
+          serializeProject(current.present) === serializeProject(history.present)
+            ? { ...current, present: embedded.document }
+            : current,
+        );
         setSavedText(content);
         await window.drawic.clearRecovery(history.present.id);
         appendLog(`Saved ${projectNameFromPath(result.path)}.drawic.json`, "success");
+        if (embedded.missing.length > 0) {
+          appendLog(
+            `Saved without ${embedded.missing.length} device definition(s): ${embedded.missing.join(", ")}.`,
+            "warning",
+          );
+        }
         return true;
       } catch (error) {
         appendLog(`Save failed: ${errorMessage(error)}`, "error");
         return false;
       }
     },
-    [appendLog, filePath, history.present],
+    [appendLog, filePath, history.present, userLibraryFile],
   );
 
   const loadOpenPayload = useCallback(
@@ -294,12 +350,28 @@ export function App() {
         const parsed = parseProjectText(payload.content);
         const normalized = canonicalizeDocumentNetGraph(parsed);
         replaceDocument(normalized, serializeProject(parsed), payload.path);
+        const embedded = parsed.embeddedLibrary
+          ? loadDeviceLibrary(parsed.embeddedLibrary)
+          : undefined;
+        const missing = missingSymbolIds(normalized, {
+          builtIn: builtInLibrary,
+          ...(embedded ? { embedded } : {}),
+          ...(userLibraryFile
+            ? { user: loadDeviceLibrary(userLibraryFile) }
+            : {}),
+        });
+        if (missing.length > 0) {
+          appendLog(
+            `Opened with ${missing.length} missing device definition(s): ${missing.join(", ")}.`,
+            "warning",
+          );
+        }
         appendLog(`Opened ${projectNameFromPath(payload.path)}.drawic.json`, "success");
       } catch (error) {
         appendLog(`Could not open project: ${errorMessage(error)}`, "error");
       }
     },
-    [appendLog, replaceDocument],
+    [appendLog, replaceDocument, userLibraryFile],
   );
 
   const guardUnsaved = useCallback(
@@ -361,7 +433,7 @@ export function App() {
     } catch (error) {
       appendLog(`SPICE import failed: ${errorMessage(error)}`, "error");
     }
-  }, [appendLog, commitMutation]);
+  }, [appendLog, commitMutation, library]);
 
   const exportDiagram = useCallback(
     async (kind: ExportKind) => {
@@ -388,7 +460,7 @@ export function App() {
         appendLog(`Export failed: ${errorMessage(error)}`, "error");
       }
     },
-    [activePageId, appendLog, document.typography, filePath, history.present],
+    [activePageId, appendLog, document.typography, filePath, history.present, library],
   );
 
   const saveSpiceFile = useCallback(async () => {
@@ -409,11 +481,11 @@ export function App() {
     } catch (error) {
       appendLog(`SPICE export failed: ${errorMessage(error)}`, "error");
     }
-  }, [activePageId, appendLog, filePath, history.present]);
+  }, [activePageId, appendLog, filePath, history.present, library]);
 
   const runErc = useCallback(() => {
     setDiagnostics(runElectricalRules(pageById(history.present, activePageId), library));
-  }, [activePageId, history.present]);
+  }, [activePageId, history.present, library]);
 
   const goToDiagnostic = useCallback(
     (itemId: string) => {
@@ -459,7 +531,7 @@ export function App() {
       rotateSelection(current, activePageId, selection, library),
     );
     setDiagnostics(null);
-  }, [activePageId, commitMutation, selection]);
+  }, [activePageId, commitMutation, library, selection]);
 
   const reorderSelected = useCallback(
     (direction: LayerDirection) => {
@@ -498,14 +570,14 @@ export function App() {
       mirrorSelection(current, activePageId, selection, library),
     );
     setDiagnostics(null);
-  }, [activePageId, commitMutation, selection]);
+  }, [activePageId, commitMutation, library, selection]);
 
   const mirrorSelectedVertical = useCallback(() => {
     commitMutation((current) =>
       mirrorSelectionVertical(current, activePageId, selection, library),
     );
     setDiagnostics(null);
-  }, [activePageId, commitMutation, selection]);
+  }, [activePageId, commitMutation, library, selection]);
 
   const placeAt = useCallback(
     (point: Point, rotation: 0 | 90 | 180 | 270 = 0) => {
@@ -532,7 +604,7 @@ export function App() {
       setSelection([{ kind: "node", id }]);
       appendLog(`Placed ${reference}. Placement remains active.`);
     },
-    [activePageId, appendLog, commitMutation, history.present, placementSymbol],
+    [activePageId, appendLog, commitMutation, history.present, library, placementSymbol],
   );
 
   const addWire = useCallback(
@@ -596,7 +668,7 @@ export function App() {
         setTool("select");
       }
     },
-    [activePageId, appendLog, commitMutation, tool],
+    [activePageId, appendLog, commitMutation, library, tool],
   );
 
   const updateWire = useCallback(
@@ -732,7 +804,7 @@ export function App() {
         ),
       );
     },
-    [commitMutation, page.id],
+    [commitMutation, library, page.id],
   );
 
   const updateReferenceLabel = useCallback(
@@ -764,7 +836,7 @@ export function App() {
         setDiagnostics(null);
       }
     },
-    [activePageId, commitMutation, selection],
+    [activePageId, commitMutation, library, selection],
   );
 
   const changeTool = useCallback((nextTool: EditorTool) => {
@@ -855,9 +927,82 @@ export function App() {
     });
   }, []);
 
+  const openDeviceLibrary = useCallback(() => {
+    setDeviceLibraryOpen(true);
+  }, []);
+
+  const saveUserLibrary = useCallback(async (): Promise<boolean> => {
+    try {
+      const library = userLibraryFile ?? emptyUserDeviceLibrary();
+      await window.drawic.saveUserDeviceLibrary({
+        content: serializeDeviceLibraryFile(library),
+      });
+      setUserLibraryFile(library);
+      setSavedUserLibraryFile(library);
+      appendLog("Saved the custom device library.", "success");
+      return true;
+    } catch (error) {
+      appendLog(
+        `Device library save failed: ${errorMessage(error)}`,
+        "error",
+      );
+      return false;
+    }
+  }, [appendLog, userLibraryFile]);
+
+  const importUserLibrary = useCallback(
+    () => window.drawic.importDeviceLibrary(),
+    [],
+  );
+
+  const exportUserLibrary = useCallback(
+    (library: DeviceLibraryFile) =>
+      window.drawic.exportDeviceLibrary({
+        suggestedName: "drawic-user-devices",
+        content: serializeDeviceLibraryFile(library),
+      }),
+    [],
+  );
+
+  const refreshEmbeddedDevices = useCallback((): string => {
+    const result = embedReferencedDevices(history.present, {
+      builtIn: builtInLibrary,
+      ...(userLibraryFile ? { userLibrary: userLibraryFile } : {}),
+      refreshExisting: true,
+    });
+    commitDocument(result.document);
+    const count = result.document.embeddedLibrary?.devices.length ?? 0;
+    if (result.missing.length > 0) {
+      return `Refreshed ${count} project device definition(s); ${result.missing.length} still missing.`;
+    }
+    return `Refreshed ${count} project device definition(s) from the draft library.`;
+  }, [commitDocument, history.present, userLibraryFile]);
+
   useEffect(() => {
     window.drawic.setDocumentDirty(dirty);
   }, [dirty]);
+
+  useEffect(() => {
+    if (userLibraryChecked.current) {
+      return;
+    }
+    userLibraryChecked.current = true;
+    void window.drawic
+      .loadUserDeviceLibrary()
+      .then((content) => {
+        if (content) {
+          const parsed = parseDeviceLibraryText(content, { sanitize: true });
+          setUserLibraryFile(parsed);
+          setSavedUserLibraryFile(parsed);
+        }
+      })
+      .catch((error) =>
+        appendLog(
+          `Could not load custom devices: ${errorMessage(error)}`,
+          "warning",
+        ),
+      );
+  }, [appendLog]);
 
   useEffect(() => {
     applyThemeToDocument(theme);
@@ -950,8 +1095,7 @@ export function App() {
         target?.tagName === "SELECT" ||
         target?.isContentEditable;
       if (event.key === "Escape") {
-        if (pinAuditOpen) {
-          setPinAuditOpen(false);
+        if (deviceLibraryOpen) {
           return;
         }
         setPlacementSymbol(null);
@@ -960,7 +1104,7 @@ export function App() {
         setNameDialog(null);
         return;
       }
-      if (pinAuditOpen) {
+      if (deviceLibraryOpen) {
         return;
       }
       if (isTyping) {
@@ -1011,7 +1155,7 @@ export function App() {
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [changeTool, deleteSelection, pinAuditOpen, undo]);
+  }, [changeTool, deleteSelection, deviceLibraryOpen, undo]);
 
   const handleCommand = useCallback(
     (command: AppCommand) => {
@@ -1068,6 +1212,9 @@ export function App() {
         case "run-erc":
           runErc();
           break;
+        case "manage-devices":
+          openDeviceLibrary();
+          break;
         case "toggle-library":
           setLibraryVisible((visible) => !visible);
           break;
@@ -1082,6 +1229,7 @@ export function App() {
       importSpiceFile,
       mirrorSelected,
       newProject,
+      openDeviceLibrary,
       openProject,
       redo,
       rotateSelected,
@@ -1195,6 +1343,7 @@ export function App() {
             selectedSymbolId={placementSymbol?.id ?? null}
             onSelect={chooseSymbol}
             onCollapse={() => setLibraryVisible(false)}
+            onManageDevices={openDeviceLibrary}
           />
         ) : (
           <button
@@ -1414,13 +1563,20 @@ export function App() {
         </div>
       </footer>
 
-      {pinAuditOpen ? (
-        <PinAuditScreen
-          symbols={library}
-          libraryId={builtInLibrary.id}
-          libraryRevision={builtInLibrary.revision}
-          onClose={() => setPinAuditOpen(false)}
-          onExport={savePinAudit}
+      {deviceLibraryOpen ? (
+        <DeviceLibraryScreen
+          builtInFile={builtInLibraryFile}
+          userFile={userLibraryFile}
+          embeddedFile={document.embeddedLibrary}
+          userDirty={userLibraryDirty}
+          onClose={() => setDeviceLibraryOpen(false)}
+          onChangeUserLibrary={setUserLibraryFile}
+          onDiscardUserLibrary={() => setUserLibraryFile(savedUserLibraryFile)}
+          onSaveUserLibrary={saveUserLibrary}
+          onImportLibrary={importUserLibrary}
+          onExportLibrary={exportUserLibrary}
+          onExportAudit={savePinAudit}
+          onRefreshEmbedded={refreshEmbeddedDevices}
         />
       ) : null}
 
@@ -1511,12 +1667,12 @@ export function App() {
               type="button"
               onClick={() => {
                 setExportOpen(false);
-                setPinAuditOpen(true);
+                openDeviceLibrary();
               }}
             >
-              <span className="export-format">PINS</span>
-              <strong>Audit pin directions</strong>
-              <small>Review and export device pin escape data</small>
+              <span className="export-format">DEVICES</span>
+              <strong>Device library</strong>
+              <small>Browse, audit, and create custom devices</small>
             </button>
           </div>
           <p className="dialog-footnote">

@@ -1,7 +1,15 @@
 import type { SymbolDefinition, SymbolSide } from "./model";
+import {
+  parseDeviceArtworkShapes,
+  serializeDeviceArtwork,
+  type DeviceArtworkShape,
+} from "./deviceArtwork";
+import { sanitizeSvgFragment } from "./svgSanitize";
 
 export const DEVICE_LIBRARY_FORMAT = "drawic-device-library" as const;
-export const DEVICE_LIBRARY_SCHEMA_VERSION = 1 as const;
+export const DEVICE_LIBRARY_SCHEMA_VERSION = 2 as const;
+export const MIN_DEVICE_LIBRARY_SCHEMA_VERSION = 1 as const;
+export type DeviceLibrarySchemaVersion = 1 | 2;
 
 export interface DeviceLibraryLabelAnchor {
   x: number;
@@ -43,6 +51,7 @@ export interface DeviceLibraryRecord {
     type: "svg";
     viewBox: string;
     body: string;
+    shapes?: DeviceArtworkShape[];
     source: string;
     sourceSha256: string;
   };
@@ -60,7 +69,7 @@ export interface DeviceLibraryRecord {
 
 export interface DeviceLibraryFile {
   format: typeof DEVICE_LIBRARY_FORMAT;
-  schemaVersion: typeof DEVICE_LIBRARY_SCHEMA_VERSION;
+  schemaVersion: DeviceLibrarySchemaVersion;
   id: string;
   title: string;
   revision: string;
@@ -153,7 +162,11 @@ function parsePin(value: unknown, field: string): DeviceLibraryPin {
   };
 }
 
-function parseDevice(value: unknown, index: number): DeviceLibraryRecord {
+function parseDevice(
+  value: unknown,
+  index: number,
+  sanitize: boolean,
+): DeviceLibraryRecord {
   const field = `devices[${index}]`;
   if (
     !isRecord(value) ||
@@ -170,9 +183,31 @@ function parseDevice(value: unknown, index: number): DeviceLibraryRecord {
   if (value.artwork.type !== "svg") {
     throw new Error(`${field}.artwork.type is unsupported.`);
   }
-  const body = expectString(value.artwork.body, `${field}.artwork.body`);
-  if (/<script\b|\son[a-z]+\s*=|javascript:/i.test(body)) {
+  const shapes =
+    value.artwork.shapes === undefined
+      ? undefined
+      : parseDeviceArtworkShapes(
+          value.artwork.shapes,
+          `${field}.artwork.shapes`,
+        );
+  const storedBody =
+    value.artwork.body === undefined && shapes
+      ? ""
+      : expectString(value.artwork.body, `${field}.artwork.body`);
+  const rawBody = shapes ? serializeDeviceArtwork(shapes) : storedBody;
+  if (!rawBody) {
+    throw new Error(`${field}.artwork.body must not be empty.`);
+  }
+  if (/<script\b|\son[a-z]+\s*=|javascript:/i.test(rawBody)) {
     throw new Error(`${field}.artwork.body contains executable content.`);
+  }
+  let body = rawBody;
+  if (sanitize) {
+    try {
+      body = sanitizeSvgFragment(rawBody);
+    } catch {
+      throw new Error(`${field}.artwork.body is not safe SVG.`);
+    }
   }
   const parsedFrame = {
     x: expectNumber(value.frame.x, `${field}.frame.x`),
@@ -240,6 +275,7 @@ function parseDevice(value: unknown, index: number): DeviceLibraryRecord {
       type: "svg",
       viewBox: expectString(value.artwork.viewBox, `${field}.artwork.viewBox`),
       body,
+      ...(shapes ? { shapes } : {}),
       source: expectString(value.artwork.source, `${field}.artwork.source`),
       sourceSha256: expectString(value.artwork.sourceSha256, `${field}.artwork.sourceSha256`),
     },
@@ -271,20 +307,35 @@ function parseDevice(value: unknown, index: number): DeviceLibraryRecord {
   };
 }
 
-export function parseDeviceLibrary(value: unknown): DeviceLibraryFile {
+export interface ParseDeviceLibraryOptions {
+  sanitize?: boolean;
+}
+
+export function parseDeviceLibrary(
+  value: unknown,
+  options: ParseDeviceLibraryOptions = {},
+): DeviceLibraryFile {
   if (!isRecord(value)) {
     throw new Error("Device library root must be an object.");
   }
   if (value.format !== DEVICE_LIBRARY_FORMAT) {
     throw new Error("This file is not a Drawic device library.");
   }
-  if (value.schemaVersion !== DEVICE_LIBRARY_SCHEMA_VERSION) {
+  if (
+    value.schemaVersion !== MIN_DEVICE_LIBRARY_SCHEMA_VERSION &&
+    value.schemaVersion !== DEVICE_LIBRARY_SCHEMA_VERSION
+  ) {
     throw new Error("This Drawic device library version is not supported.");
   }
+  const schemaVersion: DeviceLibrarySchemaVersion =
+    value.schemaVersion === MIN_DEVICE_LIBRARY_SCHEMA_VERSION ? 1 : 2;
   if (!Array.isArray(value.devices)) {
     throw new Error("Device library must contain a devices array.");
   }
-  const devices = value.devices.map(parseDevice);
+  const sanitize = options.sanitize ?? false;
+  const devices = value.devices.map((device, index) =>
+    parseDevice(device, index, sanitize),
+  );
   const ids = new Set<string>();
   for (const device of devices) {
     if (ids.has(device.id)) {
@@ -294,7 +345,7 @@ export function parseDeviceLibrary(value: unknown): DeviceLibraryFile {
   }
   return {
     format: DEVICE_LIBRARY_FORMAT,
-    schemaVersion: DEVICE_LIBRARY_SCHEMA_VERSION,
+    schemaVersion,
     id: expectString(value.id, "id"),
     title: expectString(value.title, "title"),
     revision: expectString(value.revision, "revision"),
@@ -314,6 +365,25 @@ export function parseDeviceLibrary(value: unknown): DeviceLibraryFile {
     },
     devices,
   };
+}
+
+export function parseDeviceLibraryText(
+  text: string,
+  options: ParseDeviceLibraryOptions = {},
+): DeviceLibraryFile {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    throw new Error("This file is not valid JSON.");
+  }
+  return parseDeviceLibrary(parsed, options);
+}
+
+export function serializeDeviceLibraryFile(
+  library: DeviceLibraryFile,
+): string {
+  return `${JSON.stringify(library, null, 2)}\n`;
 }
 
 const libraryCache = new WeakMap<DeviceLibraryFile, LoadedDeviceLibrary>();

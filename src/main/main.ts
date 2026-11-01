@@ -13,6 +13,7 @@ import { basename, dirname, extname, join, resolve } from "node:path";
 import { buildBitmapPdf } from "../core/export/pdf";
 import type {
   AppCommand,
+  DeviceLibraryExportRequest,
   ExportRequest,
   PinAuditExportRequest,
   SaveProjectRequest,
@@ -30,6 +31,12 @@ import {
   readProjectFile,
   writeJson,
 } from "./fileStore";
+import {
+  importDeviceLibraryFile,
+  loadUserDeviceLibrary,
+  saveUserDeviceLibrary,
+  userDeviceLibraryPath,
+} from "./deviceLibraryStore";
 import {
   WINDOW_DEFAULT_HEIGHT,
   WINDOW_DEFAULT_WIDTH,
@@ -249,7 +256,13 @@ function buildMenu(recent: RecentEntry[] = []): Menu {
     },
     {
       label: "Tools",
-      submenu: [{ label: "Run Electrical Rules", click: () => sendCommand("run-erc") }],
+      submenu: [
+        { label: "Run Electrical Rules", click: () => sendCommand("run-erc") },
+        {
+          label: "Manage Device Library",
+          click: () => sendCommand("manage-devices"),
+        },
+      ],
     },
   ];
   return Menu.buildFromTemplate(template);
@@ -547,6 +560,89 @@ function registerIpc(): void {
         ? result.filePath
         : `${result.filePath}.json`;
       await atomicWriteFile(target, request.content);
+      const details = await stat(target);
+      return { canceled: false, path: target, bytes: details.size };
+    },
+  );
+  ipcMain.handle("device-library:load", async (event) => {
+    if (event.sender !== mainWindow?.webContents) {
+      return null;
+    }
+    return loadUserDeviceLibrary(
+      userDeviceLibraryPath(app.getPath("userData")),
+    );
+  });
+  ipcMain.handle(
+    "device-library:save",
+    async (event, request: { content: string }) => {
+      if (event.sender !== mainWindow?.webContents) {
+        throw new Error("Unexpected renderer for device library save.");
+      }
+      if (typeof request?.content !== "string") {
+        throw new Error("Invalid device library save.");
+      }
+      await saveUserDeviceLibrary(
+        userDeviceLibraryPath(app.getPath("userData")),
+        request.content,
+      );
+    },
+  );
+  ipcMain.handle("device-library:import", async (event) => {
+    if (event.sender !== mainWindow?.webContents) {
+      return { canceled: true };
+    }
+    const owner = BrowserWindow.getFocusedWindow() ?? mainWindow ?? undefined;
+    const options: Electron.OpenDialogOptions = {
+      title: "Import Drawic Device Library",
+      properties: ["openFile"],
+      filters: [
+        { name: "Drawic device library", extensions: ["json"] },
+        { name: "All files", extensions: ["*"] },
+      ],
+    };
+    const result = owner
+      ? await dialog.showOpenDialog(owner, options)
+      : await dialog.showOpenDialog(options);
+    if (result.canceled || !result.filePaths[0]) {
+      return { canceled: true };
+    }
+    const content = await importDeviceLibraryFile(result.filePaths[0]);
+    return { canceled: false, content, path: result.filePaths[0] };
+  });
+  ipcMain.handle(
+    "device-library:export",
+    async (event, request: DeviceLibraryExportRequest) => {
+      if (event.sender !== mainWindow?.webContents) {
+        throw new Error("Unexpected renderer for device library export.");
+      }
+      if (
+        typeof request?.suggestedName !== "string" ||
+        typeof request.content !== "string"
+      ) {
+        throw new Error("Invalid device library export.");
+      }
+      const owner = BrowserWindow.getFocusedWindow() ?? mainWindow ?? undefined;
+      const safeName =
+        request.suggestedName.replace(/[^a-zA-Z0-9._-]/g, "-").slice(0, 96) ||
+        "drawic-user-devices";
+      const options: Electron.SaveDialogOptions = {
+        title: "Export Drawic Device Library",
+        defaultPath: `${safeName}.drawiclib.json`,
+        filters: [{ name: "Drawic device library", extensions: ["json"] }],
+      };
+      const result = owner
+        ? await dialog.showSaveDialog(owner, options)
+        : await dialog.showSaveDialog(options);
+      if (result.canceled || !result.filePath) {
+        return { canceled: true };
+      }
+      const lower = result.filePath.toLowerCase();
+      const target = lower.endsWith(".drawiclib.json")
+        ? result.filePath
+        : lower.endsWith(".json")
+          ? `${result.filePath.slice(0, -5)}.drawiclib.json`
+          : `${result.filePath}.drawiclib.json`;
+      await saveUserDeviceLibrary(target, request.content);
       const details = await stat(target);
       return { canceled: false, path: target, bytes: details.size };
     },
@@ -936,6 +1032,157 @@ async function runSmokeCheck(window: BrowserWindow): Promise<void> {
             const dangerBackground = getComputedStyle(
               document.querySelector('.danger-button')
             ).backgroundColor;
+            document.querySelector('button[aria-label="Switch to dark theme"]')?.click();
+            await wait(40);
+            const manageButton = [...document.querySelectorAll('button')].find(
+              (button) =>
+                button.textContent && button.textContent.includes('Manage devices')
+            );
+            manageButton?.click();
+            await waitFor(
+              () => Boolean(document.querySelector('.device-library-screen')),
+              1500
+            );
+            const managerOpened = Boolean(
+              document.querySelector('.device-library-screen')
+            );
+            const auditTab = [
+              ...document.querySelectorAll('.device-library-tabs button')
+            ].find((button) => button.textContent?.includes('Audit'));
+            auditTab?.click();
+            await waitFor(
+              () => Boolean(document.querySelector('.pin-audit-panel')),
+              2000
+            );
+            const managerAudit = Boolean(
+              document.querySelector('.pin-audit-panel')
+            );
+            const auditColors = () => [
+              '.pin-audit-summary',
+              '.pin-audit-toggle',
+              '.pin-audit-footer'
+            ].map((selector) => getComputedStyle(document.querySelector(selector)).backgroundColor);
+            const darkAuditColors = auditColors();
+            document.querySelector('button[aria-label="Switch to light theme"]')?.click();
+            await wait(50);
+            const lightAuditColors = auditColors();
+            const auditThemeParity = darkAuditColors.every((color, index) => color !== lightAuditColors[index]);
+            document.querySelector('button[aria-label="Switch to dark theme"]')?.click();
+            await wait(50);
+            const customTab = [
+              ...document.querySelectorAll('.device-library-tabs button')
+            ].find((button) => button.textContent?.includes('Custom'));
+            customTab?.click();
+            await waitFor(
+              () =>
+                Boolean(document.querySelector('.device-library-screen')) &&
+                document.body.textContent.includes('No custom devices yet'),
+              1500
+            );
+            const managerCustom = document.body.textContent.includes(
+              'No custom devices yet'
+            );
+            const titlebarBottom = document.querySelector('.window-titlebar')?.getBoundingClientRect().bottom;
+            const managerTop = document.querySelector('.device-library-screen')?.getBoundingClientRect().top;
+            const darkManagerHeaderColor = getComputedStyle(document.querySelector('.device-library-header')).backgroundColor;
+            document.querySelector('button[aria-label="Switch to light theme"]')?.click();
+            await wait(50);
+            const lightManagerHeaderColor = getComputedStyle(document.querySelector('.device-library-header')).backgroundColor;
+            document.querySelector('button[aria-label="Switch to dark theme"]')?.click();
+            await wait(50);
+            const newDeviceButton = [...document.querySelectorAll('button')].find(
+              (button) => button.textContent?.includes('New device')
+            );
+            newDeviceButton?.click();
+            await waitFor(
+              () => Boolean(document.querySelector('.device-editor')),
+              2000
+            );
+            const editorOpened = Boolean(document.querySelector('.device-editor'));
+            const rectTool = [
+              ...document.querySelectorAll('.device-editor-tool')
+            ].find((button) => button.textContent === 'Rect');
+            rectTool?.click();
+            await wait(40);
+            const editorCanvas = document.querySelector('.device-editor-canvas');
+            const editorBox = editorCanvas.getBoundingClientRect();
+            const editorX = (ratio) => editorBox.left + editorBox.width * ratio;
+            const editorY = (ratio) => editorBox.top + editorBox.height * ratio;
+            const fireEditorPointer = (type, x, y, buttons) => {
+              editorCanvas.dispatchEvent(
+                new PointerEvent(type, {
+                  bubbles: true,
+                  cancelable: true,
+                  pointerId: 21,
+                  pointerType: 'mouse',
+                  button: 0,
+                  buttons,
+                  clientX: x,
+                  clientY: y
+                })
+              );
+            };
+            fireEditorPointer('pointerdown', editorX(0.3), editorY(0.3), 1);
+            fireEditorPointer('pointermove', editorX(0.7), editorY(0.7), 1);
+            fireEditorPointer('pointerup', editorX(0.7), editorY(0.7), 0);
+            await wait(60);
+            const pinTool = [
+              ...document.querySelectorAll('.device-editor-tool')
+            ].find((button) => button.textContent === 'Pin');
+            pinTool?.click();
+            await wait(40);
+            fireEditorPointer('pointerdown', editorX(0.92), editorY(0.5), 1);
+            fireEditorPointer('pointerup', editorX(0.92), editorY(0.5), 0);
+            await wait(80);
+            const shapeHit = document.querySelector('[data-shape-id]');
+            if (shapeHit) {
+              const hitBox = shapeHit.getBoundingClientRect();
+              const hitX = hitBox.left + hitBox.width / 2;
+              const hitY = hitBox.top + hitBox.height / 2;
+              shapeHit.dispatchEvent(
+                new PointerEvent('pointerdown', {
+                  bubbles: true,
+                  cancelable: true,
+                  pointerId: 22,
+                  pointerType: 'mouse',
+                  button: 0,
+                  buttons: 1,
+                  clientX: hitX,
+                  clientY: hitY
+                })
+              );
+              shapeHit.dispatchEvent(
+                new PointerEvent('pointerup', {
+                  bubbles: true,
+                  cancelable: true,
+                  pointerId: 22,
+                  pointerType: 'mouse',
+                  button: 0,
+                  clientX: hitX,
+                  clientY: hitY
+                })
+              );
+              await wait(50);
+            }
+            const editorDrawn =
+              Boolean(document.querySelector('.device-editor-pin-dot')) &&
+              (document.querySelector('.device-editor-art')?.innerHTML || '').includes(
+                '<rect'
+              );
+            const editorHandles = Boolean(
+              document.querySelector('.device-editor-handle')
+            );
+            const editorTop = document.querySelector('.device-editor')?.getBoundingClientRect().top;
+            const chromeClear =
+              Math.abs((managerTop ?? -1) - (titlebarBottom ?? 0)) < 1 &&
+              Math.abs((editorTop ?? -1) - (titlebarBottom ?? 0)) < 1;
+            const darkHeaderColor = getComputedStyle(document.querySelector('.device-editor-header')).backgroundColor;
+            document.querySelector('button[aria-label="Switch to light theme"]')?.click();
+            await wait(50);
+            const lightHeaderColor = getComputedStyle(document.querySelector('.device-editor-header')).backgroundColor;
+            const themeParity = darkHeaderColor !== lightHeaderColor && darkManagerHeaderColor !== lightManagerHeaderColor;
+            document.querySelector('button[aria-label="Switch to dark theme"]')?.click();
+            await wait(50);
             return {
               placed,
               dirty,
@@ -955,7 +1202,19 @@ async function runSmokeCheck(window: BrowserWindow): Promise<void> {
               symbolInk,
               richEditor,
               railBackground,
-              dangerBackground
+              dangerBackground,
+              managerOpened,
+              managerAudit,
+              managerCustom,
+              editorOpened,
+              editorDrawn,
+              editorHandles,
+              chromeClear,
+              themeParity,
+              auditThemeParity,
+              lightAuditColors,
+              lightHeaderColor,
+              lightManagerHeaderColor
             };
           })()`,
         )) as {
@@ -978,6 +1237,18 @@ async function runSmokeCheck(window: BrowserWindow): Promise<void> {
           richEditor: boolean;
           railBackground: string;
           dangerBackground: string;
+          managerOpened: boolean;
+          managerAudit: boolean;
+          managerCustom: boolean;
+          editorOpened: boolean;
+          editorDrawn: boolean;
+          editorHandles: boolean;
+          chromeClear: boolean;
+          themeParity: boolean;
+          auditThemeParity: boolean;
+          lightAuditColors: string[];
+          lightHeaderColor: string;
+          lightManagerHeaderColor: string;
         };
         passed =
           editState.placed === 1 &&
@@ -999,6 +1270,15 @@ async function runSmokeCheck(window: BrowserWindow): Promise<void> {
           editState.richEditor &&
           editState.railBackground !== "rgb(19, 30, 37)" &&
           editState.dangerBackground !== "rgb(43, 30, 31)" &&
+          editState.managerOpened &&
+          editState.managerAudit &&
+          editState.managerCustom &&
+          editState.editorOpened &&
+          editState.editorDrawn &&
+          editState.editorHandles &&
+          editState.chromeClear &&
+          editState.themeParity &&
+          editState.auditThemeParity &&
           (process.platform === "darwin" || state.windowControls === 3);
         details = JSON.stringify({ ...state, edit: editState });
         break;
@@ -1039,9 +1319,22 @@ async function runSmokeCheck(window: BrowserWindow): Promise<void> {
   if (smokeScreenshot) {
     const screenshot = await window.webContents.capturePage();
     await writeFile(smokeScreenshot, screenshot.toPNG());
+    await window.webContents.executeJavaScript(
+      'document.querySelector(\'button[aria-label="Switch to light theme"]\')?.click()',
+    );
+    await new Promise((resolvePromise) => setTimeout(resolvePromise, 80));
+    const lightScreenshot = await window.webContents.capturePage();
+    await writeFile(smokeScreenshot.replace(/\.png$/i, "-light.png"), lightScreenshot.toPNG());
   }
   console.log(`DRAWIC_SMOKE ${JSON.stringify(report)}`);
   app.exit(passed ? 0 : 1);
+}
+
+const smokeUserData = process.argv.find((argument) =>
+  argument.startsWith("--smoke-user-data="),
+);
+if (smokeUserData) {
+  app.setPath("userData", smokeUserData.slice("--smoke-user-data=".length));
 }
 
 const singleInstance = app.requestSingleInstanceLock();
@@ -1067,12 +1360,6 @@ if (!singleInstance) {
     app.setAppUserModelId("com.canvasqaq.drawic");
     if (process.platform === "darwin" && !app.isPackaged && existsSync(brandIconPath())) {
       app.dock?.setIcon(brandIconPath());
-    }
-    const smokeUserData = process.argv.find((argument) =>
-      argument.startsWith("--smoke-user-data="),
-    );
-    if (smokeUserData) {
-      app.setPath("userData", smokeUserData.slice("--smoke-user-data=".length));
     }
     session.defaultSession.webRequest.onBeforeRequest(
       { urls: ["http://*/*", "https://*/*", "ws://*/*", "wss://*/*"] },

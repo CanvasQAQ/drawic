@@ -51,7 +51,9 @@ Implemented:
 - persisted per-Net wire colors shared by every wire and preserved in SVG
   export;
 - a built-in device pin direction audit with visible escape arrows and JSON
-  correction export;
+  correction export, presented as the Audit tab of the device library manager;
+- user device libraries with an in-app artwork editor, pin placement and editing,
+  library import/export, and project embedding of referenced custom devices;
 - a bottom session console for placement, file, import/export, and error logs;
 - pointer-centered wheel zoom and `F` fit-to-content;
 - project save/open, recovery, dirty-state close protection, SPICE import/export,
@@ -65,7 +67,6 @@ Not yet implemented in the UI:
   format-specific drawing tools;
 - stable per-segment wire identities, direction-mode editing, and an explicit
   disconnection-move gesture;
-- user-editable device libraries;
 - Spectre/SCS, simulation, local MCP, and cloud services.
 
 Do not describe a design goal as shipped behavior. Update this section when
@@ -148,10 +149,23 @@ Relevant library API:
 - `deviceToMxLibraryEntry` converts one record for draw.io tooling.
 - `parseMxLibraryTitles` is a lightweight import inspection helper.
 
-Built-in pin directions can be reviewed in the **Pin audit** screen. Its
-correction export is described in
+Built-in pin directions are reviewed in the **Audit** tab of the device library
+manager. Its correction export is described in
 [`DEVICE_PIN_AUDIT.md`](DEVICE_PIN_AUDIT.md). Apply reported changes to the
 source manifest and regenerate the library.
+
+The device library manager (**Export & tools → DEVICES**, the palette's
+**Manage devices** action, or **Tools → Manage Device Library**) has three tabs:
+Browse, Audit, and Custom. The Custom tab opens an in-app editor for line,
+polyline, rectangle, circle, ellipse, arc, and text artwork, pin placement, and
+device metadata. It persists one `user.drawiclib.json` file under
+`app.getPath("userData")/device-libraries/` through narrow bridge operations.
+Custom devices can be imported and exported as a library file, and referenced
+non-built-in devices are embedded in project files on save. A normal project
+save preserves an existing embedded record; only **Refresh project devices**
+replaces it from the user library. See
+[`DEVICE_LIBRARY_PLAN.md`](DEVICE_LIBRARY_PLAN.md) and
+[ADR 014](adr/014-user-device-libraries.md).
 
 Extend this API rather than parsing generated JSON independently in renderer
 components.
@@ -231,7 +245,11 @@ Important invariants:
 - all stable IDs are unique within a document;
 - `zOrder`, when present, lists every paintable object exactly once, bottom to
   top; pages without it use the legacy band order;
-- schema version 3 is the current format; version 2 is rejected;
+- schema version 4 is the current format; version 3 is accepted and normalized
+  to 4, and version 2 or earlier is rejected;
+- a version 4 document may embed referenced non-built-in device records; the
+  embedded snapshot resolves ahead of the local user library and behind the
+  built-in library;
 - page switching is view state and does not modify the document;
 - every wire belongs to exactly one net;
 - a Net color is optional `#rrggbb` visual metadata and applies to every wire in
@@ -307,6 +325,15 @@ six default three-terminal MOS symbols and six four-terminal `--base`
 alternates. Alternate appearances are separate stable symbol IDs and may be
 selected from the device library when eligible.
 
+User-created devices use the same record shape and live in the managed user
+library. A record may carry `artwork.shapes` (library schema version 2) made of
+line, polyline, rectangle, circle, ellipse, arc, and text primitives; the parser
+regenerates `artwork.body` from those shapes and still accepts schema version 1
+records without a shape source. Built-in records remain generated and have no
+editable shape source. Referenced custom devices are embedded in project files
+on save and resolve ahead of the local user library and behind the built-in
+library.
+
 ## 5. Parallel agent ownership
 
 Use one writer per file or tightly coupled module. Suggested ownership:
@@ -356,6 +383,9 @@ local editor settings, or environment files.
 ## 7. Validation matrix
 
 Fast feedback:
+
+For a browser-only layout check in the Codex side panel, use
+[`BROWSER_PREVIEW.md`](BROWSER_PREVIEW.md).
 
 ```bash
 npm run typecheck
@@ -415,6 +445,14 @@ Windows x64, macOS x64/arm64, and Linux x64 packages plus `SHA256SUMS.txt` and
 - SPICE: `tests/spice.test.ts`
 - exports: `tests/export.test.ts`
 - device catalog and conversion: `tests/deviceLibrary.test.ts`
+- device artwork primitives and serialization: `tests/deviceArtwork.test.ts`
+- device library manager: `tests/deviceLibraryScreen.test.tsx`
+- in-app device editor: `tests/deviceEditor.test.tsx`
+- user library merge, resolution, and embedding:
+  `tests/deviceLibraryRegistry.test.ts`, `tests/embeddedDevices.test.ts`
+- user library storage and import validation: `tests/deviceLibraryStore.test.ts`
+- SVG sanitization: `tests/svgSanitize.test.ts`
+- deterministic content hashing: `tests/hash.test.ts`
 - device pin audit and correction export: `tests/pinAudit.test.tsx`
 - session console and toolbar behavior: `tests/consolePanel.test.tsx`
 - page UI: `tests/pageBar.test.tsx`

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, type ReactNode } from "react";
+import brandIconUrl from "../../../build/icon.svg?url";
 import type { Theme } from "../theme";
-import { DrawicMark } from "./DrawicMark";
 
 interface TitleBarProps {
   documentTitle: string;
@@ -65,7 +65,7 @@ export function TitleBar({
         }}
       >
         <span className="window-titlebar-mark">
-          <DrawicMark />
+          <img src={brandIconUrl} alt="" draggable={false} />
         </span>
         <span className="window-titlebar-brand">Drawic</span>
         <span className="window-titlebar-title">{documentTitle}</span>

@@ -14,8 +14,8 @@
   warm paper tile, supplied by CanvasQAQ, repository owner.
 - Transformation: adapted into the production icon in `build/icon.svg` with
   standard icon-grid clear space, optical centering, regularized stroke
-  geometry, and compact 16 px and 32 px variants. The in-app mark in
-  `src/renderer/components/DrawicMark.tsx` mirrors the 32 px variant.
+  geometry, and compact 16 px and 32 px variants. The in-app title bar uses
+  the master `build/icon.svg` directly.
 - Derived files: `build/icon.png`, `build/icon.ico`, `build/icon.icns`,
   `build/icons/`, and the runtime favicon/window icons under
   `src/renderer/public/`. All are generated from the repository-local SVGs.
@@ -47,8 +47,8 @@
   `src/renderer/assets/device-libraries/drawic-built-in.drawiclib.json`. Each
   device record retains its source filename and source-file SHA-256.
 - Generated library SHA-256:
-  `cd8cb21c32754396ad96e8c852ba6c07c5a34284538e02958f0136f689a1194f`.
-- Runtime library size: 403,652 bytes, containing 109 primary records and 11
+  `e4838e02707791541c62eebc2e951a685759cbf02a699229232ceaef6422c771`.
+- Runtime library size: 417,520 bytes, containing 109 primary records and 11
   distinct alternate appearances (120 total). The transform sanitizes active
   content and external references, normalizes fixed black paint to the renderer
   theme color, applies terminal visibility per variant, and derives exact visual

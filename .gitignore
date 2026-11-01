@@ -19,6 +19,8 @@ Thumbs.db
 # Test output and environment secrets
 test-results/
 playwright-report/
+output/
+.npmrc
 .env
 .env.*
 !.env.example

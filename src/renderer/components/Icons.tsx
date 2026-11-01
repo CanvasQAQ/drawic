@@ -6,6 +6,11 @@ export type IconName =
   | "open"
   | "save"
   | "select"
+  | "line"
+  | "polyline"
+  | "circle"
+  | "arc"
+  | "pin"
   | "wire"
   | "junction"
   | "text"
@@ -69,6 +74,45 @@ export function Icon({
       return (
         <svg {...common}>
           <path d="m5 3 13 9-6 1 3 7-3 1-3-7-4 4z" />
+        </svg>
+      );
+    case "line":
+      return (
+        <svg {...common}>
+          <path d="M5 19 19 5" />
+          <circle cx="5" cy="19" r="1.5" fill="currentColor" />
+          <circle cx="19" cy="5" r="1.5" fill="currentColor" />
+        </svg>
+      );
+    case "polyline":
+      return (
+        <svg {...common}>
+          <path d="m3 18 6-11 6 7 6-9" />
+          <circle cx="3" cy="18" r="1.2" fill="currentColor" />
+          <circle cx="9" cy="7" r="1.2" fill="currentColor" />
+          <circle cx="15" cy="14" r="1.2" fill="currentColor" />
+          <circle cx="21" cy="5" r="1.2" fill="currentColor" />
+        </svg>
+      );
+    case "circle":
+      return (
+        <svg {...common}>
+          <circle cx="12" cy="12" r="8" />
+        </svg>
+      );
+    case "arc":
+      return (
+        <svg {...common}>
+          <path d="M4 17a9 9 0 0 1 16 0" />
+          <circle cx="4" cy="17" r="1.5" fill="currentColor" />
+          <circle cx="20" cy="17" r="1.5" fill="currentColor" />
+        </svg>
+      );
+    case "pin":
+      return (
+        <svg {...common}>
+          <path d="M3 12h12M15 7v10" />
+          <circle cx="18" cy="12" r="3" />
         </svg>
       );
     case "wire":

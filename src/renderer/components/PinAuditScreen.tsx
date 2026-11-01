@@ -15,8 +15,9 @@ interface PinAuditScreenProps {
   symbols: readonly DeviceSymbol[];
   libraryId: string;
   libraryRevision: string;
-  onClose: () => void;
+  onClose?: () => void;
   onExport: (content: string) => Promise<{ canceled: boolean; path?: string }>;
+  embedded?: boolean;
 }
 
 const DIRECTION_LABELS: Record<SymbolSide, string> = {
@@ -224,6 +225,7 @@ export function PinAuditScreen({
   libraryRevision,
   onClose,
   onExport,
+  embedded = false,
 }: PinAuditScreenProps) {
   const [directions, setDirections] = useState<Record<string, SymbolSide>>(() =>
     initialPinDirections(symbols),
@@ -352,7 +354,12 @@ export function PinAuditScreen({
   };
 
   return (
-    <section className="pin-audit-screen" role="dialog" aria-modal="true" aria-labelledby="pin-audit-title">
+    <section
+      className={embedded ? "pin-audit-panel" : "pin-audit-screen"}
+      role={embedded ? "region" : "dialog"}
+      aria-modal={embedded ? undefined : true}
+      aria-labelledby="pin-audit-title"
+    >
       <header className="pin-audit-header">
         <div>
           <span className="eyebrow">Developer inspection</span>
@@ -368,14 +375,16 @@ export function PinAuditScreen({
           <strong>{corrections.length}</strong>
           <span>corrections</span>
         </div>
-        <button
-          type="button"
-          className="icon-button"
-          onClick={onClose}
-          aria-label="Close pin audit"
-        >
-          <Icon name="close" />
-        </button>
+        {onClose ? (
+          <button
+            type="button"
+            className="icon-button"
+            onClick={onClose}
+            aria-label="Close pin audit"
+          >
+            <Icon name="close" />
+          </button>
+        ) : null}
       </header>
 
       <div className="pin-audit-controls">

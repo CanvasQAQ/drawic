@@ -150,7 +150,7 @@ describe("z-order", () => {
   it("round-trips the stored order and normalizes it on load", () => {
     const page = { ...pageFixture(), zOrder: ["rect_1", "wire_1", "node_1", "note_1", "text_1"] };
     const document = {
-      schemaVersion: 3 as const,
+      schemaVersion: 4 as const,
       kind: "drawic-drawing" as const,
       id: "doc",
       title: "Layers",
@@ -170,7 +170,7 @@ describe("z-order", () => {
 
   it("rejects a stored order that is not a list of ids", () => {
     const document = {
-      schemaVersion: 3 as const,
+      schemaVersion: 4 as const,
       kind: "drawic-drawing" as const,
       id: "doc",
       title: "Layers",

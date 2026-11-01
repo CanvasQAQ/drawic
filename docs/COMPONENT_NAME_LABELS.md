@@ -1,6 +1,6 @@
 # Component Name labels
 
-Status: normative, schema version 3, 2026-10-25
+Status: normative, schema version 4, 2026-10-25
 
 This contract describes the visible Name label attached to a placed component.
 It is independent of external editor implementation details.

@@ -2976,8 +2976,13 @@ export function SchematicCanvas({
             if (!symbol) {
               return (
                 <g key={node.id} className="missing-symbol" transform={`translate(${node.x} ${node.y})`}>
-                  <rect x="-30" y="-20" width="60" height="40" />
-                  <text textAnchor="middle" y="5">Missing symbol</text>
+                  <rect x="-34" y="-22" width="68" height="44" />
+                  <text textAnchor="middle" y="-2">
+                    {node.reference.trim() || "Missing device"}
+                  </text>
+                  <text className="missing-symbol-id" textAnchor="middle" y="11">
+                    {node.symbolId.slice(0, 22)}
+                  </text>
                 </g>
               );
             }

@@ -1,12 +1,20 @@
 import React, { useMemo, useState } from "react";
 import type { DeviceSymbol } from "../../core/library";
+import {
+  BUILT_IN_DEVICE_LIBRARY_ID,
+  EMBEDDED_DEVICE_LIBRARY_ID,
+  USER_DEVICE_LIBRARY_ID,
+} from "../../core/deviceLibraryRegistry";
 import { Icon } from "./Icons";
+
+type LibrarySource = "all" | "built-in" | "custom" | "project";
 
 interface LibraryPanelProps {
   symbols: readonly DeviceSymbol[];
   selectedSymbolId: string | null;
   onSelect: (symbol: DeviceSymbol) => void;
   onCollapse: () => void;
+  onManageDevices?: () => void;
 }
 
 function SymbolPreview({ symbol }: { symbol: DeviceSymbol }) {
@@ -27,9 +35,11 @@ export function LibraryPanel({
   selectedSymbolId,
   onSelect,
   onCollapse,
+  onManageDevices,
 }: LibraryPanelProps) {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("all");
+  const [source, setSource] = useState<LibrarySource>("all");
   const categories = useMemo(
     () => [...new Set(symbols.map((symbol) => symbol.category))].sort(),
     [symbols],
@@ -41,13 +51,20 @@ export function LibraryPanel({
         (symbol) =>
           symbol.palette &&
           (category === "all" || symbol.category === category) &&
+          (source === "all" ||
+            (source === "built-in" &&
+              symbol.libraryId === BUILT_IN_DEVICE_LIBRARY_ID) ||
+            (source === "custom" &&
+              symbol.libraryId === USER_DEVICE_LIBRARY_ID) ||
+            (source === "project" &&
+              symbol.libraryId === EMBEDDED_DEVICE_LIBRARY_ID)) &&
           (!normalized ||
             symbol.label.toLowerCase().includes(normalized) ||
             symbol.id.toLowerCase().includes(normalized) ||
             symbol.keywords.some((keyword) => keyword.includes(normalized))),
       )
       .sort((a, b) => a.label.localeCompare(b.label));
-  }, [symbols, query, category]);
+  }, [symbols, query, category, source]);
 
   return (
     <aside className="library-panel" aria-label="Device library">
@@ -90,8 +107,29 @@ export function LibraryPanel({
           ))}
         </select>
       </label>
+      <label className="category-field">
+        <span>Source</span>
+        <select
+          value={source}
+          onChange={(event) => setSource(event.target.value as LibrarySource)}
+        >
+          <option value="all">All sources</option>
+          <option value="built-in">Built-in</option>
+          <option value="custom">Custom</option>
+          <option value="project">This project</option>
+        </select>
+      </label>
       <div className="library-count" aria-live="polite">
         {filtered.length} placeable {filtered.length === 1 ? "symbol" : "symbols"}
+        {onManageDevices ? (
+          <button
+            type="button"
+            className="text-button library-manage"
+            onClick={onManageDevices}
+          >
+            Manage devices
+          </button>
+        ) : null}
       </div>
       <div className="symbol-grid">
         {filtered.map((symbol) => (
@@ -120,6 +158,7 @@ export function LibraryPanel({
             onClick={() => {
               setQuery("");
               setCategory("all");
+              setSource("all");
             }}
           >
             Clear filters

@@ -24,7 +24,7 @@ compact variants were drawn for small raster sizes.
 | `src/renderer/public/icon.png` | Runtime window and Dock icon (512) |
 | `src/renderer/public/favicon-16.png` | Browser favicon, 16 px |
 | `src/renderer/public/favicon-32.png` | Browser favicon, 32 px |
-| `src/renderer/components/DrawicMark.tsx` | In-app title-bar mark matching `icon-small.svg` |
+| `src/renderer/components/TitleBar.tsx` | Loads the master SVG for the in-app title bar |
 
 ## Design specification
 
@@ -36,8 +36,8 @@ compact variants were drawn for small raster sizes.
   terminal dots. No text is embedded in the icon.
 - Small variants keep the tile full bleed and drop the channel arrow and inner
   detail so the mark remains legible at 16–32 px.
-- The in-app mark uses flat colors from the same palette so it stays crisp in
-  both themes.
+- The in-app title bar loads the full master SVG and lets Chromium scale it
+  proportionally to the available title-bar space.
 
 ## How the platform files are wired
 
@@ -47,7 +47,8 @@ compact variants were drawn for small raster sizes.
   `dist/renderer/icon.png` and uses the same file for the macOS Dock while
   running unpackaged.
 - `src/renderer/index.html` declares the two favicons and the window title.
-- `src/renderer/components/TitleBar.tsx` renders `DrawicMark`.
+- `src/renderer/components/TitleBar.tsx` imports `build/icon.svg` as a bundled
+  image URL for the renderer.
 
 ## Regenerating
 

@@ -81,12 +81,15 @@ describe("window chrome", () => {
     root.unmount();
   });
 
-  it("renders the Drawic brand mark in the title bar", () => {
+  it("renders the master Drawic icon asset in the title bar", () => {
     const { container, root } = renderTitleBar("linux");
-    const mark = container.querySelector(".window-titlebar-mark svg");
+    const mark = container.querySelector<HTMLImageElement>(".window-titlebar-mark img");
     expect(mark).not.toBeNull();
-    expect(mark?.querySelector("rect")).not.toBeNull();
-    expect(mark?.querySelectorAll("circle").length).toBe(3);
+    const imageSource = decodeURIComponent(mark?.getAttribute("src") ?? "");
+    expect(imageSource).toContain('viewBox=\'0 0 1024 1024\'');
+    expect(imageSource).toContain("linearGradient");
+    expect(imageSource).toContain("M314 334V293H277");
+    expect(mark?.getAttribute("alt")).toBe("");
     root.unmount();
     container.remove();
   });

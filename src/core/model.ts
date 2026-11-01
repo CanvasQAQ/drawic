@@ -1,7 +1,9 @@
 import { runsToPlainText } from "./textRuns";
 import { resolvePaintOrder } from "./zOrder";
+import { parseDeviceLibrary, type DeviceLibraryFile } from "./library";
 
-export const DOCUMENT_SCHEMA_VERSION = 3 as const;
+export const DOCUMENT_SCHEMA_VERSION = 4 as const;
+export const COMPATIBLE_DOCUMENT_SCHEMA_VERSION = 3 as const;
 export const DOCUMENT_KIND = "drawic-drawing" as const;
 
 export type Rotation = 0 | 90 | 180 | 270;
@@ -242,6 +244,8 @@ export interface DrawicDocument {
   modifiedAt: string;
   pages: DrawingPage[];
   typography?: DocumentTypography;
+  /** Project-local snapshot of referenced non-built-in devices. */
+  embeddedLibrary?: DeviceLibraryFile;
 }
 
 export type SelectionKind =
@@ -1075,7 +1079,10 @@ export function parseProjectText(text: string): DrawicDocument {
   if (!isRecord(raw)) {
     throw new ProjectFormatError("invalid-root", "The project root must be an object.");
   }
-  if (raw.schemaVersion !== DOCUMENT_SCHEMA_VERSION) {
+  if (
+    raw.schemaVersion !== DOCUMENT_SCHEMA_VERSION &&
+    raw.schemaVersion !== COMPATIBLE_DOCUMENT_SCHEMA_VERSION
+  ) {
     if (typeof raw.schemaVersion === "number" && raw.schemaVersion > DOCUMENT_SCHEMA_VERSION) {
       throw new ProjectFormatError(
         "future-schema",
@@ -1084,7 +1091,7 @@ export function parseProjectText(text: string): DrawicDocument {
     }
     throw new ProjectFormatError(
       "unsupported-schema",
-      "This project uses a retired Drawic format. Create a new Drawic 0.2 drawing.",
+      "This project uses a retired Drawic format and cannot be opened.",
     );
   }
   if (raw.kind !== DOCUMENT_KIND) {
@@ -1092,6 +1099,28 @@ export function parseProjectText(text: string): DrawicDocument {
   }
   if (!Array.isArray(raw.pages) || raw.pages.length === 0) {
     throw new ProjectFormatError("invalid-field", "The drawing must contain at least one page.");
+  }
+
+  let embeddedLibrary: DeviceLibraryFile | undefined;
+  if (raw.embeddedLibrary !== undefined) {
+    if (raw.schemaVersion === COMPATIBLE_DOCUMENT_SCHEMA_VERSION) {
+      throw new ProjectFormatError(
+        "invalid-field",
+        "A version 3 project cannot contain an embedded device library.",
+      );
+    }
+    try {
+      embeddedLibrary = parseDeviceLibrary(raw.embeddedLibrary, {
+        sanitize: true,
+      });
+    } catch (error) {
+      const detail =
+        error instanceof Error ? error.message : "The embedded device library is invalid.";
+      throw new ProjectFormatError(
+        "invalid-field",
+        `The embedded device library is invalid: ${detail}`,
+      );
+    }
   }
 
   const document: DrawicDocument = {
@@ -1105,6 +1134,7 @@ export function parseProjectText(text: string): DrawicDocument {
     ...(raw.typography === undefined
       ? {}
       : { typography: parseTypography(raw.typography, "typography")! }),
+    ...(embeddedLibrary ? { embeddedLibrary } : {}),
   };
 
   const ids = new Set<string>();

@@ -11,6 +11,12 @@ const bridge: DrawicBridge = {
   saveSpice: (suggestedName, content) =>
     ipcRenderer.invoke("spice:save", { suggestedName, content }),
   savePinAudit: (request) => ipcRenderer.invoke("pin-audit:save", request),
+  loadUserDeviceLibrary: () => ipcRenderer.invoke("device-library:load"),
+  saveUserDeviceLibrary: (request) =>
+    ipcRenderer.invoke("device-library:save", request),
+  importDeviceLibrary: () => ipcRenderer.invoke("device-library:import"),
+  exportDeviceLibrary: (request) =>
+    ipcRenderer.invoke("device-library:export", request),
   checkpoint: (request) => ipcRenderer.invoke("recovery:checkpoint", request),
   clearRecovery: (projectId) => ipcRenderer.invoke("recovery:clear", projectId),
   getRecovery: () => ipcRenderer.invoke("recovery:latest"),

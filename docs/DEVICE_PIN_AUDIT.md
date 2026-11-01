@@ -6,7 +6,9 @@ library directly.
 
 ## Open the audit
 
-Select **Pin audit** in the main toolbar. The screen shows every built-in
+Open the **Device library** manager from **Export & tools → DEVICES**, the
+palette's **Manage devices** action, or **Tools → Manage Device Library**, then
+choose the **Audit** tab. The audit shows every built-in
 device with:
 
 - the sanitized device artwork;
