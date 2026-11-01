@@ -2,7 +2,7 @@ import { readdir, readFile } from "node:fs/promises";
 import { extname, join, relative, resolve } from "node:path";
 
 const root = resolve("src");
-const runtimeExtensions = new Set([".ts", ".tsx", ".css", ".html"]);
+const runtimeExtensions = new Set([".mjs", ".ts", ".tsx", ".css", ".html"]);
 const allowedPatterns = new Set([
   "http://*/*",
   "https://*/*",

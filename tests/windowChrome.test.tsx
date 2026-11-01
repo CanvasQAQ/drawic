@@ -76,6 +76,7 @@ describe("window chrome", () => {
   it("reserves native traffic-light space and omits duplicate controls on macOS", () => {
     const { container, root } = renderTitleBar("darwin");
     expect(container.querySelector(".window-titlebar")?.classList).toContain("is-mac");
+    expect(container.querySelector("select")).toBeNull();
     expect(container.querySelector('[aria-label="Minimize window"]')).toBeNull();
     expect(container.querySelector('[aria-label="Close window"]')).toBeNull();
     root.unmount();

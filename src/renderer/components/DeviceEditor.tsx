@@ -1,3 +1,5 @@
+import { SvgArtworkEditor, svgArtworkPreview } from "./SvgArtworkEditor";
+import type { DeviceActions } from "../deviceWorkspace";
 import React, {
   useCallback,
   useEffect,
@@ -16,6 +18,7 @@ import {
   nextPinId,
   nextShapeId,
   scaleShape,
+  snapArtworkShape,
   selectionBoxForArtwork,
   serializeDeviceArtwork,
   snapPinToFrame,
@@ -41,6 +44,7 @@ type EditorTool =
 type ResizeHandle = "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w";
 
 interface Snapshot {
+  svgBody?: string;
   shapes: DeviceArtworkShape[];
   pins: DeviceLibraryPin[];
 }
@@ -62,11 +66,15 @@ interface DragState {
   original: Snapshot;
   tool?: EditorTool;
   shapeId?: string;
+  shapeIds?: string[];
   pinId?: string;
   handle?: ResizeHandle;
 }
 
 interface DeviceEditorProps {
+  savedRecord?: DeviceLibraryRecord | undefined;
+  actions?: React.RefObject<DeviceActions | null> | undefined;
+  onDirty?: ((dirty: boolean) => void) | undefined;
   initial: DeviceLibraryRecord;
   mode: "create" | "edit" | "clone";
   artworkLocked: boolean;
@@ -160,32 +168,32 @@ function createShapeFromDrag(
       if (r < 0.5) {
         return null;
       }
-      return {
+      return snapArtworkShape({
         id,
         kind: "circle",
         cx: box.x + box.width / 2,
         cy: box.y + box.height / 2,
         r,
-      };
+      });
     }
     case "ellipse":
       if (box.width < 0.5 || box.height < 0.5) {
         return null;
       }
-      return {
+      return snapArtworkShape({
         id,
         kind: "ellipse",
         cx: box.x + box.width / 2,
         cy: box.y + box.height / 2,
         rx: box.width / 2,
         ry: box.height / 2,
-      };
+      });
     case "arc": {
       const r = pointDistance(start, current);
       if (r < 0.5) {
         return null;
       }
-      return {
+      return snapArtworkShape({
         id,
         kind: "arc",
         cx: start.x,
@@ -195,7 +203,7 @@ function createShapeFromDrag(
         endAngle:
           (Math.atan2(current.y - start.y, current.x - start.x) * 180) /
           Math.PI,
-      };
+      });
     }
     default:
       return null;
@@ -342,13 +350,13 @@ export function DeviceEditor({
   mode,
   artworkLocked,
   onSave,
-  onCancel,
+  onCancel, actions, onDirty, savedRecord,
 }: DeviceEditorProps) {
   const initialCenter = {
     x: initial.frame.x + initial.frame.width / 2,
     y: initial.frame.y + initial.frame.height / 2,
   };
-  const initialShapes = artworkLocked ? [] : initial.artwork.shapes ?? [];
+  const initialShapes = initial.artwork.shapes ?? [];
   const initialPins = initial.pins.map((pin) => ({
     ...pin,
     x: pin.x + initialCenter.x,
@@ -356,14 +364,15 @@ export function DeviceEditor({
   }));
   const [history, setHistory] = useState<HistoryState>({
     past: [],
-    present: { shapes: initialShapes, pins: initialPins },
+    present: { shapes: initialShapes, pins: initialPins, ...(artworkLocked ? { svgBody: initial.artwork.baseBody ?? initial.artwork.body } : {}) },
     future: [],
   });
   const [preview, setPreview] = useState<Snapshot | null>(null);
   const previewRef = useRef<Snapshot | null>(null);
   const [tool, setTool] = useState<EditorTool>("select");
+  const [svgSelection, setSvgSelection] = useState(-1);
   const [selection, setSelection] = useState<Selection | null>(null);
-  const [gridSnap, setGridSnap] = useState(true);
+  const [selectedShapeIds, setSelectedShapeIds] = useState<string[]>([]);
   const [pendingPolyline, setPendingPolyline] = useState<Point[]>([]);
   const [title, setTitle] = useState(initial.title);
   const [category, setCategory] = useState(initial.category);
@@ -448,11 +457,9 @@ export function DeviceEditor({
   const pinHit = 9 / pixelsPerUnit;
   const gridLabelSize = Math.min(10 / pixelsPerUnit, frame.height * 0.06);
   const pinTick = 7 / pixelsPerUnit;
-  const snapStep = gridSnap ? 1 : 0;
-  const snap = (value: number): number =>
-    snapStep > 0 ? snapValue(value, snapStep) : value;
+  const snap = (value: number): number => snapValue(value, 1);
   const selectedShape =
-    selection?.kind === "shape"
+    selection?.kind === "shape" && selectedShapeIds.length <= 1
       ? snapshot.shapes.find((shape) => shape.id === selection.id) ?? null
       : null;
   const selectedPin =
@@ -527,16 +534,20 @@ export function DeviceEditor({
     commit({
       ...snapshot,
       shapes: snapshot.shapes.map((candidate) =>
-        candidate.id === shape.id ? shape : candidate,
+        candidate.id === shape.id ? snapArtworkShape(shape) : candidate,
       ),
     });
   };
 
   const updatePin = (pin: DeviceLibraryPin) => {
+    const previous = snapshot.pins.find(candidate => candidate.id === pin.id);
+    const gridded = previous && (previous.x !== pin.x || previous.y !== pin.y)
+      ? { ...pin, x: snapValue(pin.x, 10), y: snapValue(pin.y, 10) }
+      : pin;
     commit({
       ...snapshot,
       pins: snapshot.pins.map((candidate) =>
-        candidate.id === pin.id ? pin : candidate,
+        candidate.id === pin.id ? gridded : candidate,
       ),
     });
   };
@@ -546,10 +557,11 @@ export function DeviceEditor({
       return;
     }
     if (selection.kind === "shape") {
+      const ids = selectedShapeIds.length ? selectedShapeIds : [selection.id];
       commit({
         ...history.present,
         shapes: history.present.shapes.filter(
-          (shape) => shape.id !== selection.id,
+          (shape) => !ids.includes(shape.id),
         ),
       });
     } else {
@@ -559,7 +571,8 @@ export function DeviceEditor({
       });
     }
     setSelection(null);
-  }, [commit, history.present, selection]);
+    setSelectedShapeIds([]);
+  }, [commit, history.present, selection, selectedShapeIds]);
 
   const finishPolyline = useCallback(() => {
     if (pendingPolyline.length < 2) {
@@ -648,12 +661,13 @@ export function DeviceEditor({
     if (tool === "select") {
       const target = event.target as SVGElement;
       const handle = target.dataset.handle as ResizeHandle | undefined;
-      if (handle && selectedShape) {
+      if (handle && selectedBounds && selection?.kind === "shape") {
         startDrag(
           event,
           {
             mode: "resize",
-            shapeId: selectedShape.id,
+            shapeId: selection.id,
+            shapeIds: selectedShapeIds.length ? selectedShapeIds : [selection.id],
             handle,
           },
           point,
@@ -662,17 +676,29 @@ export function DeviceEditor({
       }
       const pinId = target.dataset.pinId;
       if (pinId) {
+        setSelectedShapeIds([]);
         setSelection({ kind: "pin", id: pinId });
         startDrag(event, { mode: "pin", pinId }, point);
         return;
       }
       const shapeId = target.dataset.shapeId;
       if (shapeId) {
+        if (event.shiftKey) {
+          const next = selectedShapeIds.includes(shapeId)
+            ? selectedShapeIds.filter(id => id !== shapeId)
+            : [...selectedShapeIds, shapeId];
+          setSelectedShapeIds(next);
+          setSelection(next.length ? { kind: "shape", id: next[0]! } : null);
+          return;
+        }
+        const ids = selectedShapeIds.includes(shapeId) ? selectedShapeIds : [shapeId];
+        setSelectedShapeIds(ids);
         setSelection({ kind: "shape", id: shapeId });
-        startDrag(event, { mode: "move", shapeId }, point);
+        startDrag(event, { mode: "move", shapeId, shapeIds: ids }, point);
         return;
       }
       setSelection(null);
+      setSelectedShapeIds([]);
       return;
     }
     if (tool === "pin") {
@@ -719,19 +745,23 @@ export function DeviceEditor({
       updatePreview({
         ...drag.original,
         shapes: drag.original.shapes.map((shape) =>
-          shape.id === drag.shapeId ? moveShape(shape, delta) : shape,
+          (drag.shapeIds ?? [drag.shapeId]).includes(shape.id) ? moveShape(shape, delta) : shape,
         ),
       });
       return;
     }
     if (drag.mode === "resize" && drag.shapeId && drag.handle) {
-      const shape = drag.original.shapes.find(
-        (candidate) => candidate.id === drag.shapeId,
-      );
-      if (!shape) {
+      const targetIds = drag.shapeIds ?? [drag.shapeId];
+      const targetShapes = drag.original.shapes.filter(candidate => targetIds.includes(candidate.id));
+      if (!targetShapes.length) {
         return;
       }
-      const bounds = deviceShapeBounds(shape);
+      const boxes = targetShapes.map(deviceShapeBounds);
+      const left = Math.min(...boxes.map(box => box.x));
+      const top = Math.min(...boxes.map(box => box.y));
+      const right = Math.max(...boxes.map(box => box.x + box.width));
+      const bottom = Math.max(...boxes.map(box => box.y + box.height));
+      const bounds = { x: left, y: top, width: right - left, height: bottom - top };
       const anchor = {
         x: drag.handle.includes("w")
           ? bounds.x + bounds.width
@@ -767,8 +797,8 @@ export function DeviceEditor({
       updatePreview({
         ...drag.original,
         shapes: drag.original.shapes.map((candidate) =>
-          candidate.id === drag.shapeId
-            ? scaleShape(candidate, anchor, scaleX, scaleY)
+          targetIds.includes(candidate.id)
+            ? snapArtworkShape(scaleShape(candidate, anchor, scaleX, scaleY))
             : candidate,
         ),
       });
@@ -867,6 +897,14 @@ export function DeviceEditor({
         redo();
         return;
       }
+      if ((event.ctrlKey || event.metaKey) && key === "a" && tool === "select") {
+        event.preventDefault();
+        if (snapshot.shapes.length) {
+          setSelectedShapeIds(snapshot.shapes.map(shape => shape.id));
+          setSelection({ kind: "shape", id: snapshot.shapes[0]!.id });
+        } else if (artworkLocked) setSvgSelection(-2);
+        return;
+      }
       if (event.key === "Delete" || event.key === "Backspace") {
         if (selection) {
           event.preventDefault();
@@ -921,11 +959,14 @@ export function DeviceEditor({
     pendingPolyline.length,
     redo,
     selection,
+    snapshot.shapes,
+    artworkLocked,
+    tool,
     undo,
   ]);
 
   const save = () => {
-    const shapes = artworkLocked ? [] : snapshot.shapes;
+    const shapes = snapshot.shapes;
     const pins = snapshot.pins.map((pin) => ({
       ...pin,
       key: pin.key || pin.name || pin.id,
@@ -933,14 +974,17 @@ export function DeviceEditor({
     }));
     const validation = validateDeviceArtwork(shapes, pins, frame, {
       requireShapes: !artworkLocked,
-      ...(artworkLocked ? {} : { pinGrid: 10 }),
+      shapeGrid: 1,
+      pinGrid: 10,
+      pinGridExemptIds: new Set(pins.filter(pin => initialPins.some(original =>
+        original.id === pin.id && original.x === pin.x && original.y === pin.y)).map(pin => pin.id)),
     });
     const nextErrors = [...validation];
     if (!title.trim()) {
       nextErrors.push("Device title is required.");
     }
     const body = artworkLocked
-      ? initial.artwork.body
+      ? (snapshot.svgBody ?? initial.artwork.baseBody ?? initial.artwork.body) + serializeDeviceArtwork(shapes)
       : serializeDeviceArtwork(shapes);
     if (!body) {
       nextErrors.push("Device artwork is empty.");
@@ -949,14 +993,15 @@ export function DeviceEditor({
     if (nextErrors.length > 0) {
       return false;
     }
-    const selectionBox = artworkLocked
+    const svgChanged = artworkLocked && body !== initial.artwork.body;
+    const selectionBox = svgChanged ? { ...frame } : artworkLocked
       ? initial.selectionBox ??
         selectionBoxForArtwork([], pins, { x: 0, y: 0 })
       : selectionBoxForArtwork(shapes, pins, { x: 0, y: 0 });
-    const labelBounds = artworkLocked
+    const labelBounds = svgChanged ? { ...frame } : artworkLocked
       ? initial.labelBounds
       : labelBoundsForArtwork(shapes, { x: 0, y: 0 });
-    const labelAnchors = artworkLocked
+    const labelAnchors = svgChanged ? defaultLabelAnchors(frame) : artworkLocked
       ? initial.labelAnchors
       : defaultLabelAnchors(selectionBox);
     const viewBox = `${frame.x} ${frame.y} ${frame.width} ${frame.height}`;
@@ -974,7 +1019,8 @@ export function DeviceEditor({
         type: "svg",
         viewBox,
         body,
-        ...(shapes.length > 0 && !artworkLocked ? { shapes } : {}),
+        ...(artworkLocked ? { baseBody: snapshot.svgBody ?? initial.artwork.baseBody ?? initial.artwork.body } : {}),
+        ...(shapes.length > 0 ? { shapes } : {}),
         source: initial.artwork.source || "custom.svg",
         sourceSha256: sha256Hex(body),
       },
@@ -995,6 +1041,22 @@ export function DeviceEditor({
     return true;
   };
 
+  React.useLayoutEffect(() => {
+    onDirty?.(isDirty);
+    return () => onDirty?.(false);
+  }, [isDirty, onDirty]);
+  React.useLayoutEffect(() => {
+    if (!actions) return;
+    actions.current = { save: () => (mode === "edit" && !isDirty) || save(), undo, redo, remove: deleteSelection };
+    return () => { actions.current = null; };
+  });
+
+  const onDisk = useMemo(() => savedRecord !== undefined &&
+    (savedRecord === initial || JSON.stringify(savedRecord) === JSON.stringify(initial)), [initial, savedRecord]);
+  const saveState = isDirty ? "Edits only in this editor"
+    : mode === "create" ? "New device · editor only"
+    : mode === "clone" ? "New clone · editor only"
+    : onDisk ? "Device saved to disk" : "Saved to library draft · not on disk";
   const requestBack = () => {
     if (isDirty) setConfirmBack(true);
     else onCancel();
@@ -1046,9 +1108,17 @@ export function DeviceEditor({
     return { minor, major, majorX, majorY };
   }, [frame.height, frame.width, frame.x, frame.y]);
 
-  const selectedBounds = selectedShape
-    ? deviceShapeBounds(selectedShape)
-    : null;
+  const selectedShapes = snapshot.shapes.filter(shape => selectedShapeIds.includes(shape.id));
+  const selectedBounds = selectedShapes.length > 1
+    ? (() => {
+        const boxes = selectedShapes.map(deviceShapeBounds);
+        const left = Math.min(...boxes.map(box => box.x));
+        const top = Math.min(...boxes.map(box => box.y));
+        const right = Math.max(...boxes.map(box => box.x + box.width));
+        const bottom = Math.max(...boxes.map(box => box.y + box.height));
+        return { x: left, y: top, width: right - left, height: bottom - top };
+      })()
+    : selectedShape ? deviceShapeBounds(selectedShape) : null;
   const showHandles =
     selectedBounds !== null &&
     Math.min(selectedBounds.width, selectedBounds.height) * pixelsPerUnit >= 44;
@@ -1097,19 +1167,19 @@ export function DeviceEditor({
         </div>
         <div className="device-editor-meta" aria-label="Device summary">
           <span>{snapshot.pins.length} {snapshot.pins.length === 1 ? "pin" : "pins"}</span>
-          <span>{artworkLocked ? "Fixed artwork" : `${snapshot.shapes.length} ${snapshot.shapes.length === 1 ? "shape" : "shapes"}`}</span>
+          <span>{artworkLocked ? "Editable SVG artwork" : `${snapshot.shapes.length} ${snapshot.shapes.length === 1 ? "shape" : "shapes"}`}</span>
         </div>
         <div className="device-editor-header-actions">
           <span className={`device-editor-save-state${isDirty ? " is-dirty" : ""}`} role="status">
-            {isDirty ? "Unsaved device changes" : mode === "create" ? "New device" : "Saved to library draft"}
+            {saveState}
           </span>
           <button
             type="button"
-            className="primary-button"
+            className="device-draft-button"
             disabled={!title.trim()}
             onClick={save}
           >
-            <Icon name="save" /> Save device
+            <Icon name="save" /> Save device to draft
           </button>
         </div>
       </header>
@@ -1126,7 +1196,6 @@ export function DeviceEditor({
                   className={`device-editor-tool${tool === item.tool ? " is-active" : ""}`}
                   title={item.title}
                   aria-pressed={tool === item.tool}
-                  disabled={artworkLocked && item.tool !== "select" && item.tool !== "pin"}
                   onClick={() => {
                     setTool(item.tool);
                     setPendingPolyline([]);
@@ -1151,10 +1220,15 @@ export function DeviceEditor({
           <button type="button" className="device-editor-history" disabled={history.future.length === 0} onClick={redo} title="Redo">
             <Icon name="redo" /> <span>Redo</span>
           </button>
-          <label className="device-editor-snap">
-            <input type="checkbox" checked={gridSnap} onChange={(event) => setGridSnap(event.target.checked)} />
-            Snap
-          </label>
+          <button type="button" className="device-editor-history" disabled={!snapshot.shapes.length && !artworkLocked}
+            onClick={() => {
+              setTool("select");
+              if (snapshot.shapes.length) {
+                setSelectedShapeIds(snapshot.shapes.map(shape => shape.id));
+                setSelection({ kind: "shape", id: snapshot.shapes[0]!.id });
+              } else setSvgSelection(-2);
+            }}>Select all</button>
+          <span className="device-editor-snap">Artwork 1 · Pins 10</span>
         </div>
       </div>
 
@@ -1224,17 +1298,21 @@ export function DeviceEditor({
             />
             <g
               className="device-editor-art"
+              style={{ "--svg-selection-width": `${1.5 / pixelsPerUnit}px` } as React.CSSProperties}
+              onPointerDown={event => {
+                if (!artworkLocked) return;
+                const part = (event.target as Element).closest("[data-svg-element]");
+                if (part) { event.stopPropagation(); setSelection(null); setSvgSelection(Number(part.getAttribute("data-svg-element"))); }
+              }}
               dangerouslySetInnerHTML={{
                 __html: artworkLocked
-                  ? initial.artwork.body
+                  ? svgArtworkPreview(snapshot.svgBody ?? initial.artwork.baseBody ?? initial.artwork.body, svgSelection) + serializeDeviceArtwork(snapshot.shapes)
                   : serializeDeviceArtwork(snapshot.shapes),
               }}
             />
-            {!artworkLocked
-              ? snapshot.shapes.map((shape) => (
-                  <g key={shape.id}>{hitShape(shape)}</g>
-                ))
-              : null}
+            {snapshot.shapes.map((shape) => (
+              <g key={shape.id}>{hitShape(shape)}</g>
+            ))}
             {!artworkLocked && snapshot.shapes.length === 0 ? (
               <text
                 className="device-editor-empty-hint"
@@ -1408,9 +1486,20 @@ export function DeviceEditor({
         <aside className="device-editor-inspector">
           <div className="device-editor-inspector-heading">
             <span className="eyebrow">Inspector</span>
-            <h2>{selectedShape ? shapeLabel(selectedShape) : selectedPin ? "Pin" : "Device"}</h2>
-            <p>{selectedShape || selectedPin ? "Selected object" : "Device settings"}</p>
+            <h2>{selectedShapes.length > 1 ? `${selectedShapes.length} shapes` : selectedShape ? shapeLabel(selectedShape) : selectedPin ? "Pin" : "Device"}</h2>
+            <p>{selectedShapes.length > 1 ? "Drag any selected shape to move the group" : selectedShape || selectedPin ? "Selected object" : "Device settings"}</p>
           </div>
+          {artworkLocked && <SvgArtworkEditor body={snapshot.svgBody ?? initial.artwork.baseBody ?? initial.artwork.body} selected={svgSelection}
+            onSelect={index => { setSelection(null); setSvgSelection(index); }}
+            onChange={svgBody => commit({ ...snapshot, svgBody })}/>}
+          {snapshot.pins.length > 0 && <section className="editor-pin-index" aria-label="Pin connections">
+            <h3>Pin connections</h3>
+            <div>{snapshot.pins.map(pin => <button key={pin.id} type="button"
+              aria-pressed={selectedPin?.id === pin.id}
+              onClick={() => { setTool("select"); setSelection({kind:"pin",id:pin.id}); }}>
+              <strong>{pin.name || pin.key}</strong><span>{DIRECTION_LABELS[pin.direction]}</span>
+            </button>)}</div>
+          </section>}
           {selectedShape ? (
             <section className="device-editor-object-section">
               <div className="device-editor-section-heading">
@@ -1783,8 +1872,8 @@ export function DeviceEditor({
                 />
               </div>
               <p className="device-editor-note">
-                Pins must sit on the 10-unit grid. The pin tool snaps new pins
-                there, and use the fields for exact coordinates.
+                {artworkLocked ? "Select SVG artwork to edit its geometry. Check the pin against the visible lead." :
+                  "New pins snap to the 10-unit grid. Use the fields for exact coordinates."}
               </p>
             </section>
           ) : null}
@@ -1820,13 +1909,13 @@ export function DeviceEditor({
                 label="Frame width"
                 value={frameWidth}
                 min={8}
-                onChange={(value) => setFrameWidth(clamp(value, 8, 2000))}
+                onChange={(value) => setFrameWidth(clamp(snapValue(value, 20), 20, 2000))}
               />
               <NumericField
                 label="Frame height"
                 value={frameHeight}
                 min={8}
-                onChange={(value) => setFrameHeight(clamp(value, 8, 2000))}
+                onChange={(value) => setFrameHeight(clamp(snapValue(value, 20), 20, 2000))}
               />
             </div>
             <div className="device-editor-row">
@@ -1903,7 +1992,7 @@ export function DeviceEditor({
                   else setConfirmBack(false);
                 }}
               >
-                <Icon name="save" /> Save and return
+                <Icon name="save" /> Save and return to library draft
               </button>
             </div>
           </div>

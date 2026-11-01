@@ -87,7 +87,7 @@ describe("device library manager", () => {
     onImportLibrary: vi.fn().mockResolvedValue({ canceled: true }),
     onExportLibrary: vi.fn().mockResolvedValue({ canceled: true }),
     onExportAudit: vi.fn().mockResolvedValue({ canceled: true }),
-    onRefreshEmbedded: vi.fn(() => "Refreshed 1 project device definition(s)."),
+    onRefreshEmbedded: vi.fn(() => ({ kind: "success" as const, message: "Refreshed 1 project device definition(s)." })),
   };
 
   function render(options: { userDirty?: boolean } = {}) {
@@ -124,12 +124,36 @@ describe("device library manager", () => {
     render();
     expect(container.querySelector("#device-library-title")?.textContent).toBe("Device library");
     expect(container.querySelector(".device-library-status")).toBeNull();
+    expect(container.querySelectorAll(".catalog-card .catalog-preview")).toHaveLength(4);
+    expect(container.querySelector(".catalog-detail")).toBeNull();
     expect(container.textContent).toContain("Resistor");
     expect(container.textContent).toContain("Custom A");
     expect(container.textContent).toContain("Project B");
     expect(container.textContent).toContain("Built-in");
     expect(container.textContent).toContain("Custom");
     expect(container.textContent).toContain("This project");
+  });
+
+  it("shows pin directions on every card and keeps actions on their card", () => {
+    render();
+    const resistor = container.querySelector('[data-device-id="resistor"]')!;
+    expect(resistor.querySelector('[data-pin-key="1"]')).not.toBeNull();
+    expect(resistor.querySelector('table')).toBeNull();
+    expect(resistor.querySelector('button')?.textContent).toBe("Clone");
+    const custom = container.querySelector('[data-device-id="custom-a"]')!;
+    expect(custom.textContent).toContain("Edit");
+  });
+
+  it("opens a built-in clone with editable SVG elements and preserves its source record", () => {
+    render();
+    flushSync(() => (container.querySelector('[data-device-id="resistor"] button') as HTMLButtonElement).click());
+    expect(container.querySelector('[aria-label="Artwork element"]')).not.toBeNull();
+    expect(button(container, "Line").disabled).toBe(false);
+    flushSync(() => button(container, "Save device").click());
+    const next = handlers.onChangeUserLibrary.mock.calls[0]![0] as DeviceLibraryFile;
+    const clone = next.devices.find(device => device.title === "Resistor (custom)")!;
+    expect(clone.id).not.toBe("resistor");
+    expect(clone.artwork.body).toBe(builtInFile.devices.find(device => device.id === "resistor")!.artwork.body);
   });
 
   it("duplicates a custom device into the draft library", () => {
@@ -142,7 +166,7 @@ describe("device library manager", () => {
     expect(next.devices.some((device) => device.title.includes("(copy)"))).toBe(true);
   });
 
-  it("opens the pin audit as a tab", () => {
+  it("opens the pin audit from maintenance tools", () => {
     render();
     flushSync(() => button(container, "Audit").click());
     expect(container.textContent).toContain("Device pin direction audit");
@@ -230,6 +254,6 @@ describe("device library manager", () => {
     expect(container.textContent).toContain("Saved to library draft");
     flushSync(() => button(container, "Device library").click());
     expect(container.querySelector(".device-editor")).toBeNull();
-    expect(container.querySelector(".device-library-custom-controls")).not.toBeNull();
+    expect(container.querySelector('[aria-label="Custom library"]')).not.toBeNull();
   });
 });

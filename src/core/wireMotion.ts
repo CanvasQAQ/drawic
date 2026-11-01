@@ -101,15 +101,16 @@ function pinOutwardDirectionForEndpoint(
       return undefined;
   }
   const mirroredX = resolved.node.mirrored ? -vector.x : vector.x;
+  const mirroredY = resolved.node.mirroredVertically ? -vector.y : vector.y;
   switch (resolved.node.rotation) {
     case 0:
-      return { x: mirroredX, y: vector.y };
+      return { x: mirroredX, y: mirroredY };
     case 90:
-      return { x: -vector.y, y: mirroredX };
+      return { x: -mirroredY, y: mirroredX };
     case 180:
-      return { x: -mirroredX, y: -vector.y };
+      return { x: -mirroredX, y: -mirroredY };
     case 270:
-      return { x: vector.y, y: -mirroredX };
+      return { x: mirroredY, y: -mirroredX };
   }
 }
 

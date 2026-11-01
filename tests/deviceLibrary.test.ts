@@ -299,6 +299,21 @@ describe("editable device artwork in library schema version 2", () => {
     expect(parsed.devices[0]!.artwork.body).not.toContain("<rect");
   });
 
+  it("retains SVG source and editable shapes together across library parsing", () => {
+    const original = recordWithShapes();
+    const baseBody = '<path d="M -10 0 L 10 0" stroke="currentColor"/>';
+    original.artwork.baseBody = baseBody;
+    original.artwork.body = baseBody + original.artwork.body;
+    const library = buildDeviceLibraryFile({
+      id: "drawic-user", title: "Custom devices", collection: "user", devices: [original],
+    });
+    const parsed = parseDeviceLibrary(JSON.parse(serializeDeviceLibraryFile(library)), { sanitize: true });
+    expect(parsed.devices[0]!.artwork.baseBody).toContain("<path");
+    expect(parsed.devices[0]!.artwork.shapes).toHaveLength(1);
+    expect(parsed.devices[0]!.artwork.body).toContain("<path");
+    expect(parsed.devices[0]!.artwork.body).toContain("<circle");
+  });
+
   it("escapes text primitives instead of emitting markup", () => {
     const library = buildDeviceLibraryFile({
       id: "drawic-user",

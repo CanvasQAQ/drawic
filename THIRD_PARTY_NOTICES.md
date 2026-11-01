@@ -25,6 +25,8 @@ Drawic packages the following principal open-source components. Full license
 texts and transitive notices are included by each package in the installed
 application where required by that package.
 
+- Model Context Protocol TypeScript SDK — MIT — https://github.com/modelcontextprotocol/typescript-sdk
+- Zod — MIT — https://github.com/colinhacks/zod
 - Electron — MIT — https://github.com/electron/electron
 - React and React DOM — MIT — https://github.com/facebook/react
 - Lexical, `@lexical/react`, and `@lexical/rich-text` — MIT —

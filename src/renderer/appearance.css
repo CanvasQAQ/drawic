@@ -1,0 +1,50 @@
+/* UI chrome only. SVG paint on paper and document-authored colors belong to the drawing. */
+:root {
+  color-scheme: dark;
+  --ui-shell: #0f172a;
+  --ui-panel: #182235;
+  --ui-raised: #202d43;
+  --ui-field: #111b2d;
+  --ui-hover: #2b3951;
+  --ui-line: #384862;
+  --ui-text: #edf1fa;
+  --ui-muted: #b3bed1;
+  --ui-accent: #c6adff;
+  --ui-selected: #352b51;
+  --ui-primary: #6939c9;
+  --ui-primary-hover: #5329a7;
+  --ui-on-primary: #fff;
+  --ui-info: #77dae9;
+  --ui-success: #86dfba;
+  --ui-warning: #ffd38a;
+  --ui-danger: #ffabae;
+  --ui-danger-surface: #482b37;
+  --ui-warning-surface: #3d3326;
+  --ui-success-surface: #193b36;
+  --ui-overlay: rgb(5 9 18 / 68%);
+  --ui-shadow: 0 8px 28px rgb(2 6 18 / 32%);
+  --ui-radius: 6px;
+  --ui-control-height: 36px;
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+  --ui-shell: #eef1f7;
+  --ui-panel: #fff;
+  --ui-raised: #f6f7fb;
+  --ui-field: #fff;
+  --ui-hover: #e8edf6;
+  --ui-line: #c6cfde;
+  --ui-text: #202b40;
+  --ui-muted: #4d5d76;
+  --ui-accent: #6630ba;
+  --ui-selected: #efe8ff;
+  --ui-info: #086b80;
+  --ui-success: #13684a;
+  --ui-warning: #795016;
+  --ui-danger: #a2283a;
+  --ui-danger-surface: #ffe9ec;
+  --ui-warning-surface: #fff1d8;
+  --ui-success-surface: #e0f4eb;
+  --ui-overlay: rgb(15 23 42 / 46%);
+  --ui-shadow: 0 8px 28px rgb(34 46 70 / 15%);
+}

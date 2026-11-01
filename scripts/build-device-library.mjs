@@ -657,10 +657,21 @@ export async function buildDeviceLibrary() {
     throw new Error("Unsupported source device manifest.");
   }
 
+  const gridRoot = resolve("src/renderer/assets/device-grid");
+  const review = JSON.parse(await readFile(join(gridRoot, "review.json"), "utf8"));
+  async function appearance(entry, markup, options = {}) {
+    const id = options.id ?? entry.id;
+    if (!review[id]) return createDevice(entry, markup, manifest, options);
+    const corrected = await readFile(join(gridRoot, id + ".svg"), "utf8");
+    const [x, y, width, height] = corrected.match(/<svg\b[^>]*\bviewBox="([^"]+)"/)[1].split(/\s+/).map(Number);
+    return createDevice({ ...entry, frame: { x, y, width, height } }, corrected, manifest, {
+      ...options, sourceFile: "device-grid/" + id + ".svg",
+    });
+  }
   const devices = [];
   for (const entry of manifest.entries) {
     const markup = await readFile(join(sourceRoot, "svg", basename(entry.file)), "utf8");
-    devices.push(createDevice(entry, markup, manifest));
+    devices.push(await appearance(entry, markup));
     for (const variant of entry.variants ?? []) {
       if (variant.default || variant.file === entry.file) {
         continue;
@@ -671,7 +682,7 @@ export async function buildDeviceLibrary() {
       );
       const pins = visiblePinsForVariant(entry, variant.id);
       devices.push(
-        createDevice(entry, variantMarkup, manifest, {
+        await appearance(entry, variantMarkup, {
           id: `${entry.id}--${variant.id}`,
           title: variantTitle(entry, variant.id, pins),
           variant: variant.id,
@@ -692,6 +703,10 @@ export async function buildDeviceLibrary() {
     const halfWidth = device.frame.width / 2;
     const halfHeight = device.frame.height / 2;
     for (const pin of device.pins) {
+      const centeredOutput = /^(and|nand|or|nor|xor|xnor)-gate-4$/.test(device.id) && pin.key === "Y";
+      if (pin.x % 10 || (centeredOutput ? pin.y !== 5 : pin.y % 10 !== 0)) {
+        throw new Error("Unexpected pin position: " + device.id + "/" + pin.key);
+      }
       if (
         pin.x < -halfWidth ||
         pin.x > halfWidth ||

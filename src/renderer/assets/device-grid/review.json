@@ -1,0 +1,547 @@
+{
+  "adc": {
+    "source": "adc.svg",
+    "previousPins": {
+      "IN": [
+        -45,
+        0,
+        "west"
+      ],
+      "OUT": [
+        45,
+        0,
+        "east"
+      ]
+    }
+  },
+  "adder": {
+    "source": "adder.svg",
+    "previousPins": {
+      "A": [
+        -20,
+        -4,
+        "west"
+      ],
+      "B": [
+        0,
+        16,
+        "south"
+      ],
+      "Y": [
+        20,
+        -4,
+        "east"
+      ]
+    }
+  },
+  "and-gate-4": {
+    "source": "and-gate-4.svg",
+    "previousPins": {
+      "A": [
+        -30,
+        -12,
+        "west"
+      ],
+      "B": [
+        -30,
+        -4,
+        "west"
+      ],
+      "C": [
+        -30,
+        4,
+        "west"
+      ],
+      "D": [
+        -30,
+        12,
+        "west"
+      ],
+      "Y": [
+        20,
+        0,
+        "east"
+      ]
+    }
+  },
+  "ccvs": {
+    "source": "ccvs.svg",
+    "previousPins": {
+      "+": [
+        4.5,
+        -20,
+        "north"
+      ],
+      "-": [
+        4.5,
+        20,
+        "south"
+      ]
+    }
+  },
+  "ccvs--diamond": {
+    "source": "variants/ccvs--diamond.svg",
+    "previousPins": {
+      "+": [
+        4.5,
+        -20,
+        "north"
+      ],
+      "-": [
+        4.5,
+        20,
+        "south"
+      ]
+    }
+  },
+  "center-tap-inductor": {
+    "source": "center-tap-inductor.svg",
+    "previousPins": {
+      "1": [
+        -50,
+        -4,
+        "west"
+      ],
+      "2": [
+        50,
+        -4,
+        "east"
+      ],
+      "3": [
+        0,
+        16,
+        "south"
+      ]
+    }
+  },
+  "d-flip-flop-reset": {
+    "source": "d-flip-flop-reset.svg",
+    "previousPins": {
+      "D": [
+        -40,
+        -22.5,
+        "west"
+      ],
+      "CK": [
+        -40,
+        -2.5,
+        "west"
+      ],
+      "RST": [
+        0,
+        37.5,
+        "south"
+      ],
+      "Q": [
+        40,
+        -22.5,
+        "east"
+      ],
+      "QBAR": [
+        40,
+        -2.5,
+        "east"
+      ]
+    }
+  },
+  "dac": {
+    "source": "dac.svg",
+    "previousPins": {
+      "IN": [
+        -45,
+        0,
+        "west"
+      ],
+      "OUT": [
+        45,
+        0,
+        "east"
+      ]
+    }
+  },
+  "ground": {
+    "source": "ground.svg",
+    "previousPins": {
+      "0": [
+        0,
+        -11.5,
+        "north"
+      ]
+    }
+  },
+  "ideal-switch": {
+    "source": "ideal-switch.svg",
+    "previousPins": {
+      "1": [
+        -20,
+        3,
+        "west"
+      ],
+      "2": [
+        20,
+        3,
+        "east"
+      ]
+    }
+  },
+  "multiplier": {
+    "source": "multiplier.svg",
+    "previousPins": {
+      "A": [
+        -20,
+        -4,
+        "west"
+      ],
+      "B": [
+        0,
+        16,
+        "south"
+      ],
+      "Y": [
+        20,
+        -4,
+        "east"
+      ]
+    }
+  },
+  "nand-gate-4": {
+    "source": "nand-gate-4.svg",
+    "previousPins": {
+      "A": [
+        -30,
+        -12,
+        "west"
+      ],
+      "B": [
+        -30,
+        -4,
+        "west"
+      ],
+      "C": [
+        -30,
+        4,
+        "west"
+      ],
+      "D": [
+        -30,
+        12,
+        "west"
+      ],
+      "Y": [
+        30,
+        0,
+        "east"
+      ]
+    }
+  },
+  "nor-gate-4": {
+    "source": "nor-gate-4.svg",
+    "previousPins": {
+      "A": [
+        -30,
+        -12,
+        "west"
+      ],
+      "B": [
+        -30,
+        -4,
+        "west"
+      ],
+      "C": [
+        -30,
+        4,
+        "west"
+      ],
+      "D": [
+        -30,
+        12,
+        "west"
+      ],
+      "Y": [
+        30,
+        0,
+        "east"
+      ]
+    }
+  },
+  "npn": {
+    "source": "npn.svg",
+    "previousPins": {
+      "C": [
+        13,
+        -20,
+        "north"
+      ],
+      "B": [
+        -17,
+        0,
+        "west"
+      ],
+      "E": [
+        13,
+        20,
+        "south"
+      ]
+    }
+  },
+  "or-gate-4": {
+    "source": "or-gate-4.svg",
+    "previousPins": {
+      "A": [
+        -30,
+        -12,
+        "west"
+      ],
+      "B": [
+        -30,
+        -4,
+        "west"
+      ],
+      "C": [
+        -30,
+        4,
+        "west"
+      ],
+      "D": [
+        -30,
+        12,
+        "west"
+      ],
+      "Y": [
+        20,
+        0,
+        "east"
+      ]
+    }
+  },
+  "pnp": {
+    "source": "pnp.svg",
+    "previousPins": {
+      "C": [
+        13,
+        20,
+        "south"
+      ],
+      "B": [
+        -17,
+        0,
+        "west"
+      ],
+      "E": [
+        13,
+        -20,
+        "north"
+      ]
+    }
+  },
+  "port": {
+    "source": "port.svg",
+    "previousPins": {
+      "P": [
+        5,
+        0,
+        "east"
+      ]
+    }
+  },
+  "port-filled": {
+    "source": "port-filled.svg",
+    "previousPins": {
+      "P": [
+        5,
+        0,
+        "east"
+      ]
+    }
+  },
+  "pulse-voltage-source": {
+    "source": "pulse-voltage-source.svg",
+    "previousPins": {
+      "+": [
+        4.5,
+        -20,
+        "north"
+      ],
+      "-": [
+        4.5,
+        20,
+        "south"
+      ]
+    }
+  },
+  "simple-switch": {
+    "source": "simple-switch.svg",
+    "previousPins": {
+      "1": [
+        -20,
+        3,
+        "west"
+      ],
+      "2": [
+        20,
+        3,
+        "east"
+      ]
+    }
+  },
+  "tcoil": {
+    "source": "tcoil.svg",
+    "previousPins": {
+      "1": [
+        -90,
+        11,
+        "west"
+      ],
+      "2": [
+        90,
+        11,
+        "east"
+      ],
+      "3": [
+        0,
+        31,
+        "south"
+      ]
+    }
+  },
+  "vcvs": {
+    "source": "vcvs.svg",
+    "previousPins": {
+      "+": [
+        4.5,
+        -20,
+        "north"
+      ],
+      "-": [
+        4.5,
+        20,
+        "south"
+      ]
+    }
+  },
+  "vcvs--diamond": {
+    "source": "variants/vcvs--diamond.svg",
+    "previousPins": {
+      "+": [
+        4.5,
+        -20,
+        "north"
+      ],
+      "-": [
+        4.5,
+        20,
+        "south"
+      ]
+    }
+  },
+  "vdd-port": {
+    "source": "vdd-port.svg",
+    "previousPins": {
+      "P": [
+        0,
+        9,
+        "south"
+      ]
+    }
+  },
+  "voltage-controlled-switch": {
+    "source": "voltage-controlled-switch.svg",
+    "previousPins": {
+      "P": [
+        -20,
+        -10.5,
+        "west"
+      ],
+      "N": [
+        20,
+        -10.5,
+        "east"
+      ],
+      "CP": [
+        -20,
+        19.5,
+        "west"
+      ],
+      "CN": [
+        20,
+        19.5,
+        "east"
+      ]
+    }
+  },
+  "voltage-source": {
+    "source": "voltage-source.svg",
+    "previousPins": {
+      "+": [
+        4.5,
+        -20,
+        "north"
+      ],
+      "-": [
+        4.5,
+        20,
+        "south"
+      ]
+    }
+  },
+  "xnor-gate-4": {
+    "source": "xnor-gate-4.svg",
+    "previousPins": {
+      "A": [
+        -30,
+        -12,
+        "west"
+      ],
+      "B": [
+        -30,
+        -4,
+        "west"
+      ],
+      "C": [
+        -30,
+        4,
+        "west"
+      ],
+      "D": [
+        -30,
+        12,
+        "west"
+      ],
+      "Y": [
+        40,
+        0,
+        "east"
+      ]
+    }
+  },
+  "xor-gate-4": {
+    "source": "xor-gate-4.svg",
+    "previousPins": {
+      "A": [
+        -30,
+        -12,
+        "west"
+      ],
+      "B": [
+        -30,
+        -4,
+        "west"
+      ],
+      "C": [
+        -30,
+        4,
+        "west"
+      ],
+      "D": [
+        -30,
+        12,
+        "west"
+      ],
+      "Y": [
+        30,
+        0,
+        "east"
+      ]
+    }
+  }
+}

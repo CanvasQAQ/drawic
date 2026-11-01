@@ -233,7 +233,7 @@ Rules:
   **DEVICES — Device library** and opens the manager.
 - A **Tools → Device library** native menu command is added and routed through
   the existing `AppCommand` bridge.
-- The manager has three tabs: **Browse**, **Audit**, and **Custom**.
+- The manager has two tabs, **Browse** and **Custom**. The audit is available under Browse → Maintenance tools.
 - The left palette gains a source filter (All / Built-in / Custom / This
   project) and a **Manage devices** action.
 

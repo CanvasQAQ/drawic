@@ -1,20 +1,32 @@
 export type Theme = "light" | "dark";
 
+export type { AppearancePreference as ThemePreference } from "../shared/bridge";
+import type { AppearancePreference as ThemePreference } from "../shared/bridge";
+export const SYSTEM_DARK_QUERY = "(prefers-color-scheme: dark)";
+
 export const THEME_STORAGE_KEY = "drawic.theme";
 
 export function isTheme(value: unknown): value is Theme {
   return value === "light" || value === "dark";
 }
 
-export function resolveInitialTheme(
+export function readThemePreference(
   storage: Pick<Storage, "getItem"> | undefined = globalThis.localStorage,
-): Theme {
+): ThemePreference {
   try {
     const stored = storage?.getItem(THEME_STORAGE_KEY);
-    return isTheme(stored) ? stored : "dark";
+    return isTheme(stored) || stored === "system" ? stored : "dark";
   } catch {
     return "dark";
   }
+}
+
+export function effectiveTheme(preference: ThemePreference, systemDark: boolean): Theme {
+  return preference === "system" ? (systemDark ? "dark" : "light") : preference;
+}
+
+export function resolveInitialTheme(storage?: Pick<Storage, "getItem">): Theme {
+  return effectiveTheme(readThemePreference(storage), globalThis.matchMedia?.(SYSTEM_DARK_QUERY).matches ?? true);
 }
 
 export function applyThemeToDocument(
@@ -26,7 +38,7 @@ export function applyThemeToDocument(
 }
 
 export function persistTheme(
-  theme: Theme,
+  theme: ThemePreference,
   storage: Pick<Storage, "setItem"> | undefined = globalThis.localStorage,
 ): void {
   try {

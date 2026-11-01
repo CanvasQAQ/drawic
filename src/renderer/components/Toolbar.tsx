@@ -83,13 +83,13 @@ export function Toolbar({
   return (
     <header className="app-toolbar">
       <nav className="toolbar-groups" aria-label="Editor toolbar">
-        <div className="tool-group file-tools">
+        <div className="tool-group file-tools" role="group" aria-label="Project">
           <ToolButton label="New" icon="new" onClick={onNew} shortcut="Ctrl+N" />
           <ToolButton label="Open" icon="open" onClick={onOpen} shortcut="Ctrl+O" />
           <ToolButton label="Save" icon="save" onClick={onSave} shortcut="Ctrl+S" />
         </div>
         <Separator />
-        <div className="tool-group">
+        <div className="tool-group" role="group" aria-label="Schematic tools">
           <ToolButton
             label="Select"
             icon="select"
@@ -126,6 +126,9 @@ export function Toolbar({
             onClick={() => onTool("net-label")}
             description="Attach a visible name to a wire"
           />
+        </div>
+        <Separator />
+        <div className="tool-group" role="group" aria-label="Drawing tools">
           <ToolButton
             label="Text"
             icon="text"
@@ -154,12 +157,14 @@ export function Toolbar({
           />
         </div>
         <Separator />
-        <div className="tool-group compact-tools">
+        <div className="tool-group compact-tools" role="group" aria-label="History">
           <ToolButton label="Undo" icon="undo" onClick={onUndo} disabled={!canUndo} />
           <ToolButton label="Redo" icon="redo" onClick={onRedo} disabled={!canRedo} />
         </div>
         <Separator />
-        <ToolButton label="Export" icon="export" onClick={onExport} />
+        <div className="tool-group" role="group" aria-label="Output">
+          <ToolButton label="Export" icon="export" onClick={onExport} />
+        </div>
       </nav>
 
     </header>

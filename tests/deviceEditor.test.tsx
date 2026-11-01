@@ -264,10 +264,103 @@ describe("device editor", () => {
     expect(setup.hasAttribute("open")).toBe(false);
   });
 
-  it("keeps fixed artwork when the device is locked", () => {
+  it("edits cloned SVG geometry, undoes the change and saves the edited artwork", () => {
+    const { onSave } = render(lockedRecord(), true);
+    const part = container.querySelector('[data-svg-element="0"]')!;
+    flushSync(() => part.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true })));
+    const radius = () => container.querySelector<HTMLInputElement>('[aria-label="SVG r"]')!;
+    setInputValue(radius(), "14");
+    flushSync(() => button(container, "Apply artwork changes").click());
+    expect(container.querySelector('.device-editor-art circle')?.getAttribute('r')).toBe("14");
+    flushSync(() => button(container, "Undo").click());
+    expect(container.querySelector('.device-editor-art circle')?.getAttribute('r')).toBe("10");
+    flushSync(() => button(container, "Redo").click());
+    flushSync(() => button(container, "Save device").click());
+    const saved = onSave.mock.calls[0]![0] as DeviceLibraryRecord;
+    expect(saved.artwork.body).toContain('r="14"');
+    expect(saved.artwork.body).not.toContain("data-svg-element");
+    expect(saved.pins).toEqual(lockedRecord().pins);
+    expect(saved.artwork.shapes).toBeUndefined();
+  });
+
+  it("rejects external paint references when editing SVG attributes", () => {
+    render(lockedRecord(), true);
+    flushSync(() => container.querySelector('[data-svg-element="0"]')!.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true })));
+    setInputValue(container.querySelector<HTMLInputElement>('[aria-label="SVG fill"]')!, "url(https://example.invalid/paint)");
+    flushSync(() => button(container, "Apply artwork changes").click());
+    expect(container.querySelector('[role="alert"]')?.textContent).toContain("Check fill");
+    expect(container.querySelector('.device-editor-art circle')?.getAttribute('fill')).toBe("none");
+  });
+
+  it("adds new artwork to a cloned SVG without dropping the original", () => {
     const initial = lockedRecord();
     const { onSave } = render(initial, true);
-    expect(button(container, "Line").disabled).toBe(true);
+    flushSync(() => button(container, "Line").click());
+    pointer("pointerdown", 100, 100);
+    pointer("pointermove", 300, 100);
+    pointer("pointerup", 300, 100);
+    flushSync(() => button(container, "Save device").click());
+    const saved = onSave.mock.calls[0]![0] as DeviceLibraryRecord;
+    expect(saved.artwork.body).toContain(initial.artwork.body);
+    expect(saved.artwork.body).toContain('<line x1="-10"');
+    expect(saved.artwork.baseBody).toBe(initial.artwork.body);
+    expect(saved.artwork.shapes).toHaveLength(1);
+    flushSync(() => root.unmount());
+    container.remove();
+    render(saved, true);
+    expect(container.querySelector('[data-shape-id="shape-1"]')).not.toBeNull();
+    expect(container.querySelector('.device-editor-art circle')).not.toBeNull();
+  });
+
+  it("selects and moves multiple editable shapes as a group", () => {
+    render(createStarterDevice("group"), false);
+    flushSync(() => button(container, "Line").click());
+    pointer("pointerdown", 100, 100);
+    pointer("pointermove", 300, 100);
+    pointer("pointerup", 300, 100);
+    flushSync(() => button(container, "Line").click());
+    pointer("pointerdown", 100, 300);
+    pointer("pointermove", 300, 300);
+    pointer("pointerup", 300, 300);
+    flushSync(() => button(container, "Select all").click());
+    expect(container.querySelector(".device-editor-inspector-heading h2")?.textContent).toBe("2 shapes");
+    const firstHit = container.querySelector('[data-shape-id="shape-1"]')!;
+    flushSync(() => firstHit.dispatchEvent(new MouseEvent("pointerdown", {
+      bubbles: true, button: 0, clientX: 100, clientY: 100,
+    })));
+    pointer("pointermove", 200, 100);
+    pointer("pointerup", 200, 100);
+    const artwork = [...container.querySelectorAll(".device-editor-art line")];
+    expect(artwork.map(line => line.getAttribute("x1"))).toEqual(["0", "0"]);
+    const corner = container.querySelector(".device-editor-handle-hit.handle-se")!;
+    flushSync(() => corner.dispatchEvent(new MouseEvent("pointerdown", {
+      bubbles: true, button: 0, clientX: 400, clientY: 300,
+    })));
+    pointer("pointermove", 450, 350);
+    pointer("pointerup", 450, 350);
+    const rightEdges = [...container.querySelectorAll(".device-editor-art line")]
+      .map(line => Number(line.getAttribute("x2")));
+    expect(rightEdges[0]).toBeGreaterThan(20);
+    expect(rightEdges).toEqual([rightEdges[0], rightEdges[0]]);
+    expect(rightEdges.every(Number.isInteger)).toBe(true);
+  });
+
+  it("moves all copied SVG artwork on the unit grid without moving pins", () => {
+    const { onSave } = render(lockedRecord(), true);
+    flushSync(() => button(container, "Select all").click());
+    const moveX = container.querySelector('input[aria-label="Move all artwork X"]') as HTMLInputElement;
+    setInputValue(moveX, "3.5");
+    flushSync(() => button(container, "Move selected artwork").click());
+    flushSync(() => button(container, "Save device").click());
+    const saved = onSave.mock.calls[0]![0] as DeviceLibraryRecord;
+    expect(saved.artwork.baseBody).toContain('transform="translate(4 0)"');
+    expect(saved.pins[0]?.x).toBe(-20);
+  });
+
+  it("preserves SVG artwork when saving without geometry edits", () => {
+    const initial = lockedRecord();
+    const { onSave } = render(initial, true);
+    expect(button(container, "Line").disabled).toBe(false);
     expect(button(container, "Pin").disabled).toBe(false);
 
     flushSync(() => button(container, "Save device").click());

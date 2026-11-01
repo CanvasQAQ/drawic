@@ -501,6 +501,44 @@ describe("properties numeric controls", () => {
 });
 
 describe("properties panel layout", () => {
+  it("edits component coordinates in one compact row", () => {
+    const page = createEmptyPage("Position");
+    page.nodes.push({ id: "r1", symbolId: "resistor", reference: "R1", value: "1k",
+      x: 100, y: 50, rotation: 0, mirrored: false });
+    const onUpdateNode = vi.fn();
+    const { container, root } = renderPanel(page, [{ kind: "node", id: "r1" }], { onUpdateNode });
+    expect(container.querySelectorAll(".property-coordinate-pair")).toHaveLength(1);
+    clickButton(container, "Increase Position X");
+    expect(onUpdateNode).toHaveBeenCalledWith("r1", { x: 110 });
+    expect(container.querySelector(".property-grid")).toBeNull();
+    root.unmount(); container.remove();
+  });
+
+  it("edits note geometry and offers a themed line-style menu", () => {
+    const page = createEmptyPage("Note properties");
+    page.shapes.push(noteShape());
+    const onUpdateShape = vi.fn();
+    const { container, root } = renderPanel(page, [{ kind: "shape", id: "note_1" }], { onUpdateShape });
+    expect(container.querySelectorAll(".property-coordinate-pair")).toHaveLength(3);
+    clickButton(container, "Increase Position Y");
+    expect(onUpdateShape).toHaveBeenCalledWith("note_1", { y: 30 });
+    clickButton(container, "Increase Width");
+    expect(onUpdateShape).toHaveBeenCalledWith("note_1", { width: 250 });
+    const positionX = container.querySelector<HTMLInputElement>('[aria-label="Position X"]')!;
+    setInputValue(positionX, "33");
+    blurInput(positionX);
+    expect(onUpdateShape).toHaveBeenCalledWith("note_1", { x: 30 });
+    const menu = container.querySelector<HTMLButtonElement>('[role="combobox"][aria-label="Line style"]')!;
+    expect(menu).not.toBeNull();
+    expect(container.querySelector('select')).toBeNull();
+    flushSync(() => menu.click());
+    const dashed = [...document.querySelectorAll<HTMLElement>('[role="option"]')]
+      .find(option => option.textContent?.includes("Dashed"))!;
+    flushSync(() => dashed.click());
+    expect(onUpdateShape).toHaveBeenCalledWith("note_1", { dash: "dashed" });
+    root.unmount(); container.remove();
+  });
+
   it("toggles component label visibility from an inline eye button", () => {
     const page = createEmptyPage("Eye toggles");
     page.nodes.push({

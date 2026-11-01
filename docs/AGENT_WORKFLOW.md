@@ -51,7 +51,7 @@ Implemented:
 - persisted per-Net wire colors shared by every wire and preserved in SVG
   export;
 - a built-in device pin direction audit with visible escape arrows and JSON
-  correction export, presented as the Audit tab of the device library manager;
+  correction export, available under Browse → Maintenance tools;
 - user device libraries with an in-app artwork editor, pin placement and editing,
   library import/export, and project embedding of referenced custom devices;
 - a bottom session console for placement, file, import/export, and error logs;
@@ -60,6 +60,8 @@ Implemented:
   ERC, and SVG/PNG/PDF export;
 - draw.io `mxlibrary` conversion helpers for device libraries.
 
+The optional [local MCP adapter](LOCAL_AGENT.md) reads the active page and commits versioned device placement and pin connection batches to the shared editor history.
+
 Not yet implemented in the UI:
 
 - importing/exporting full draw.io multi-page documents;
@@ -67,7 +69,7 @@ Not yet implemented in the UI:
   format-specific drawing tools;
 - stable per-segment wire identities, direction-mode editing, and an explicit
   disconnection-move gesture;
-- Spectre/SCS, simulation, local MCP, and cloud services.
+- Spectre/SCS, simulation, and cloud services.
 
 Do not describe a design goal as shipped behavior. Update this section when
 capabilities materially change.
@@ -149,17 +151,18 @@ Relevant library API:
 - `deviceToMxLibraryEntry` converts one record for draw.io tooling.
 - `parseMxLibraryTitles` is a lightweight import inspection helper.
 
-Built-in pin directions are reviewed in the **Audit** tab of the device library
+Built-in pin directions are reviewed under **Browse → Maintenance tools** in the device library
 manager. Its correction export is described in
 [`DEVICE_PIN_AUDIT.md`](DEVICE_PIN_AUDIT.md). Apply reported changes to the
 source manifest and regenerate the library.
 
 The device library manager (**Export & tools → DEVICES**, the palette's
-**Manage devices** action, or **Tools → Manage Device Library**) has three tabs:
-Browse, Audit, and Custom. The Custom tab opens an in-app editor for line,
+**Manage devices** action, or **Tools → Manage Device Library**) has two tabs:
+Browse and Custom. Browse previews each pin and its audited direction. The Custom tab opens an in-app editor for line,
 polyline, rectangle, circle, ellipse, arc, and text artwork, pin placement, and
 device metadata. It persists one `user.drawiclib.json` file under
 `app.getPath("userData")/device-libraries/` through narrow bridge operations.
+The editor’s **Save device to draft** updates the in-memory record; **Save library to disk** on the Custom tab persists all draft changes. The pin index selects an individual pin for editing.
 Custom devices can be imported and exported as a library file, and referenced
 non-built-in devices are embedded in project files on save. A normal project
 save preserves an existing embedded record; only **Refresh project devices**

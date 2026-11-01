@@ -1,3 +1,8 @@
+import { FilterSelect } from "./FilterSelect";
+import { CustomLibrary } from "./CustomLibrary";
+import { catalogFilter } from "../../core/deviceCatalog";
+import { DeviceCatalog, type BrowseEntry, type DeviceSource } from "./DeviceCatalog";
+import type { DeviceActions, LibraryActions } from "../deviceWorkspace";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   loadDeviceLibrary,
@@ -21,13 +26,6 @@ import { PinAuditScreen } from "./PinAuditScreen";
 import { Icon } from "./Icons";
 
 type DeviceLibraryTab = "browse" | "audit" | "custom";
-type DeviceSource = "built-in" | "custom" | "project";
-
-interface BrowseEntry {
-  record: DeviceLibraryRecord;
-  source: DeviceSource;
-}
-
 interface EditorState {
   record: DeviceLibraryRecord;
   mode: "create" | "edit" | "clone";
@@ -45,9 +43,12 @@ interface Status {
 }
 
 export interface DeviceLibraryScreenProps {
+  actions?: React.RefObject<LibraryActions | null>;
+  onEditorDirty?: (dirty: boolean) => void;
   builtInFile: DeviceLibraryFile;
   userFile: DeviceLibraryFile | null;
   embeddedFile?: DeviceLibraryFile | undefined;
+  savedUserFile?: DeviceLibraryFile | null;
   userDirty: boolean;
   onClose: () => void;
   onChangeUserLibrary: (library: DeviceLibraryFile | null) => void;
@@ -56,14 +57,8 @@ export interface DeviceLibraryScreenProps {
   onImportLibrary: () => Promise<DeviceLibraryImportResult>;
   onExportLibrary: (library: DeviceLibraryFile) => Promise<ExportResult>;
   onExportAudit: (content: string) => Promise<ExportResult>;
-  onRefreshEmbedded: () => string;
+  onRefreshEmbedded: () => Status;
 }
-
-const SOURCE_LABELS: Record<DeviceSource, string> = {
-  "built-in": "Built-in",
-  custom: "Custom",
-  project: "This project",
-};
 
 export function createStarterDevice(id: string): DeviceLibraryRecord {
   const size = 40;
@@ -109,30 +104,11 @@ function cloneRecord(
   };
 }
 
-function DevicePreview({
-  record,
-  className = "device-library-preview",
-}: {
-  record: DeviceLibraryRecord;
-  className?: string;
-}) {
-  return (
-    <svg
-      className={className}
-      viewBox={record.artwork.viewBox}
-      role="img"
-      aria-label={`${record.title} preview`}
-    >
-      <g dangerouslySetInnerHTML={{ __html: record.artwork.body }} />
-    </svg>
-  );
-}
-
 export function DeviceLibraryScreen({
   builtInFile,
   userFile,
   embeddedFile,
-  userDirty,
+  userDirty, savedUserFile,
   onClose,
   onChangeUserLibrary,
   onDiscardUserLibrary,
@@ -140,7 +116,7 @@ export function DeviceLibraryScreen({
   onImportLibrary,
   onExportLibrary,
   onExportAudit,
-  onRefreshEmbedded,
+  onRefreshEmbedded, actions, onEditorDirty,
 }: DeviceLibraryScreenProps) {
   const [tab, setTab] = useState<DeviceLibraryTab>("browse");
   const [query, setQuery] = useState("");
@@ -195,30 +171,8 @@ export function DeviceLibraryScreen({
     [browseEntries],
   );
   const filteredEntries = useMemo(() => {
-    const normalized = query.trim().toLowerCase();
-    return browseEntries.filter((entry) => {
-      const record = entry.record;
-      if (source !== "all" && entry.source !== source) {
-        return false;
-      }
-      if (category !== "all" && record.category !== category) {
-        return false;
-      }
-      return (
-        !normalized ||
-        record.title.toLowerCase().includes(normalized) ||
-        record.id.toLowerCase().includes(normalized) ||
-        record.category.toLowerCase().includes(normalized) ||
-        record.keywords.some((keyword) =>
-          keyword.toLowerCase().includes(normalized),
-        ) ||
-        record.pins.some(
-          (pin) =>
-            pin.name.toLowerCase().includes(normalized) ||
-            pin.role.toLowerCase().includes(normalized),
-        )
-      );
-    });
+    const matches = catalogFilter(query, category, source);
+    return browseEntries.filter(entry => matches(entry.record, entry.source));
   }, [browseEntries, category, query, source]);
   const selectedDevices = useMemo(
     () => userDevices.filter((device) => selectedIds.has(device.id)),
@@ -291,7 +245,7 @@ export function DeviceLibraryScreen({
     setEditor({
       record,
       mode: "edit",
-      artworkLocked: !record.artwork.shapes,
+      artworkLocked: record.artwork.baseBody !== undefined || !record.artwork.shapes,
     });
   };
 
@@ -304,7 +258,7 @@ export function DeviceLibraryScreen({
     setEditor({
       record: cloneRecord(record, id, `${record.title} (custom)`),
       mode: "clone",
-      artworkLocked: !record.artwork.shapes,
+      artworkLocked: record.artwork.baseBody !== undefined || !record.artwork.shapes,
     });
   };
 
@@ -462,13 +416,36 @@ export function DeviceLibraryScreen({
   };
 
   const refreshEmbedded = () => {
-    const message = onRefreshEmbedded();
-    setStatus({ kind: "success", message });
+    setStatus(onRefreshEmbedded());
   };
+
+  const deviceActions = React.useRef<DeviceActions | null>(null);
+  React.useLayoutEffect(() => {
+    if (!actions) return;
+    actions.current = {
+      saveAll: async () => {
+        if (deviceActions.current && !deviceActions.current.save()) return false;
+        return onSaveUserLibrary();
+      },
+      command: command => {
+        const device = deviceActions.current;
+        if (command === "save-project" || command === "save-project-as") {
+          if (device) device.save();
+          else void saveUserLibrary();
+        } else if (command === "undo") device?.undo();
+        else if (command === "redo") device?.redo();
+        else if (command === "delete-selection") device?.remove();
+      },
+    };
+    return () => { actions.current = null; };
+  });
 
   if (editor) {
     return (
       <DeviceEditor
+        savedRecord={savedUserFile?.devices.find(record => record.id === editor.record.id)}
+        actions={deviceActions}
+        onDirty={onEditorDirty}
         initial={editor.record}
         mode={editor.mode}
         artworkLocked={editor.artworkLocked}
@@ -498,15 +475,6 @@ export function DeviceLibraryScreen({
             onClick={() => setTab("browse")}
           >
             Browse <span>{browseEntries.length}</span>
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === "audit"}
-            className={tab === "audit" ? "is-active" : ""}
-            onClick={() => setTab("audit")}
-          >
-            Audit
           </button>
           <button
             type="button"
@@ -546,80 +514,23 @@ export function DeviceLibraryScreen({
                 type="search"
               />
             </label>
-            <label className="category-field">
-              <span>Category</span>
-              <select
-                value={category}
-                onChange={(event) => setCategory(event.target.value)}
-              >
-                <option value="all">All categories</option>
-                {categories.map((item) => (
-                  <option key={item} value={item}>
-                    {item}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="category-field">
-              <span>Source</span>
-              <select
-                value={source}
-                onChange={(event) =>
-                  setSource(event.target.value as "all" | DeviceSource)
-                }
-              >
-                <option value="all">All sources</option>
-                <option value="built-in">Built-in</option>
-                <option value="custom">Custom</option>
-                <option value="project">This project</option>
-              </select>
-            </label>
+      <div className="category-field"><span>Category</span>
+        <FilterSelect label="Category" value={category} onChange={setCategory}
+          options={[{ value: "all", label: "All categories" }, ...categories.map(value => ({ value, label: value }))]} />
+      </div>
+      <div className="category-field"><span>Source</span>
+        <FilterSelect label="Source" value={source} onChange={value => setSource(value as typeof source)}
+          options={[{ value: "all", label: "All sources" }, { value: "built-in", label: "Built-in" },
+            { value: "custom", label: "Custom" }, { value: "project", label: "This project" }]} />
+      </div>
             <span className="device-library-count">
               {filteredEntries.length} of {browseEntries.length} devices
             </span>
           </div>
-          <div className="device-browse-grid">
-            {filteredEntries.map((entry) => (
-              <article className="device-browse-card" key={`${entry.source}:${entry.record.id}`}>
-                <DevicePreview record={entry.record} />
-                <div className="device-browse-card-body">
-                  <header>
-                    <h3>{entry.record.title}</h3>
-                    <span className={`device-source is-${entry.source}`}>
-                      {SOURCE_LABELS[entry.source]}
-                    </span>
-                  </header>
-                  <p>
-                    <code>{entry.record.id}</code> · {entry.record.category} ·{" "}
-                    {entry.record.pins.length}p
-                  </p>
-                  <div className="device-browse-actions">
-                    {entry.source === "custom" ? (
-                      <button
-                        type="button"
-                        className="text-button"
-                        onClick={() => openEditDevice(entry.record)}
-                      >
-                        Edit
-                      </button>
-                    ) : null}
-                    <button
-                      type="button"
-                      className="text-button"
-                      onClick={() => openCloneDevice(entry.record)}
-                    >
-                      Clone
-                    </button>
-                  </div>
-                </div>
-              </article>
-            ))}
-          </div>
-          {filteredEntries.length === 0 ? (
-            <div className="device-library-empty">
-              No devices match the current filters.
-            </div>
-          ) : null}
+          <DeviceCatalog entries={filteredEntries} onClone={openCloneDevice} onEdit={openEditDevice} />
+          <details className="device-maintenance"><summary>Maintenance tools</summary>
+            <button type="button" onClick={() => setTab("audit")}>Audit built-in pins</button>
+          </details>
         </>
       ) : null}
 
@@ -635,107 +546,18 @@ export function DeviceLibraryScreen({
         </div>
       ) : null}
 
-      {tab === "custom" ? (
-        <>
-          <div className="device-library-controls device-library-custom-controls">
-            <div className="device-library-custom-intro">
-              <strong>Custom devices</strong>
-              <span>{userDevices.length} in this library</span>
-            </div>
-            <div className="device-library-custom-command-group">
-              <button type="button" className="primary-button" onClick={openNewDevice}>
-                <Icon name="new" /> New device
-              </button>
-              <button type="button" className="device-library-secondary-button" onClick={() => void importLibrary()}>
-                Import library…
-              </button>
-              <button
-                type="button"
-                className="device-library-secondary-button"
-                disabled={userDevices.length === 0}
-                onClick={() => void exportLibrary()}
-              >
-                <Icon name="export" /> Export{" "}
-                {selectedDevices.length > 0 ? `${selectedDevices.length} selected` : "all"}
-              </button>
-              <button
-                type="button"
-                className="device-library-secondary-button"
-                onClick={refreshEmbedded}
-                title="Refresh this project's embedded device snapshot from the saved draft library"
-              >
-                Refresh project devices
-              </button>
-            </div>
-            <div className="device-library-save-group">
-              <span className={userDirty ? "is-dirty" : ""} role="status">
-                {userDirty ? "Unsaved library changes" : "Library saved"}
-              </span>
-              <button
-                type="button"
-                className="primary-button"
-                disabled={!userDirty || saving}
-                onClick={() => void saveUserLibrary()}
-              >
-                <Icon name="save" /> {saving ? "Saving…" : "Save library"}
-              </button>
-            </div>
-          </div>
-          <div className="device-custom-list">
-            {userDevices.map((record) => (
-              <article className="device-custom-row" key={record.id}>
-                <label className="device-select">
-                  <input
-                    type="checkbox"
-                    checked={selectedIds.has(record.id)}
-                    onChange={(event) =>
-                      setSelectedIds((current) => {
-                        const next = new Set(current);
-                        if (event.target.checked) {
-                          next.add(record.id);
-                        } else {
-                          next.delete(record.id);
-                        }
-                        return next;
-                      })
-                    }
-                    aria-label={`Select ${record.title}`}
-                  />
-                </label>
-                <DevicePreview record={record} className="device-custom-preview" />
-                <div className="device-custom-meta">
-                  <h3>{record.title}</h3>
-                  <p>
-                    <code>{record.id}</code> · {record.category} ·{" "}
-                    {record.pins.length} pins ·{" "}
-                    {record.artwork.shapes ? "editable artwork" : "fixed artwork"}
-                  </p>
-                </div>
-                <div className="device-custom-actions">
-                  <button type="button" className="text-button" onClick={() => openEditDevice(record)}>
-                    Edit
-                  </button>
-                  <button type="button" className="text-button" onClick={() => duplicateDevice(record)}>
-                    Duplicate
-                  </button>
-                  <button
-                    type="button"
-                    className="text-button is-danger"
-                    onClick={() => setPendingDeleteId(record.id)}
-                  >
-                    Delete
-                  </button>
-                </div>
-              </article>
-            ))}
-          </div>
-          {userDevices.length === 0 ? (
-            <div className="device-library-empty">
-              No custom devices yet. Create one or import a shared library.
-            </div>
-          ) : null}
-        </>
-      ) : null}
+      {tab === "custom" && <CustomLibrary devices={userDevices} selectedIds={selectedIds}
+        dirty={userDirty} saving={saving} persisted={Boolean(savedUserFile)}
+        onNew={openNewDevice} onBrowse={() => setTab("browse")}
+        onEdit={openEditDevice} onDuplicate={duplicateDevice} onDelete={setPendingDeleteId}
+        onSelect={(id, checked) => setSelectedIds(current => {
+          const next = new Set(current);
+          if (checked) next.add(id); else next.delete(id);
+          return next;
+        })}
+        onImport={() => void importLibrary()} onExport={() => void exportLibrary()}
+        onSave={() => void saveUserLibrary()} onRefresh={refreshEmbedded}
+      />}
 
       {importState ? (
         <div className="modal-backdrop" role="presentation">

@@ -1,9 +1,11 @@
+import { AgentHost } from "./agentHost";
 import {
   app,
   BrowserWindow,
   dialog,
   ipcMain,
   Menu,
+  nativeTheme,
   session,
   type MenuItemConstructorOptions,
 } from "electron";
@@ -427,7 +429,19 @@ async function exportSchematic(request: ExportRequest): Promise<{
   return { canceled: false, path: result.filePath, bytes: details.size };
 }
 
+const agentHost = new AgentHost();
 function registerIpc(): void {
+  ipcMain.handle("agent:enable", event => {
+    if (event.sender !== mainWindow?.webContents) throw new Error("Invalid sender");
+    const adapter = app.isPackaged ? join(process.resourcesPath,"agent","stdio.cjs") : join(__dirname,"../agent/stdio.cjs");
+    return agentHost.start(adapter,(id,request)=>event.sender.send("agent:request",id,request));
+  });
+  ipcMain.handle("agent:disable", event => {
+    if (event.sender === mainWindow?.webContents) return agentHost.stop();
+  });
+  ipcMain.on("agent:reply", (event,id,result) => {
+    if (event.sender === mainWindow?.webContents && typeof id === "string") agentHost.reply(id,result);
+  });
   ipcMain.handle("project:open", (event) => {
     if (event.sender !== mainWindow?.webContents) {
       return null;
@@ -703,6 +717,12 @@ function registerIpc(): void {
     launchProjectPath = null;
     return openProjectPath(target);
   });
+  ipcMain.on("window:set-appearance", (event, preference: unknown) => {
+    if (event.sender === mainWindow?.webContents &&
+        (preference === "light" || preference === "dark" || preference === "system")) {
+      nativeTheme.themeSource = preference;
+    }
+  });
   ipcMain.on("window:set-dirty", (event, dirty: unknown) => {
     if (event.sender === mainWindow?.webContents && typeof dirty === "boolean") {
       documentDirty = dirty;
@@ -795,6 +815,7 @@ function createWindow(): BrowserWindow {
     }
   });
   window.on("closed", () => {
+    void agentHost.stop();
     if (mainWindow === window) {
       mainWindow = null;
     }
@@ -1046,10 +1067,8 @@ async function runSmokeCheck(window: BrowserWindow): Promise<void> {
             const managerOpened = Boolean(
               document.querySelector('.device-library-screen')
             );
-            const auditTab = [
-              ...document.querySelectorAll('.device-library-tabs button')
-            ].find((button) => button.textContent?.includes('Audit'));
-            auditTab?.click();
+            document.querySelector('.device-maintenance summary')?.click();
+            document.querySelector('.device-maintenance button')?.click();
             await waitFor(
               () => Boolean(document.querySelector('.pin-audit-panel')),
               2000

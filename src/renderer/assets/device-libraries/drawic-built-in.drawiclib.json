@@ -3,7 +3,7 @@
   "schemaVersion": 1,
   "id": "drawic-built-in",
   "title": "Drawic Built-in Devices",
-  "revision": "5438d8feaea88a5754d63ff2e2d81bfa7a144026f9a59607c67c2639f647e6bd",
+  "revision": "afbef9d818503eb326962e0a40a298a90513a9f8f0d81fd77f57a9cb65a4f63f",
   "source": {
     "collection": "Drawic Device Symbols",
     "manifestVersion": 1,
@@ -29,10 +29,10 @@
       "electrical": false,
       "palette": true,
       "frame": {
-        "x": -54,
-        "y": -24,
-        "width": 98,
-        "height": 48
+        "x": -60,
+        "y": -30,
+        "width": 120,
+        "height": 60
       },
       "selectionBox": {
         "x": -52,
@@ -48,10 +48,10 @@
       },
       "artwork": {
         "type": "svg",
-        "viewBox": "-54 -24 98 48",
+        "viewBox": "-60 -30 120 60",
         "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"><line x1=\"-50\" y1=\"0\" x2=\"-40\" y2=\"0\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><polygon points=\"30,-20 -20,-20 -40,0 -20,20 30,20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.4\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"30\" y1=\"0\" x2=\"40\" y2=\"0\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><g data-role=\"signal-flow-formula\" fill=\"currentColor\" stroke=\"none\" font-family=\"'ICM Round Period','Metropolis','DejaVu Sans',Arial,'Helvetica Neue',Helvetica,sans-serif\" font-weight=\"700\"><text data-role=\"formula-text\" x=\"-0.28\" y=\"4.08\" text-anchor=\"middle\" font-size=\"12\">ADC</text></g></g>",
-        "source": "adc.svg",
-        "sourceSha256": "3043daca239d0bdba1020f0637f3bbe89fe9a5e6be7e915d6ea9628ba621881d"
+        "source": "device-grid/adc.svg",
+        "sourceSha256": "eea5db56b502db04fc70c752526bf02513d3b3f8ab26423df2c8fa57634945d7"
       },
       "pins": [
         {
@@ -61,7 +61,7 @@
           "role": "input",
           "direction": "west",
           "side": "west",
-          "x": -45,
+          "x": -50,
           "y": 0
         },
         {
@@ -71,18 +71,18 @@
           "role": "output",
           "direction": "east",
           "side": "east",
-          "x": 45,
+          "x": 40,
           "y": 0
         }
       ],
       "labelAnchors": {
         "reference": {
-          "x": 50,
+          "x": 66,
           "y": -3,
           "anchor": "start"
         },
         "value": {
-          "x": 50,
+          "x": 66,
           "y": 12,
           "anchor": "start"
         }
@@ -116,10 +116,10 @@
       "electrical": false,
       "palette": true,
       "frame": {
-        "x": -24,
-        "y": -16,
-        "width": 48,
-        "height": 40
+        "x": -30,
+        "y": -30,
+        "width": 60,
+        "height": 60
       },
       "selectionBox": {
         "x": -22,
@@ -135,10 +135,10 @@
       },
       "artwork": {
         "type": "svg",
-        "viewBox": "-24 -16 48 40",
+        "viewBox": "-30 -30 60 60",
         "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"><line x1=\"-20\" y1=\"0\" x2=\"-13\" y2=\"0\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><circle cx=\"0\" cy=\"0\" r=\"12\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.4\"/><line x1=\"13\" y1=\"0\" x2=\"20\" y2=\"0\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"0\" y1=\"13\" x2=\"0\" y2=\"20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"-6\" y1=\"0\" x2=\"6\" y2=\"0\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><line x1=\"0\" y1=\"-6\" x2=\"0\" y2=\"6\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></g>",
-        "source": "adder.svg",
-        "sourceSha256": "b4175655799dee82ddf52fa98b96eae58bac6fcc8c2f2ae57dc0ba0349869366"
+        "source": "device-grid/adder.svg",
+        "sourceSha256": "1852908c8c3496deb8f6264c9177de1c7a6af252b77a5acabfc5366efda2561c"
       },
       "pins": [
         {
@@ -149,7 +149,7 @@
           "direction": "west",
           "side": "west",
           "x": -20,
-          "y": -4
+          "y": 0
         },
         {
           "id": "B",
@@ -159,7 +159,7 @@
           "direction": "south",
           "side": "south",
           "x": 0,
-          "y": 16
+          "y": 20
         },
         {
           "id": "Y",
@@ -169,18 +169,18 @@
           "direction": "east",
           "side": "east",
           "x": 20,
-          "y": -4
+          "y": 0
         }
       ],
       "labelAnchors": {
         "reference": {
-          "x": 30,
-          "y": 1,
+          "x": 36,
+          "y": -3,
           "anchor": "start"
         },
         "value": {
-          "x": 30,
-          "y": 16,
+          "x": 36,
+          "y": 12,
           "anchor": "start"
         }
       },
@@ -423,29 +423,29 @@
       "electrical": false,
       "palette": false,
       "frame": {
-        "x": -44,
-        "y": -24,
-        "width": 88,
-        "height": 48
+        "x": -50,
+        "y": -30,
+        "width": 100,
+        "height": 60
       },
       "selectionBox": {
-        "x": -32,
-        "y": -17.077165,
-        "width": 54,
-        "height": 33.999129
+        "x": -42,
+        "y": -15.846456,
+        "width": 64,
+        "height": 41.498911
       },
       "labelBounds": {
-        "x": -30,
-        "y": -15.077165,
-        "width": 50,
-        "height": 29.999129
+        "x": -40,
+        "y": -13.846456,
+        "width": 60,
+        "height": 37.498911
       },
       "artwork": {
         "type": "svg",
-        "viewBox": "-44 -24 88 48",
-        "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"><line x1=\"-30\" y1=\"-12\" x2=\"-20\" y2=\"-12\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"-30\" y1=\"-4\" x2=\"-20\" y2=\"-4\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"-30\" y1=\"4\" x2=\"-20\" y2=\"4\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"-30\" y1=\"12\" x2=\"-20\" y2=\"12\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><path d=\"M -0.938181 -15.077165 C -0.938181 -15.077165 -0.938181 -15.077165 -0.781236 -15.077165 C -0.626035 -15.077165 -0.312146 -15.077165 -0.156945 -15.0388 C 0 -14.998692 0 -14.998692 0.676607 -14.895806 C 1.353213 -14.791176 2.70817 -14.58366 3.918389 -14.231406 C 5.130352 -13.879152 6.197576 -13.385648 7.357224 -12.590461 C 8.515128 -11.797018 9.765455 -10.701892 10.72805 -9.556195 C 11.692388 -8.410498 12.368995 -7.21423 12.8904 -5.988316 C 13.411806 -4.764147 13.776267 -3.515564 13.971576 -2.212922 C 14.166885 -0.912024 14.193042 0.442933 14.062255 1.707211 C 13.931468 2.969745 13.645479 4.141599 13.111867 5.43029 C 12.578255 6.718982 11.797018 8.126253 10.898945 9.284157 C 10.000872 10.443805 8.984218 11.354085 8.150667 12.030691 C 7.317116 12.709042 6.666667 13.153719 5.97611 13.502485 C 5.285553 13.854739 4.556631 14.116314 3.906182 14.323829 C 3.253989 14.533089 2.682013 14.690034 2.174558 14.777226 C 1.665359 14.869649 1.22417 14.89755 0.767286 14.909757 C 0.312146 14.921964 -0.156945 14.921964 -0.650449 14.921964 C -1.145697 14.921964 -1.667102 14.921964 -1.926933 14.921964 C -2.110036 14.921964 -2.110036 14.921964 -2.110036 14.921964 L -20 14.921964 L -20 -15.077165 Z\" stroke-width=\"2.4\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"/><line x1=\"14.68829\" y1=\"0\" x2=\"20\" y2=\"0\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/></g>",
-        "source": "and-gate-4.svg",
-        "sourceSha256": "2ac29f7d41d8f41451f86c128d6511662fefb9398f2424ed6af3dfd2818e36f5"
+        "viewBox": "-50 -30 100 60",
+        "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"><line x1=\"-40\" y1=\"-10\" x2=\"-20\" y2=\"-10\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"-40\" y1=\"0\" x2=\"-20\" y2=\"0\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"-40\" y1=\"10\" x2=\"-20\" y2=\"10\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"-40\" y1=\"20\" x2=\"-20\" y2=\"20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><path d=\"M -0.938181 -13.84645625 C -0.938181 -13.84645625 -0.938181 -13.84645625 -0.781236 -13.84645625 C -0.626035 -13.84645625 -0.312146 -13.84645625 -0.156945 -13.7985 C 0 -13.748365 0 -13.748365 0.676607 -13.6197575 C 1.353213 -13.48897 2.70817 -13.229575 3.918389 -12.7892575 C 5.130352 -12.34894 6.197576 -11.73206 7.357224 -10.73807625 C 8.515128 -9.7462725 9.765455 -8.377365 10.72805 -6.94524375 C 11.692388 -5.5131225 12.368995 -4.0177875 12.8904 -2.485395 C 13.411806 -0.95518375 13.776267 0.605545 13.971576 2.2338475 C 14.166885 3.85997 14.193042 5.55366625 14.062255 7.13401375 C 13.931468 8.71218125 13.645479 10.17699875 13.111867 11.7878625 C 12.578255 13.3987275 11.797018 15.15781625 10.898945 16.60519625 C 10.000872 18.05475625 8.984218 19.19260625 8.150667 20.03836375 C 7.317116 20.8863025 6.666667 21.44214875 5.97611 21.87810625 C 5.285553 22.31842375 4.556631 22.6453925 3.906182 22.90478625 C 3.253989 23.16636125 2.682013 23.3625425 2.174558 23.4715325 C 1.665359 23.58706125 1.22417 23.6219375 0.767286 23.63719625 C 0.312146 23.652455 -0.156945 23.652455 -0.650449 23.652455 C -1.145697 23.652455 -1.667102 23.652455 -1.926933 23.652455 C -2.110036 23.652455 -2.110036 23.652455 -2.110036 23.652455 L -20 23.652455 L -20 -13.84645625 Z\" stroke-width=\"2.4\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"/><line x1=\"14.68829\" y1=\"5\" x2=\"20\" y2=\"5\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/></g>",
+        "source": "device-grid/and-gate-4.svg",
+        "sourceSha256": "a9f3c7272ca64cf68abb052b7808dde027944130dc889c8cf284cbbf856965e0"
       },
       "pins": [
         {
@@ -455,8 +455,8 @@
           "role": "input",
           "direction": "west",
           "side": "west",
-          "x": -30,
-          "y": -12
+          "x": -40,
+          "y": -10
         },
         {
           "id": "B",
@@ -465,8 +465,8 @@
           "role": "input",
           "direction": "west",
           "side": "west",
-          "x": -30,
-          "y": -4
+          "x": -40,
+          "y": 0
         },
         {
           "id": "C",
@@ -475,8 +475,8 @@
           "role": "input",
           "direction": "west",
           "side": "west",
-          "x": -30,
-          "y": 4
+          "x": -40,
+          "y": 10
         },
         {
           "id": "D",
@@ -485,8 +485,8 @@
           "role": "input",
           "direction": "west",
           "side": "west",
-          "x": -30,
-          "y": 12
+          "x": -40,
+          "y": 20
         },
         {
           "id": "Y",
@@ -496,17 +496,17 @@
           "direction": "east",
           "side": "east",
           "x": 20,
-          "y": 0
+          "y": 5
         }
       ],
       "labelAnchors": {
         "reference": {
-          "x": 50,
+          "x": 56,
           "y": -3,
           "anchor": "start"
         },
         "value": {
-          "x": 50,
+          "x": 56,
           "y": 12,
           "anchor": "start"
         }
@@ -970,10 +970,10 @@
       "electrical": true,
       "palette": true,
       "frame": {
-        "x": -24,
-        "y": -24,
-        "width": 39,
-        "height": 48
+        "x": -30,
+        "y": -30,
+        "width": 60,
+        "height": 60
       },
       "selectionBox": {
         "x": -22.058139,
@@ -989,10 +989,10 @@
       },
       "artwork": {
         "type": "svg",
-        "viewBox": "-24 -24 39 48",
+        "viewBox": "-30 -30 60 60",
         "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"><circle cx=\"0\" cy=\"0\" r=\"10.755814\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line data-part=\"upright-polarity-positive-horizontal\" x1=\"-20.058139\" y1=\"-14.534884\" x2=\"-11.918605\" y2=\"-14.534884\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line data-part=\"upright-polarity-positive-vertical\" x1=\"-15.988372\" y1=\"-18.604651\" x2=\"-15.988372\" y2=\"-10.465117\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line data-part=\"upright-polarity-negative\" x1=\"-20.058139\" y1=\"13.372093\" x2=\"-11.918605\" y2=\"13.372093\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"0\" y1=\"-10.755814\" x2=\"0\" y2=\"-20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"0\" y1=\"10.755814\" x2=\"0\" y2=\"20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/></g>",
-        "source": "ccvs.svg",
-        "sourceSha256": "22d1ee1809d647f7631f07c0ac7de8c5e3bb875bc2d347fa925a8585b415a585"
+        "source": "device-grid/ccvs.svg",
+        "sourceSha256": "fdaf7d8ccc175613d1d5bf9f7ea118022fc687d16b70f9e32b20584e977633c6"
       },
       "pins": [
         {
@@ -1002,7 +1002,7 @@
           "role": "positive",
           "direction": "north",
           "side": "north",
-          "x": 4.5,
+          "x": 0,
           "y": -20
         },
         {
@@ -1012,18 +1012,18 @@
           "role": "negative",
           "direction": "south",
           "side": "south",
-          "x": 4.5,
+          "x": 0,
           "y": 20
         }
       ],
       "labelAnchors": {
         "reference": {
-          "x": 21,
+          "x": 36,
           "y": -3,
           "anchor": "start"
         },
         "value": {
-          "x": 21,
+          "x": 36,
           "y": 12,
           "anchor": "start"
         }
@@ -1057,10 +1057,10 @@
       "electrical": true,
       "palette": true,
       "frame": {
-        "x": -24,
-        "y": -24,
-        "width": 39,
-        "height": 48
+        "x": -30,
+        "y": -30,
+        "width": 60,
+        "height": 60
       },
       "selectionBox": {
         "x": -22.058139,
@@ -1076,10 +1076,10 @@
       },
       "artwork": {
         "type": "svg",
-        "viewBox": "-24 -24 39 48",
+        "viewBox": "-30 -30 60 60",
         "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"><line data-part=\"upright-polarity-positive-horizontal\" x1=\"-20.058139\" y1=\"-14.534884\" x2=\"-11.918605\" y2=\"-14.534884\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line data-part=\"upright-polarity-positive-vertical\" x1=\"-15.988372\" y1=\"-18.604651\" x2=\"-15.988372\" y2=\"-10.465117\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line data-part=\"upright-polarity-negative\" x1=\"-20.058139\" y1=\"13.372093\" x2=\"-11.918605\" y2=\"13.372093\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><polygon points=\"0,-12.5 12.5,0 0,12.5 -12.5,0\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"0\" y1=\"-12.5\" x2=\"0\" y2=\"-20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"0\" y1=\"12.5\" x2=\"0\" y2=\"20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/></g>",
-        "source": "variants/ccvs--diamond.svg",
-        "sourceSha256": "7bec76cadf2f3c9da00b907e584e7e10d278f8d179b4e3d2448e51f016226c02"
+        "source": "device-grid/ccvs--diamond.svg",
+        "sourceSha256": "52a69e18f7e244e4a99b601dcd772eeccd99a6dae3b0c109c1b6916861d4aae6"
       },
       "pins": [
         {
@@ -1089,7 +1089,7 @@
           "role": "positive",
           "direction": "north",
           "side": "north",
-          "x": 4.5,
+          "x": 0,
           "y": -20
         },
         {
@@ -1099,18 +1099,18 @@
           "role": "negative",
           "direction": "south",
           "side": "south",
-          "x": 4.5,
+          "x": 0,
           "y": 20
         }
       ],
       "labelAnchors": {
         "reference": {
-          "x": 21,
+          "x": 36,
           "y": -3,
           "anchor": "start"
         },
         "value": {
-          "x": 21,
+          "x": 36,
           "y": 12,
           "anchor": "start"
         }
@@ -1143,10 +1143,10 @@
       "electrical": true,
       "palette": true,
       "frame": {
-        "x": -54,
-        "y": -16,
-        "width": 108,
-        "height": 40
+        "x": -60,
+        "y": -30,
+        "width": 120,
+        "height": 60
       },
       "selectionBox": {
         "x": -52,
@@ -1162,10 +1162,10 @@
       },
       "artwork": {
         "type": "svg",
-        "viewBox": "-54 -16 108 40",
+        "viewBox": "-60 -30 120 60",
         "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"><line x1=\"-50\" y1=\"0\" x2=\"-44.5\" y2=\"0\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><path d=\"M -45 0 L -44.4953 0 C -44.4953 0 -44.4953 0 -43.2174 0 C -41.9409 0 -39.3851 0 -38.1087 0 C -36.8308 0 -36.8308 0 -36.8308 0 C -36.8308 0 -36.8308 0 -36.5749 -1.2452 C -36.319 -2.4889 -35.8087 -4.9763 -34.7867 -6.1873 C -33.7647 -7.3983 -32.2323 -7.3313 -31.2088 -4.8439 C -30.1868 -2.355 -29.6765 2.5543 -30.4427 5.009 C -31.2088 7.4637 -33.2544 7.4637 -33.7201 4.9763 C -34.1872 2.4874 -33.0759 -2.4889 -31.3874 -5.0209 C -29.6988 -7.5545 -27.4331 -7.6422 -25.9439 -5.1548 C -24.4563 -2.6659 -23.7451 2.3996 -24.4116 4.9317 C -25.0781 7.4637 -27.1222 7.4637 -27.6325 4.9317 C -28.1442 2.3996 -27.1222 -2.6659 -25.456 -5.1325 C -23.7898 -7.5991 -21.4794 -7.4652 -19.9456 -4.9317 C -18.4133 -2.3996 -17.6575 2.532 -18.3017 4.9986 C -18.9459 7.4637 -20.99 7.4637 -21.6237 4.9986 C -22.256 2.532 -21.4794 -2.3996 -20.2015 -4.8885 C -18.9236 -7.3759 -17.1458 -7.4205 -16.0017 -6.1992 C -14.8577 -4.9763 -14.3475 -2.4889 -14.0916 -1.2452 C -13.8357 0 -13.8357 0 -13.8357 0 C -13.8357 0 -13.8357 0 -12.4477 0 C -11.0597 0 -8.2822 0 -6.8927 0 C -5.5047 0 -5.5047 0 -5.5047 0 L -5 0\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"round\"/><line x1=\"-5.5\" y1=\"0\" x2=\"5.5\" y2=\"0\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><path d=\"M 5 0 L 5.5047 0 C 5.5047 0 5.5047 0 6.7826 0 C 8.0591 0 10.6149 0 11.8913 0 C 13.1692 0 13.1692 0 13.1692 0 C 13.1692 0 13.1692 0 13.4251 -1.2452 C 13.681 -2.4889 14.1913 -4.9763 15.2133 -6.1873 C 16.2353 -7.3983 17.7677 -7.3313 18.7912 -4.8439 C 19.8132 -2.355 20.3235 2.5543 19.5573 5.009 C 18.7912 7.4637 16.7456 7.4637 16.2799 4.9763 C 15.8128 2.4874 16.9241 -2.4889 18.6126 -5.0209 C 20.3012 -7.5545 22.5669 -7.6422 24.0561 -5.1548 C 25.5437 -2.6659 26.2549 2.3996 25.5884 4.9317 C 24.9219 7.4637 22.8778 7.4637 22.3675 4.9317 C 21.8558 2.3996 22.8778 -2.6659 24.544 -5.1325 C 26.2102 -7.5991 28.5206 -7.4652 30.0544 -4.9317 C 31.5867 -2.3996 32.3425 2.532 31.6983 4.9986 C 31.0541 7.4637 29.01 7.4637 28.3763 4.9986 C 27.744 2.532 28.5206 -2.3996 29.7985 -4.8885 C 31.0764 -7.3759 32.8542 -7.4205 33.9983 -6.1992 C 35.1423 -4.9763 35.6525 -2.4889 35.9084 -1.2452 C 36.1643 0 36.1643 0 36.1643 0 C 36.1643 0 36.1643 0 37.5523 0 C 38.9403 0 41.7178 0 43.1073 0 C 44.4953 0 44.4953 0 44.4953 0 L 45 0\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"round\"/><line x1=\"44.5\" y1=\"0\" x2=\"50\" y2=\"0\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"0\" y1=\"-0.5\" x2=\"0\" y2=\"20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><circle cx=\"0\" cy=\"0\" r=\"3.77907\" fill=\"currentColor\" stroke=\"none\"/></g>",
-        "source": "center-tap-inductor.svg",
-        "sourceSha256": "41fde5a2696d67167b53cf552dab3828b4773276d099d43cedcbd9231177f896"
+        "source": "device-grid/center-tap-inductor.svg",
+        "sourceSha256": "48032358590f239a9f9e488d7e7ff23db2ad1ba81192af4f845e3568b2e00911"
       },
       "pins": [
         {
@@ -1176,7 +1176,7 @@
           "direction": "west",
           "side": "west",
           "x": -50,
-          "y": -4
+          "y": 0
         },
         {
           "id": "2",
@@ -1186,7 +1186,7 @@
           "direction": "east",
           "side": "east",
           "x": 50,
-          "y": -4
+          "y": 0
         },
         {
           "id": "3",
@@ -1196,18 +1196,18 @@
           "direction": "south",
           "side": "south",
           "x": 0,
-          "y": 16
+          "y": 20
         }
       ],
       "labelAnchors": {
         "reference": {
-          "x": 60,
-          "y": 1,
+          "x": 66,
+          "y": -3,
           "anchor": "start"
         },
         "value": {
-          "x": 60,
-          "y": 16,
+          "x": 66,
+          "y": 12,
           "anchor": "start"
         }
       },
@@ -2658,10 +2658,10 @@
       "electrical": false,
       "palette": true,
       "frame": {
-        "x": -42,
-        "y": -27,
-        "width": 84,
-        "height": 79
+        "x": -50,
+        "y": -40,
+        "width": 100,
+        "height": 100
       },
       "selectionBox": {
         "x": -42,
@@ -2677,10 +2677,10 @@
       },
       "artwork": {
         "type": "svg",
-        "viewBox": "-42 -27 84 79",
+        "viewBox": "-50 -40 100 100",
         "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"><line x1=\"-40\" y1=\"-10\" x2=\"-25.000855\" y2=\"-10\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"-40\" y1=\"10\" x2=\"-25.000855\" y2=\"10\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><path d=\"M -25.000855 -25.0 L 25.000855 -25.0 L 25.000855 35.0 L -25.000855 35.0 Z\" stroke-width=\"2.4\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"/><line x1=\"25.000855\" y1=\"-10\" x2=\"40\" y2=\"-10\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"25.000855\" y1=\"10\" x2=\"40\" y2=\"10\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"0\" y1=\"35\" x2=\"0\" y2=\"50\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/></g>\n<text data-pin-name=\"D\" x=\"-21\" y=\"-6\" text-anchor=\"start\" font-size=\"10.28\"><tspan data-text-run=\"span\" style=\"font-style:italic;font-weight:400\"><tspan data-text-run=\"span\" style=\"font-style:italic;font-weight:700\">D</tspan></tspan></text><text data-pin-name=\"CK\" x=\"-21\" y=\"14\" text-anchor=\"start\" font-size=\"10.28\"><tspan data-text-run=\"span\" style=\"font-style:italic;font-weight:400\"><tspan data-text-run=\"span\" style=\"font-style:italic;font-weight:700\">CK</tspan></tspan></text><text data-pin-name=\"RST\" x=\"0\" y=\"31.916336\" text-anchor=\"middle\" font-size=\"10.28\"><tspan data-text-run=\"span\" style=\"font-style:italic;font-weight:400\"><tspan data-text-run=\"span\" style=\"font-style:italic;font-weight:700\">RST</tspan></tspan></text><text data-pin-name=\"Q\" x=\"21\" y=\"-6\" text-anchor=\"end\" font-size=\"10.28\"><tspan data-text-run=\"span\" style=\"font-style:italic;font-weight:400\"><tspan data-text-run=\"span\" style=\"font-style:italic;font-weight:700\">Q</tspan></tspan></text><text data-pin-name=\"QBAR\" x=\"21\" y=\"14\" text-anchor=\"end\" font-size=\"10.28\"><tspan data-text-run=\"overbar\" style=\"font-style:normal;font-weight:400;text-decoration:overline\"><tspan data-text-run=\"span\" style=\"font-style:italic;font-weight:400\"><tspan data-text-run=\"span\" style=\"font-style:italic;font-weight:700\">Q</tspan></tspan></tspan></text>",
-        "source": "d-flip-flop-reset.svg",
-        "sourceSha256": "dd2e6cfbb92dbe62e0f03989420dee306dbf2d8ddd18d278189a268b2a31c315"
+        "source": "device-grid/d-flip-flop-reset.svg",
+        "sourceSha256": "a7efc3f63e3681bd78c233e6c2b1485fbe0f14974bca5f2a11cd9f583b10523e"
       },
       "pins": [
         {
@@ -2691,7 +2691,7 @@
           "direction": "west",
           "side": "west",
           "x": -40,
-          "y": -22.5
+          "y": -20
         },
         {
           "id": "CK",
@@ -2701,7 +2701,7 @@
           "direction": "west",
           "side": "west",
           "x": -40,
-          "y": -2.5
+          "y": 0
         },
         {
           "id": "RST",
@@ -2711,7 +2711,7 @@
           "direction": "south",
           "side": "south",
           "x": 0,
-          "y": 37.5
+          "y": 40
         },
         {
           "id": "Q",
@@ -2721,7 +2721,7 @@
           "direction": "east",
           "side": "east",
           "x": 40,
-          "y": -22.5
+          "y": -20
         },
         {
           "id": "QBAR",
@@ -2731,18 +2731,18 @@
           "direction": "east",
           "side": "east",
           "x": 40,
-          "y": -2.5
+          "y": 0
         }
       ],
       "labelAnchors": {
         "reference": {
-          "x": 48,
-          "y": 9.5,
+          "x": 56,
+          "y": 7,
           "anchor": "start"
         },
         "value": {
-          "x": 48,
-          "y": 24.5,
+          "x": 56,
+          "y": 22,
           "anchor": "start"
         }
       },
@@ -2775,10 +2775,10 @@
       "electrical": false,
       "palette": true,
       "frame": {
-        "x": -44,
-        "y": -24,
-        "width": 98,
-        "height": 48
+        "x": -50,
+        "y": -30,
+        "width": 120,
+        "height": 60
       },
       "selectionBox": {
         "x": -42,
@@ -2794,10 +2794,10 @@
       },
       "artwork": {
         "type": "svg",
-        "viewBox": "-44 -24 98 48",
+        "viewBox": "-50 -30 120 60",
         "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"><line x1=\"-40\" y1=\"0\" x2=\"-30\" y2=\"0\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><polygon points=\"-30,-20 20,-20 40,0 20,20 -30,20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.4\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"40\" y1=\"0\" x2=\"50\" y2=\"0\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><g data-role=\"signal-flow-formula\" fill=\"currentColor\" stroke=\"none\" font-family=\"'ICM Round Period','Metropolis','DejaVu Sans',Arial,'Helvetica Neue',Helvetica,sans-serif\" font-weight=\"700\"><text data-role=\"formula-text\" x=\"0.28\" y=\"4.08\" text-anchor=\"middle\" font-size=\"12\">DAC</text></g></g>",
-        "source": "dac.svg",
-        "sourceSha256": "9d6dd5ed73fc25acb593e908d4880ddb3d35b8948a84c6a7926c485001b94238"
+        "source": "device-grid/dac.svg",
+        "sourceSha256": "98ef0f1a495c742649224d70685394f9ce0d33a3c85bbe7cf5806022c8f2f20b"
       },
       "pins": [
         {
@@ -2807,7 +2807,7 @@
           "role": "input",
           "direction": "west",
           "side": "west",
-          "x": -45,
+          "x": -50,
           "y": 0
         },
         {
@@ -2817,18 +2817,18 @@
           "role": "output",
           "direction": "east",
           "side": "east",
-          "x": 45,
+          "x": 40,
           "y": 0
         }
       ],
       "labelAnchors": {
         "reference": {
-          "x": 60,
+          "x": 76,
           "y": -3,
           "anchor": "start"
         },
         "value": {
-          "x": 60,
+          "x": 76,
           "y": 12,
           "anchor": "start"
         }
@@ -3838,10 +3838,10 @@
       "electrical": true,
       "palette": true,
       "frame": {
-        "x": -12,
-        "y": -14,
-        "width": 24,
-        "height": 31
+        "x": -20,
+        "y": -20,
+        "width": 40,
+        "height": 40
       },
       "selectionBox": {
         "x": -8.395349,
@@ -3857,10 +3857,10 @@
       },
       "artwork": {
         "type": "svg",
-        "viewBox": "-12 -14 24 31",
+        "viewBox": "-20 -20 40 40",
         "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"><line x1=\"0\" y1=\"-10\" x2=\"0\" y2=\"0\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"-6.395349\" y1=\"0\" x2=\"6.395349\" y2=\"0\" stroke-width=\"2.906977\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"-4.069767\" y1=\"5.813953\" x2=\"4.069767\" y2=\"5.813953\" stroke-width=\"2.906977\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"-2.325581\" y1=\"11.046512\" x2=\"2.325581\" y2=\"11.046512\" stroke-width=\"2.906977\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/></g>",
-        "source": "ground.svg",
-        "sourceSha256": "c8c4c4e862a5ff29e1aa0a0e8278ed17f3ec279184ce328b18aa34121dff5454"
+        "source": "device-grid/ground.svg",
+        "sourceSha256": "a9225de926aba329e3ac804a7c42ee02bc3636bdf8aee7a153d379754c367ff0"
       },
       "pins": [
         {
@@ -3871,18 +3871,18 @@
           "direction": "north",
           "side": "north",
           "x": 0,
-          "y": -11.5
+          "y": -10
         }
       ],
       "labelAnchors": {
         "reference": {
-          "x": 18,
-          "y": -1.5,
+          "x": 26,
+          "y": -3,
           "anchor": "start"
         },
         "value": {
-          "x": 18,
-          "y": 13.5,
+          "x": 26,
+          "y": 12,
           "anchor": "start"
         }
       },
@@ -3914,10 +3914,10 @@
       "electrical": true,
       "palette": true,
       "frame": {
-        "x": -34,
-        "y": -18,
-        "width": 68,
-        "height": 30
+        "x": -40,
+        "y": -20,
+        "width": 80,
+        "height": 40
       },
       "selectionBox": {
         "x": -22,
@@ -3933,10 +3933,10 @@
       },
       "artwork": {
         "type": "svg",
-        "viewBox": "-34 -18 68 30",
+        "viewBox": "-40 -20 80 40",
         "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"><line x1=\"-20\" y1=\"0\" x2=\"-12.726917\" y2=\"0\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><circle cx=\"-9.524128\" cy=\"-0.020084\" r=\"3.202789\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"-6.953731\" y1=\"-2.417959\" x2=\"6.405579\" y2=\"-12.806695\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><circle cx=\"11.201116\" cy=\"-0.020084\" r=\"3.202232\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"14.403348\" y1=\"0\" x2=\"20\" y2=\"0\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/></g>",
-        "source": "ideal-switch.svg",
-        "sourceSha256": "3a1b3ca9934d21bf7f3ababe5d1ce66b4a35b938622336027c7f6cc1237062fe"
+        "source": "device-grid/ideal-switch.svg",
+        "sourceSha256": "aac3b8c47566edef09131221bb39d5b5d2370b2fc58f503ab4af53b1d6d4f2e7"
       },
       "pins": [
         {
@@ -3947,7 +3947,7 @@
           "direction": "west",
           "side": "west",
           "x": -20,
-          "y": 3
+          "y": 0
         },
         {
           "id": "2",
@@ -3957,18 +3957,18 @@
           "direction": "east",
           "side": "east",
           "x": 20,
-          "y": 3
+          "y": 0
         }
       ],
       "labelAnchors": {
         "reference": {
-          "x": 40,
-          "y": -6,
+          "x": 46,
+          "y": -3,
           "anchor": "start"
         },
         "value": {
-          "x": 40,
-          "y": 9,
+          "x": 46,
+          "y": 12,
           "anchor": "start"
         }
       },
@@ -4344,10 +4344,10 @@
       "electrical": false,
       "palette": true,
       "frame": {
-        "x": -24,
-        "y": -16,
-        "width": 48,
-        "height": 40
+        "x": -30,
+        "y": -30,
+        "width": 60,
+        "height": 60
       },
       "selectionBox": {
         "x": -22,
@@ -4363,10 +4363,10 @@
       },
       "artwork": {
         "type": "svg",
-        "viewBox": "-24 -16 48 40",
+        "viewBox": "-30 -30 60 60",
         "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"><line x1=\"-20\" y1=\"0\" x2=\"-13\" y2=\"0\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><circle cx=\"0\" cy=\"0\" r=\"12\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.4\"/><line x1=\"13\" y1=\"0\" x2=\"20\" y2=\"0\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"0\" y1=\"13\" x2=\"0\" y2=\"20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"-4.243\" y1=\"-4.243\" x2=\"4.243\" y2=\"4.243\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><line x1=\"-4.243\" y1=\"4.243\" x2=\"4.243\" y2=\"-4.243\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></g>",
-        "source": "multiplier.svg",
-        "sourceSha256": "e1995c3bf4a1c1c40f5e51cd9bf951e26c2d9694e1155fc7fd2a48c48a6ce9f1"
+        "source": "device-grid/multiplier.svg",
+        "sourceSha256": "56dde49fce12b78950df8c9a37e1de15080220154b4d0c10184044b40aa84ff1"
       },
       "pins": [
         {
@@ -4377,7 +4377,7 @@
           "direction": "west",
           "side": "west",
           "x": -20,
-          "y": -4
+          "y": 0
         },
         {
           "id": "B",
@@ -4387,7 +4387,7 @@
           "direction": "south",
           "side": "south",
           "x": 0,
-          "y": 16
+          "y": 20
         },
         {
           "id": "Y",
@@ -4397,18 +4397,18 @@
           "direction": "east",
           "side": "east",
           "x": 20,
-          "y": -4
+          "y": 0
         }
       ],
       "labelAnchors": {
         "reference": {
-          "x": 30,
-          "y": 1,
+          "x": 36,
+          "y": -3,
           "anchor": "start"
         },
         "value": {
-          "x": 30,
-          "y": 16,
+          "x": 36,
+          "y": 12,
           "anchor": "start"
         }
       },
@@ -4651,29 +4651,29 @@
       "electrical": false,
       "palette": false,
       "frame": {
-        "x": -44,
-        "y": -24,
-        "width": 88,
-        "height": 48
+        "x": -50,
+        "y": -30,
+        "width": 100,
+        "height": 60
       },
       "selectionBox": {
-        "x": -32,
-        "y": -16.921092,
-        "width": 64,
-        "height": 34.000872
+        "x": -42,
+        "y": -15.651365,
+        "width": 74,
+        "height": 41.50109
       },
       "labelBounds": {
-        "x": -30,
-        "y": -14.921092,
-        "width": 60,
-        "height": 30.000872
+        "x": -40,
+        "y": -13.651365,
+        "width": 70,
+        "height": 37.50109
       },
       "artwork": {
         "type": "svg",
-        "viewBox": "-44 -24 88 48",
-        "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"><line x1=\"-30\" y1=\"-12\" x2=\"-20\" y2=\"-12\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"-30\" y1=\"-4\" x2=\"-20\" y2=\"-4\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"-30\" y1=\"4\" x2=\"-20\" y2=\"4\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"-30\" y1=\"12\" x2=\"-20\" y2=\"12\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><path d=\"M -1.405528 15.07978 C -1.405528 15.07978 -1.405528 15.07978 -1.236377 15.06583 C -0.988753 15.051879 -0.493505 15.025722 -0.245881 15.013515 C 0.001743 15.001308 0.001743 15.001308 0.67835 14.894934 C 1.354956 14.792048 2.708169 14.582788 3.918388 14.234022 C 5.130351 13.880024 6.199319 13.38652 7.358967 12.591333 C 8.516871 11.79789 9.767198 10.704508 10.729793 9.558811 C 11.692388 8.413114 12.370738 7.213358 12.892144 5.990932 C 13.411805 4.766763 13.77801 3.516436 13.973319 2.213794 C 14.166884 0.911152 14.194786 -0.442061 14.062254 -1.706339 C 13.933211 -2.968873 13.648966 -4.140727 13.111866 -5.429418 C 12.578254 -6.71811 11.797018 -8.125381 10.898945 -9.283285 C 10.000871 -10.442933 8.985962 -11.354957 8.15241 -12.031563 C 7.318859 -12.70817 6.66841 -13.151103 5.979597 -13.503357 C 5.285552 -13.853867 4.560118 -14.115442 3.906181 -14.322958 C 3.257476 -14.530473 2.683756 -14.687418 2.176301 -14.778097 C 1.667102 -14.870521 1.224169 -14.894934 0.769029 -14.908885 C 0.313889 -14.921092 -0.155201 -14.921092 -0.650449 -14.921092 C -1.143954 -14.921092 -1.665359 -14.921092 -1.926934 -14.921092 C -2.108292 -14.921092 -2.108292 -14.921092 -2.108292 -14.921092 L -20 -14.921092 L -20 15.07978 Z\" stroke-width=\"2.4\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"/><circle cx=\"19.652977\" cy=\"0.010463\" r=\"3.375185\" stroke-width=\"2.4\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"/><line x1=\"23.028162\" y1=\"0\" x2=\"30\" y2=\"0\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/></g>",
-        "source": "nand-gate-4.svg",
-        "sourceSha256": "9bfffc6b88a8503b911ace01ff614f8c74d02718c16ad5ce6359be0006e617ea"
+        "viewBox": "-50 -30 100 60",
+        "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"><line x1=\"-40\" y1=\"-10\" x2=\"-20\" y2=\"-10\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"-40\" y1=\"0\" x2=\"-20\" y2=\"0\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"-40\" y1=\"10\" x2=\"-20\" y2=\"10\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"-40\" y1=\"20\" x2=\"-20\" y2=\"20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><path d=\"M -1.405528 23.849725 C -1.405528 23.849725 -1.405528 23.849725 -1.236377 23.8322875 C -0.988753 23.81484875 -0.493505 23.7821525 -0.245881 23.76689375 C 0.001743 23.751635 0.001743 23.751635 0.67835 23.6186675 C 1.354956 23.49006 2.708169 23.228485 3.918388 22.7925275 C 5.130351 22.35003 6.199319 21.73315 7.358967 20.73916625 C 8.516871 19.7473625 9.767198 18.380635 10.729793 16.94851375 C 11.692388 15.5163925 12.370738 14.0166975 12.892144 12.488665 C 13.411805 10.95845375 13.77801 9.395545 13.973319 7.7672425 C 14.166884 6.13894 14.194786 4.44742375 14.062254 2.86707625 C 13.933211 1.28890875 13.648966 -0.17590875 13.111866 -1.7867725 C 12.578254 -3.3976375 11.797018 -5.15672625 10.898945 -6.60410625 C 10.000871 -8.05366625 8.985962 -9.19369625 8.15241 -10.03945375 C 7.318859 -10.8852125 6.66841 -11.43887875 5.979597 -11.87919625 C 5.285552 -12.31733375 4.560118 -12.6443025 3.906181 -12.9036975 C 3.257476 -13.16309125 2.683756 -13.3592725 2.176301 -13.47262125 C 1.667102 -13.58815125 1.224169 -13.6186675 0.769029 -13.63610625 C 0.313889 -13.651365 -0.155201 -13.651365 -0.650449 -13.651365 C -1.143954 -13.651365 -1.665359 -13.651365 -1.926934 -13.651365 C -2.108292 -13.651365 -2.108292 -13.651365 -2.108292 -13.651365 L -20 -13.651365 L -20 23.849725 Z\" stroke-width=\"2.4\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"/><circle cx=\"19.652977\" cy=\"5.01307875\" r=\"3.375185\" stroke-width=\"2.4\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"/><line x1=\"23.028162\" y1=\"5\" x2=\"30\" y2=\"5\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/></g>",
+        "source": "device-grid/nand-gate-4.svg",
+        "sourceSha256": "edee826a74fb26fb2c0260e1aa65fff14db2554e138d4d48a524883927a30a24"
       },
       "pins": [
         {
@@ -4683,8 +4683,8 @@
           "role": "input",
           "direction": "west",
           "side": "west",
-          "x": -30,
-          "y": -12
+          "x": -40,
+          "y": -10
         },
         {
           "id": "B",
@@ -4693,8 +4693,8 @@
           "role": "input",
           "direction": "west",
           "side": "west",
-          "x": -30,
-          "y": -4
+          "x": -40,
+          "y": 0
         },
         {
           "id": "C",
@@ -4703,8 +4703,8 @@
           "role": "input",
           "direction": "west",
           "side": "west",
-          "x": -30,
-          "y": 4
+          "x": -40,
+          "y": 10
         },
         {
           "id": "D",
@@ -4713,8 +4713,8 @@
           "role": "input",
           "direction": "west",
           "side": "west",
-          "x": -30,
-          "y": 12
+          "x": -40,
+          "y": 20
         },
         {
           "id": "Y",
@@ -4724,17 +4724,17 @@
           "direction": "east",
           "side": "east",
           "x": 30,
-          "y": 0
+          "y": 5
         }
       ],
       "labelAnchors": {
         "reference": {
-          "x": 50,
+          "x": 56,
           "y": -3,
           "anchor": "start"
         },
         "value": {
-          "x": 50,
+          "x": 56,
           "y": 12,
           "anchor": "start"
         }
@@ -5398,29 +5398,29 @@
       "electrical": false,
       "palette": false,
       "frame": {
-        "x": -44,
-        "y": -24,
-        "width": 88,
-        "height": 48
+        "x": -50,
+        "y": -30,
+        "width": 100,
+        "height": 60
       },
       "selectionBox": {
-        "x": -32,
-        "y": -19.735635,
-        "width": 64,
-        "height": 39.617752
+        "x": -42,
+        "y": -19.169544,
+        "width": 74,
+        "height": 48.52219
       },
       "labelBounds": {
-        "x": -30,
-        "y": -17.735635,
-        "width": 60,
-        "height": 35.617752
+        "x": -40,
+        "y": -17.169544,
+        "width": 70,
+        "height": 44.52219
       },
       "artwork": {
         "type": "svg",
-        "viewBox": "-44 -24 88 48",
-        "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"><line x1=\"-30\" y1=\"-12\" x2=\"-16.06749\" y2=\"-12\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"-30\" y1=\"-4\" x2=\"-12.714012\" y2=\"-4\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"-30\" y1=\"4\" x2=\"-12.909141\" y2=\"4\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"-30\" y1=\"12\" x2=\"-16.264942\" y2=\"12\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><path d=\"M 15.757259 0.002616 C 15.757259 0.002616 15.757259 0.002616 13.373442 2.213794 C 10.989624 4.426715 6.22199 8.849071 0.263319 11.829279 C -5.697096 14.809486 -12.850292 16.345802 -16.425146 17.114831 C -20 17.882117 -20 17.882117 -20 17.882117 C -20 17.882117 -20 17.882117 -18.139332 14.786817 C -16.275176 11.689772 -12.550353 5.497428 -12.550353 -0.438574 C -12.550353 -6.374575 -16.275176 -12.055977 -18.139332 -14.896678 C -20 -17.735635 -20 -17.735635 -20 -17.735635 C -20 -17.735635 -20 -17.735635 -16.425146 -16.991019 C -12.850292 -16.246403 -5.697096 -14.757172 0.263319 -11.799634 C 6.22199 -8.84384 10.989624 -4.41974 13.373442 -2.208562 C 15.757259 0.002616 15.757259 0.002616 15.757259 0.002616\" stroke-width=\"2.4\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"/><circle cx=\"19.96338\" cy=\"-0.121196\" r=\"3.374313\" stroke-width=\"2.4\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"/><line x1=\"23.337693\" y1=\"0\" x2=\"30\" y2=\"0\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/></g>",
-        "source": "nor-gate-4.svg",
-        "sourceSha256": "52b4438eb7da80afc633ff234afbb17d106fc62a130e252a0b39b464c258dc1c"
+        "viewBox": "-50 -30 100 60",
+        "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"><line x1=\"-40\" y1=\"-10\" x2=\"-16.06749\" y2=\"-10\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"-40\" y1=\"0\" x2=\"-12.714012\" y2=\"0\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"-40\" y1=\"10\" x2=\"-12.909141\" y2=\"10\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"-40\" y1=\"20\" x2=\"-16.264942\" y2=\"20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><path d=\"M 15.757259 5.00327 C 15.757259 5.00327 15.757259 5.00327 13.373442 7.7672425 C 10.989624 10.53339375 6.22199 16.06133875 0.263319 19.78659875 C -5.697096 23.5118575 -12.850292 25.4322525 -16.425146 26.39353875 C -20 27.35264625 -20 27.35264625 -20 27.35264625 C -20 27.35264625 -20 27.35264625 -18.139332 23.48352125 C -16.275176 19.612215 -12.550353 11.871785 -12.550353 4.4517825 C -12.550353 -2.96821875 -16.275176 -10.06997125 -18.139332 -13.6208475 C -20 -17.16954375 -20 -17.16954375 -20 -17.16954375 C -20 -17.16954375 -20 -17.16954375 -16.425146 -16.23877375 C -12.850292 -15.30800375 -5.697096 -13.446465 0.263319 -9.7495425 C 6.22199 -6.0548 10.989624 -0.524675 13.373442 2.2392975 C 15.757259 5.00327 15.757259 5.00327 15.757259 5.00327\" stroke-width=\"2.4\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"/><circle cx=\"19.96338\" cy=\"4.848505\" r=\"3.374313\" stroke-width=\"2.4\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"/><line x1=\"23.337693\" y1=\"5\" x2=\"30\" y2=\"5\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/></g>",
+        "source": "device-grid/nor-gate-4.svg",
+        "sourceSha256": "f3b1815caea7ab680522902aa0af9ee74d4609e10bbf9803e45450ff069e6fbd"
       },
       "pins": [
         {
@@ -5430,8 +5430,8 @@
           "role": "input",
           "direction": "west",
           "side": "west",
-          "x": -30,
-          "y": -12
+          "x": -40,
+          "y": -10
         },
         {
           "id": "B",
@@ -5440,8 +5440,8 @@
           "role": "input",
           "direction": "west",
           "side": "west",
-          "x": -30,
-          "y": -4
+          "x": -40,
+          "y": 0
         },
         {
           "id": "C",
@@ -5450,8 +5450,8 @@
           "role": "input",
           "direction": "west",
           "side": "west",
-          "x": -30,
-          "y": 4
+          "x": -40,
+          "y": 10
         },
         {
           "id": "D",
@@ -5460,8 +5460,8 @@
           "role": "input",
           "direction": "west",
           "side": "west",
-          "x": -30,
-          "y": 12
+          "x": -40,
+          "y": 20
         },
         {
           "id": "Y",
@@ -5471,17 +5471,17 @@
           "direction": "east",
           "side": "east",
           "x": 30,
-          "y": 0
+          "y": 5
         }
       ],
       "labelAnchors": {
         "reference": {
-          "x": 50,
+          "x": 56,
           "y": -3,
           "anchor": "start"
         },
         "value": {
-          "x": 50,
+          "x": 56,
           "y": 12,
           "anchor": "start"
         }
@@ -5516,10 +5516,10 @@
       "electrical": true,
       "palette": true,
       "frame": {
-        "x": -34,
-        "y": -24,
-        "width": 42,
-        "height": 48
+        "x": -40,
+        "y": -30,
+        "width": 60,
+        "height": 60
       },
       "selectionBox": {
         "x": -32,
@@ -5535,10 +5535,10 @@
       },
       "artwork": {
         "type": "svg",
-        "viewBox": "-34 -24 42 48",
+        "viewBox": "-40 -30 60 60",
         "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"><line x1=\"-30\" y1=\"0\" x2=\"-16.868887\" y2=\"0\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"-16.868887\" y1=\"-13.345607\" x2=\"-16.868887\" y2=\"13.32954\" stroke-width=\"2.4\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><polyline points=\"-16.868887,-6.401526 0,-13.379732 0,-20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"-16.868887\" y1=\"6.403673\" x2=\"-7.30071\" y2=\"10.358712\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><polyline points=\"-0.936056,12.990761 0,13.377859 0,20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><polygon points=\"-6.635095,6.792086 -9.952643,13.377859 0,13.377859\" fill=\"currentColor\" stroke=\"none\"/></g>",
-        "source": "npn.svg",
-        "sourceSha256": "d822a296069d406dfc8fffb319c804267fb07f0ba0861e831dec00a426a0d3fc"
+        "source": "device-grid/npn.svg",
+        "sourceSha256": "2e7b4f7e7658218d15f90df9b9183577760d7ccead631af76640b1874a602267"
       },
       "pins": [
         {
@@ -5548,7 +5548,7 @@
           "role": "collector",
           "direction": "north",
           "side": "north",
-          "x": 13,
+          "x": 10,
           "y": -20
         },
         {
@@ -5558,7 +5558,7 @@
           "role": "base",
           "direction": "west",
           "side": "west",
-          "x": -17,
+          "x": -20,
           "y": 0
         },
         {
@@ -5568,18 +5568,18 @@
           "role": "emitter",
           "direction": "south",
           "side": "south",
-          "x": 13,
+          "x": 10,
           "y": 20
         }
       ],
       "labelAnchors": {
         "reference": {
-          "x": 14,
+          "x": 26,
           "y": -3,
           "anchor": "start"
         },
         "value": {
-          "x": 14,
+          "x": 26,
           "y": 12,
           "anchor": "start"
         }
@@ -8375,29 +8375,29 @@
       "electrical": false,
       "palette": false,
       "frame": {
-        "x": -44,
-        "y": -24,
-        "width": 88,
-        "height": 48
+        "x": -50,
+        "y": -30,
+        "width": 100,
+        "height": 60
       },
       "selectionBox": {
-        "x": -32,
-        "y": -19.735635,
-        "width": 54,
-        "height": 39.617752
+        "x": -42,
+        "y": -19.169544,
+        "width": 64,
+        "height": 48.52219
       },
       "labelBounds": {
-        "x": -30,
-        "y": -17.735635,
-        "width": 50,
-        "height": 35.617752
+        "x": -40,
+        "y": -17.169544,
+        "width": 60,
+        "height": 44.52219
       },
       "artwork": {
         "type": "svg",
-        "viewBox": "-44 -24 88 48",
-        "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"><line x1=\"-30\" y1=\"-12\" x2=\"-16.06749\" y2=\"-12\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"-30\" y1=\"-4\" x2=\"-12.714012\" y2=\"-4\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"-30\" y1=\"4\" x2=\"-12.909141\" y2=\"4\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"-30\" y1=\"12\" x2=\"-16.264942\" y2=\"12\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><path d=\"M 15.757259 0.002616 C 15.757259 0.002616 15.757259 0.002616 13.373442 2.213794 C 10.989624 4.426715 6.22199 8.849071 0.263319 11.829279 C -5.697096 14.809486 -12.850292 16.345802 -16.425146 17.114831 C -20 17.882117 -20 17.882117 -20 17.882117 C -20 17.882117 -20 17.882117 -18.139332 14.786817 C -16.275176 11.689772 -12.550353 5.497428 -12.550353 -0.438574 C -12.550353 -6.374575 -16.275176 -12.055977 -18.139332 -14.896678 C -20 -17.735635 -20 -17.735635 -20 -17.735635 C -20 -17.735635 -20 -17.735635 -16.425146 -16.991019 C -12.850292 -16.246403 -5.697096 -14.757172 0.263319 -11.799634 C 6.22199 -8.84384 10.989624 -4.41974 13.373442 -2.208562 C 15.757259 0.002616 15.757259 0.002616 15.757259 0.002616\" stroke-width=\"2.4\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"/><line x1=\"15.757259\" y1=\"0\" x2=\"20\" y2=\"0\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/></g>",
-        "source": "or-gate-4.svg",
-        "sourceSha256": "0ccf3f15c0076946872d8d6e6687e5e234bb6147c61ce834256c71d5cd80dba8"
+        "viewBox": "-50 -30 100 60",
+        "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"><line x1=\"-40\" y1=\"-10\" x2=\"-16.06749\" y2=\"-10\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"-40\" y1=\"0\" x2=\"-12.714012\" y2=\"0\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"-40\" y1=\"10\" x2=\"-12.909141\" y2=\"10\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"-40\" y1=\"20\" x2=\"-16.264942\" y2=\"20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><path d=\"M 15.757259 5.00327 C 15.757259 5.00327 15.757259 5.00327 13.373442 7.7672425 C 10.989624 10.53339375 6.22199 16.06133875 0.263319 19.78659875 C -5.697096 23.5118575 -12.850292 25.4322525 -16.425146 26.39353875 C -20 27.35264625 -20 27.35264625 -20 27.35264625 C -20 27.35264625 -20 27.35264625 -18.139332 23.48352125 C -16.275176 19.612215 -12.550353 11.871785 -12.550353 4.4517825 C -12.550353 -2.96821875 -16.275176 -10.06997125 -18.139332 -13.6208475 C -20 -17.16954375 -20 -17.16954375 -20 -17.16954375 C -20 -17.16954375 -20 -17.16954375 -16.425146 -16.23877375 C -12.850292 -15.30800375 -5.697096 -13.446465 0.263319 -9.7495425 C 6.22199 -6.0548 10.989624 -0.524675 13.373442 2.2392975 C 15.757259 5.00327 15.757259 5.00327 15.757259 5.00327\" stroke-width=\"2.4\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"/><line x1=\"15.757259\" y1=\"5\" x2=\"20\" y2=\"5\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/></g>",
+        "source": "device-grid/or-gate-4.svg",
+        "sourceSha256": "8c3e569dd3edc30a2c921c1c512c93033c826357c1386d305b31cf4c0d1e0ab1"
       },
       "pins": [
         {
@@ -8407,8 +8407,8 @@
           "role": "input",
           "direction": "west",
           "side": "west",
-          "x": -30,
-          "y": -12
+          "x": -40,
+          "y": -10
         },
         {
           "id": "B",
@@ -8417,8 +8417,8 @@
           "role": "input",
           "direction": "west",
           "side": "west",
-          "x": -30,
-          "y": -4
+          "x": -40,
+          "y": 0
         },
         {
           "id": "C",
@@ -8427,8 +8427,8 @@
           "role": "input",
           "direction": "west",
           "side": "west",
-          "x": -30,
-          "y": 4
+          "x": -40,
+          "y": 10
         },
         {
           "id": "D",
@@ -8437,8 +8437,8 @@
           "role": "input",
           "direction": "west",
           "side": "west",
-          "x": -30,
-          "y": 12
+          "x": -40,
+          "y": 20
         },
         {
           "id": "Y",
@@ -8448,17 +8448,17 @@
           "direction": "east",
           "side": "east",
           "x": 20,
-          "y": 0
+          "y": 5
         }
       ],
       "labelAnchors": {
         "reference": {
-          "x": 50,
+          "x": 56,
           "y": -3,
           "anchor": "start"
         },
         "value": {
-          "x": 50,
+          "x": 56,
           "y": 12,
           "anchor": "start"
         }
@@ -8913,10 +8913,10 @@
       "electrical": true,
       "palette": true,
       "frame": {
-        "x": -34,
-        "y": -24,
-        "width": 42,
-        "height": 48
+        "x": -40,
+        "y": -30,
+        "width": 60,
+        "height": 60
       },
       "selectionBox": {
         "x": -32,
@@ -8932,10 +8932,10 @@
       },
       "artwork": {
         "type": "svg",
-        "viewBox": "-34 -24 42 48",
+        "viewBox": "-40 -30 60 60",
         "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"><line x1=\"-30\" y1=\"0\" x2=\"-16.868887\" y2=\"0\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"-16.868887\" y1=\"-13.333557\" x2=\"-16.868887\" y2=\"13.34159\" stroke-width=\"2.4\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><polyline points=\"-8.575018,-9.694413 0,-13.379732 0,-20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><polyline points=\"-16.868887,6.401526 0,13.377859 0,20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><polygon points=\"-10.233792,-12.987299 -6.916244,-6.401526 -16.868887,-6.401526\" fill=\"currentColor\" stroke=\"none\"/></g>",
-        "source": "pnp.svg",
-        "sourceSha256": "a0ef33a20d2b5c653ac3245b7b7dd8b300c0867f23d9053352768182215b1a03"
+        "source": "device-grid/pnp.svg",
+        "sourceSha256": "b597d801524e3fb162eb913181835650c885c1af758d8964aa741b016c9303e7"
       },
       "pins": [
         {
@@ -8945,7 +8945,7 @@
           "role": "collector",
           "direction": "south",
           "side": "south",
-          "x": 13,
+          "x": 10,
           "y": 20
         },
         {
@@ -8955,7 +8955,7 @@
           "role": "base",
           "direction": "west",
           "side": "west",
-          "x": -17,
+          "x": -20,
           "y": 0
         },
         {
@@ -8965,18 +8965,18 @@
           "role": "emitter",
           "direction": "north",
           "side": "north",
-          "x": 13,
+          "x": 10,
           "y": -20
         }
       ],
       "labelAnchors": {
         "reference": {
-          "x": 14,
+          "x": 26,
           "y": -3,
           "anchor": "start"
         },
         "value": {
-          "x": 14,
+          "x": 26,
           "y": 12,
           "anchor": "start"
         }
@@ -9006,10 +9006,10 @@
       "electrical": false,
       "palette": true,
       "frame": {
-        "x": -14,
-        "y": -7,
-        "width": 18,
-        "height": 14
+        "x": -20,
+        "y": -10,
+        "width": 40,
+        "height": 20
       },
       "selectionBox": {
         "x": -11.565684,
@@ -9025,10 +9025,10 @@
       },
       "artwork": {
         "type": "svg",
-        "viewBox": "-14 -7 18 14",
+        "viewBox": "-20 -10 40 20",
         "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"><circle cx=\"-7.086614\" cy=\"0\" r=\"2.47907\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"0\" y1=\"0\" x2=\"-4.607544\" y2=\"0\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/></g>",
-        "source": "port.svg",
-        "sourceSha256": "c269e18c724984d240a504069ce1cd22736a992e3eedeb32cd30f8456d7de2a2"
+        "source": "device-grid/port.svg",
+        "sourceSha256": "093b5ed3e84175d3b91e54704ce3b43747d4531f56206bfc8a5fcf52fc5aadb4"
       },
       "pins": [
         {
@@ -9038,18 +9038,18 @@
           "role": "port",
           "direction": "east",
           "side": "east",
-          "x": 5,
+          "x": 0,
           "y": 0
         }
       ],
       "labelAnchors": {
         "reference": {
-          "x": 10,
+          "x": 26,
           "y": -3,
           "anchor": "start"
         },
         "value": {
-          "x": 10,
+          "x": 26,
           "y": 12,
           "anchor": "start"
         }
@@ -9081,10 +9081,10 @@
       "electrical": false,
       "palette": true,
       "frame": {
-        "x": -14,
-        "y": -7,
-        "width": 18,
-        "height": 14
+        "x": -20,
+        "y": -10,
+        "width": 40,
+        "height": 20
       },
       "selectionBox": {
         "x": -11.565684,
@@ -9100,10 +9100,10 @@
       },
       "artwork": {
         "type": "svg",
-        "viewBox": "-14 -7 18 14",
+        "viewBox": "-20 -10 40 20",
         "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"><circle cx=\"-7.086614\" cy=\"0\" r=\"2.47907\" fill=\"currentColor\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"0\" y1=\"0\" x2=\"-4.607544\" y2=\"0\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/></g>",
-        "source": "port-filled.svg",
-        "sourceSha256": "0518680ee3704e6f0924fdb45659c1a5103a800db112a9c1a3ca95994385deeb"
+        "source": "device-grid/port-filled.svg",
+        "sourceSha256": "7a0345cae671c285561800d32b2cb03833b2a3b66eed97bf654731206702cfca"
       },
       "pins": [
         {
@@ -9113,18 +9113,18 @@
           "role": "port",
           "direction": "east",
           "side": "east",
-          "x": 5,
+          "x": 0,
           "y": 0
         }
       ],
       "labelAnchors": {
         "reference": {
-          "x": 10,
+          "x": 26,
           "y": -3,
           "anchor": "start"
         },
         "value": {
-          "x": 10,
+          "x": 26,
           "y": 12,
           "anchor": "start"
         }
@@ -9158,10 +9158,10 @@
       "electrical": true,
       "palette": true,
       "frame": {
-        "x": -24,
-        "y": -24,
-        "width": 39,
-        "height": 48
+        "x": -30,
+        "y": -30,
+        "width": 60,
+        "height": 60
       },
       "selectionBox": {
         "x": -12.755814,
@@ -9177,10 +9177,10 @@
       },
       "artwork": {
         "type": "svg",
-        "viewBox": "-24 -24 39 48",
+        "viewBox": "-30 -30 60 60",
         "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"><circle cx=\"0\" cy=\"0\" r=\"10.755814\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><polyline points=\"4,7 4,4 -4,4 -4,-4 4,-4 4,-7\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"0\" y1=\"-10.755814\" x2=\"0\" y2=\"-20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"0\" y1=\"10.755814\" x2=\"0\" y2=\"20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/></g>",
-        "source": "pulse-voltage-source.svg",
-        "sourceSha256": "3c6ecdd323f8e13fc457e63a97de25dd3aeebc9dd1ef3ed40f413e7a24f1480c"
+        "source": "device-grid/pulse-voltage-source.svg",
+        "sourceSha256": "1a3f20ad1b8ab411ca00734b7de1aee90d46c4f575cc7761bc94938f2659cc09"
       },
       "pins": [
         {
@@ -9190,7 +9190,7 @@
           "role": "positive",
           "direction": "north",
           "side": "north",
-          "x": 4.5,
+          "x": 0,
           "y": -20
         },
         {
@@ -9200,18 +9200,18 @@
           "role": "negative",
           "direction": "south",
           "side": "south",
-          "x": 4.5,
+          "x": 0,
           "y": 20
         }
       ],
       "labelAnchors": {
         "reference": {
-          "x": 21,
+          "x": 36,
           "y": -3,
           "anchor": "start"
         },
         "value": {
-          "x": 21,
+          "x": 36,
           "y": 12,
           "anchor": "start"
         }
@@ -9511,10 +9511,10 @@
       "electrical": true,
       "palette": true,
       "frame": {
-        "x": -34,
-        "y": -18,
-        "width": 68,
-        "height": 30
+        "x": -40,
+        "y": -20,
+        "width": 80,
+        "height": 40
       },
       "selectionBox": {
         "x": -22,
@@ -9530,10 +9530,10 @@
       },
       "artwork": {
         "type": "svg",
-        "viewBox": "-34 -18 68 30",
+        "viewBox": "-40 -20 80 40",
         "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"><line x1=\"-20\" y1=\"0\" x2=\"-10\" y2=\"0\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"-10\" y1=\"0\" x2=\"6\" y2=\"-11\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"10\" y1=\"0\" x2=\"20\" y2=\"0\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/></g>",
-        "source": "simple-switch.svg",
-        "sourceSha256": "afefb409f2e52483f72c046df1c19e0cced13cce281673103c8809eb7c366e8a"
+        "source": "device-grid/simple-switch.svg",
+        "sourceSha256": "5d5e9ba34ef82be70e229551892acd9423ca891f519c8428e3c364d7a1ff449f"
       },
       "pins": [
         {
@@ -9544,7 +9544,7 @@
           "direction": "west",
           "side": "west",
           "x": -20,
-          "y": 3
+          "y": 0
         },
         {
           "id": "2",
@@ -9554,18 +9554,18 @@
           "direction": "east",
           "side": "east",
           "x": 20,
-          "y": 3
+          "y": 0
         }
       ],
       "labelAnchors": {
         "reference": {
-          "x": 40,
-          "y": -6,
+          "x": 46,
+          "y": -3,
           "anchor": "start"
         },
         "value": {
-          "x": 40,
-          "y": 9,
+          "x": 46,
+          "y": 12,
           "anchor": "start"
         }
       },
@@ -9694,10 +9694,10 @@
       "electrical": true,
       "palette": true,
       "frame": {
-        "x": -94,
-        "y": -56,
-        "width": 188,
-        "height": 90
+        "x": -100,
+        "y": -60,
+        "width": 200,
+        "height": 100
       },
       "selectionBox": {
         "x": -92,
@@ -9713,10 +9713,10 @@
       },
       "artwork": {
         "type": "svg",
-        "viewBox": "-94 -56 188 90",
+        "viewBox": "-100 -60 200 100",
         "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"><line x1=\"-90\" y1=\"0\" x2=\"-60.1244\" y2=\"0\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><path d=\"M -60.6244 0 L -60.1197 0 C -60.1197 0 -60.1197 0 -58.8418 0 C -57.5653 0 -55.0095 0 -53.7331 0 C -52.4552 0 -52.4552 0 -52.4552 0 C -52.4552 0 -52.4552 0 -52.1993 -1.2452 C -51.9434 -2.4889 -51.4331 -4.9763 -50.4111 -6.1873 C -49.3891 -7.3983 -47.8567 -7.3313 -46.8332 -4.8439 C -45.8112 -2.355 -45.3009 2.5543 -46.0671 5.009 C -46.8332 7.4637 -48.8788 7.4637 -49.3445 4.9763 C -49.8116 2.4874 -48.7003 -2.4889 -47.0118 -5.0209 C -45.3232 -7.5545 -43.0575 -7.6422 -41.5683 -5.1548 C -40.0807 -2.6659 -39.3695 2.3996 -40.036 4.9317 C -40.7025 7.4637 -42.7466 7.4637 -43.2569 4.9317 C -43.7686 2.3996 -42.7466 -2.6659 -41.0804 -5.1325 C -39.4142 -7.5991 -37.1038 -7.4652 -35.57 -4.9317 C -34.0377 -2.3996 -33.2819 2.532 -33.9261 4.9986 C -34.5703 7.4637 -36.6144 7.4637 -37.2481 4.9986 C -37.8804 2.532 -37.1038 -2.3996 -35.8259 -4.8885 C -34.548 -7.3759 -32.7702 -7.4205 -31.6261 -6.1992 C -30.4821 -4.9763 -29.9719 -2.4889 -29.716 -1.2452 C -29.4601 0 -29.4601 0 -29.4601 0 C -29.4601 0 -29.4601 0 -28.0721 0 C -26.6841 0 -23.9066 0 -22.5171 0 C -21.1291 0 -21.1291 0 -21.1291 0 L -20.6244 0\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"round\"/><line x1=\"-21.1244\" y1=\"0\" x2=\"22.3124\" y2=\"0\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><path d=\"M 21.8124 0 L 22.3171 0 C 22.3171 0 22.3171 0 23.595 0 C 24.8715 0 27.4273 0 28.7037 0 C 29.9816 0 29.9816 0 29.9816 0 C 29.9816 0 29.9816 0 30.2375 -1.2452 C 30.4934 -2.4889 31.0037 -4.9763 32.0257 -6.1873 C 33.0477 -7.3983 34.5801 -7.3313 35.6036 -4.8439 C 36.6256 -2.355 37.1359 2.5543 36.3697 5.009 C 35.6036 7.4637 33.558 7.4637 33.0923 4.9763 C 32.6252 2.4874 33.7365 -2.4889 35.425 -5.0209 C 37.1136 -7.5545 39.3793 -7.6422 40.8685 -5.1548 C 42.3561 -2.6659 43.0673 2.3996 42.4008 4.9317 C 41.7343 7.4637 39.6902 7.4637 39.1799 4.9317 C 38.6682 2.3996 39.6902 -2.6659 41.3564 -5.1325 C 43.0226 -7.5991 45.333 -7.4652 46.8668 -4.9317 C 48.3991 -2.3996 49.1549 2.532 48.5107 4.9986 C 47.8665 7.4637 45.8224 7.4637 45.1887 4.9986 C 44.5564 2.532 45.333 -2.3996 46.6109 -4.8885 C 47.8888 -7.3759 49.6666 -7.4205 50.8107 -6.1992 C 51.9547 -4.9763 52.4649 -2.4889 52.7208 -1.2452 C 52.9767 0 52.9767 0 52.9767 0 C 52.9767 0 52.9767 0 54.3647 0 C 55.7527 0 58.5302 0 59.9197 0 C 61.3077 0 61.3077 0 61.3077 0 L 61.8124 0\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"round\"/><line x1=\"61.3124\" y1=\"0\" x2=\"90\" y2=\"0\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"0\" y1=\"-0.5\" x2=\"0\" y2=\"20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><polyline points=\"-80,0 -80,-43.335 -19.5,-43.335\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"-3.2336\" y1=\"-51.3856\" x2=\"-3.2336\" y2=\"-35.2844\" stroke-width=\"2.4\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"3.2336\" y1=\"-51.3856\" x2=\"3.2336\" y2=\"-35.2844\" stroke-width=\"2.4\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"-3.2336\" y1=\"-43.335\" x2=\"-20\" y2=\"-43.335\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"3.2336\" y1=\"-43.335\" x2=\"20\" y2=\"-43.335\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><polyline points=\"19.5,-43.335 80,-43.335 80,0\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><circle cx=\"-59.2164\" cy=\"-6.0745\" r=\"3.77907\" fill=\"currentColor\" stroke=\"none\"/><circle cx=\"23.2204\" cy=\"-6.0745\" r=\"3.77907\" fill=\"currentColor\" stroke=\"none\"/><circle cx=\"-80\" cy=\"0\" r=\"3.77907\" fill=\"currentColor\" stroke=\"none\"/><circle cx=\"0\" cy=\"0\" r=\"3.77907\" fill=\"currentColor\" stroke=\"none\"/><circle cx=\"80\" cy=\"0\" r=\"3.77907\" fill=\"currentColor\" stroke=\"none\"/></g>",
-        "source": "tcoil.svg",
-        "sourceSha256": "1b3124513536a0ffbe98c4142131335fd8882d6b9155bfeed92fb1679f8b1617"
+        "source": "device-grid/tcoil.svg",
+        "sourceSha256": "aad5e638904e7f66d539075e8371d2168eed6b8f5d73ee5384810a7dc5649eae"
       },
       "pins": [
         {
@@ -9727,7 +9727,7 @@
           "direction": "west",
           "side": "west",
           "x": -90,
-          "y": 11
+          "y": 10
         },
         {
           "id": "2",
@@ -9737,7 +9737,7 @@
           "direction": "east",
           "side": "east",
           "x": 90,
-          "y": 11
+          "y": 10
         },
         {
           "id": "3",
@@ -9747,18 +9747,18 @@
           "direction": "south",
           "side": "south",
           "x": 0,
-          "y": 31
+          "y": 30
         }
       ],
       "labelAnchors": {
         "reference": {
-          "x": 100,
-          "y": -14,
+          "x": 106,
+          "y": -13,
           "anchor": "start"
         },
         "value": {
-          "x": 100,
-          "y": 1,
+          "x": 106,
+          "y": 2,
           "anchor": "start"
         }
       },
@@ -10394,10 +10394,10 @@
       "electrical": true,
       "palette": true,
       "frame": {
-        "x": -24,
-        "y": -24,
-        "width": 39,
-        "height": 48
+        "x": -30,
+        "y": -30,
+        "width": 60,
+        "height": 60
       },
       "selectionBox": {
         "x": -22.058139,
@@ -10413,10 +10413,10 @@
       },
       "artwork": {
         "type": "svg",
-        "viewBox": "-24 -24 39 48",
+        "viewBox": "-30 -30 60 60",
         "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"><circle cx=\"0\" cy=\"0\" r=\"10.755814\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line data-part=\"upright-polarity-positive-horizontal\" x1=\"-20.058139\" y1=\"-14.534884\" x2=\"-11.918605\" y2=\"-14.534884\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line data-part=\"upright-polarity-positive-vertical\" x1=\"-15.988372\" y1=\"-18.604651\" x2=\"-15.988372\" y2=\"-10.465117\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line data-part=\"upright-polarity-negative\" x1=\"-20.058139\" y1=\"13.372093\" x2=\"-11.918605\" y2=\"13.372093\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"0\" y1=\"-10.755814\" x2=\"0\" y2=\"-20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"0\" y1=\"10.755814\" x2=\"0\" y2=\"20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/></g>",
-        "source": "vcvs.svg",
-        "sourceSha256": "3d9bfbd28030c3dc137819bdfda4cf5ff3e7a900f93f9bd9978626dfe8e75a90"
+        "source": "device-grid/vcvs.svg",
+        "sourceSha256": "aa67168b702e092c5f81129e26a12acd85e05d018e62dce347f604e56a9ebb9a"
       },
       "pins": [
         {
@@ -10426,7 +10426,7 @@
           "role": "positive",
           "direction": "north",
           "side": "north",
-          "x": 4.5,
+          "x": 0,
           "y": -20
         },
         {
@@ -10436,18 +10436,18 @@
           "role": "negative",
           "direction": "south",
           "side": "south",
-          "x": 4.5,
+          "x": 0,
           "y": 20
         }
       ],
       "labelAnchors": {
         "reference": {
-          "x": 21,
+          "x": 36,
           "y": -3,
           "anchor": "start"
         },
         "value": {
-          "x": 21,
+          "x": 36,
           "y": 12,
           "anchor": "start"
         }
@@ -10481,10 +10481,10 @@
       "electrical": true,
       "palette": true,
       "frame": {
-        "x": -24,
-        "y": -24,
-        "width": 39,
-        "height": 48
+        "x": -30,
+        "y": -30,
+        "width": 60,
+        "height": 60
       },
       "selectionBox": {
         "x": -22.058139,
@@ -10500,10 +10500,10 @@
       },
       "artwork": {
         "type": "svg",
-        "viewBox": "-24 -24 39 48",
+        "viewBox": "-30 -30 60 60",
         "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"><line data-part=\"upright-polarity-positive-horizontal\" x1=\"-20.058139\" y1=\"-14.534884\" x2=\"-11.918605\" y2=\"-14.534884\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line data-part=\"upright-polarity-positive-vertical\" x1=\"-15.988372\" y1=\"-18.604651\" x2=\"-15.988372\" y2=\"-10.465117\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line data-part=\"upright-polarity-negative\" x1=\"-20.058139\" y1=\"13.372093\" x2=\"-11.918605\" y2=\"13.372093\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><polygon points=\"0,-12.5 12.5,0 0,12.5 -12.5,0\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"0\" y1=\"-12.5\" x2=\"0\" y2=\"-20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"0\" y1=\"12.5\" x2=\"0\" y2=\"20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/></g>",
-        "source": "variants/vcvs--diamond.svg",
-        "sourceSha256": "cfc0aed8c6998ae47cd3c0568d1c5a84f0e69acefdc36837762bf3adeef97860"
+        "source": "device-grid/vcvs--diamond.svg",
+        "sourceSha256": "39834104b4384011d61f7881013708c210eab2738dcf920c1b10ce805ca08f9f"
       },
       "pins": [
         {
@@ -10513,7 +10513,7 @@
           "role": "positive",
           "direction": "north",
           "side": "north",
-          "x": 4.5,
+          "x": 0,
           "y": -20
         },
         {
@@ -10523,18 +10523,18 @@
           "role": "negative",
           "direction": "south",
           "side": "south",
-          "x": 4.5,
+          "x": 0,
           "y": 20
         }
       ],
       "labelAnchors": {
         "reference": {
-          "x": 21,
+          "x": 36,
           "y": -3,
           "anchor": "start"
         },
         "value": {
-          "x": 21,
+          "x": 36,
           "y": 12,
           "anchor": "start"
         }
@@ -10565,10 +10565,10 @@
       "electrical": true,
       "palette": true,
       "frame": {
-        "x": -12,
-        "y": -2,
-        "width": 24,
-        "height": 26
+        "x": -20,
+        "y": -10,
+        "width": 40,
+        "height": 40
       },
       "selectionBox": {
         "x": -12,
@@ -10584,10 +10584,10 @@
       },
       "artwork": {
         "type": "svg",
-        "viewBox": "-12 -2 24 26",
+        "viewBox": "-20 -10 40 40",
         "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"><line x1=\"0\" y1=\"20\" x2=\"0\" y2=\"1.5\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><polygon points=\"-10,-0.88 10,-0.88 10,2.36 -10,2.36\" fill=\"currentColor\" stroke=\"none\"/></g>",
-        "source": "vdd-port.svg",
-        "sourceSha256": "6b222d54ad855bca969b88d0b0a94de7f5cee1b8ffb5e3b7e23151f812d8a857"
+        "source": "device-grid/vdd-port.svg",
+        "sourceSha256": "ee517f35ffa7d0ef0c46a92998e30db8109557e929309ac5c8f3cde8723b36d1"
       },
       "pins": [
         {
@@ -10598,18 +10598,18 @@
           "direction": "south",
           "side": "south",
           "x": 0,
-          "y": 9
+          "y": 10
         }
       ],
       "labelAnchors": {
         "reference": {
-          "x": 18,
-          "y": 8,
+          "x": 26,
+          "y": 7,
           "anchor": "start"
         },
         "value": {
-          "x": 18,
-          "y": 23,
+          "x": 26,
+          "y": 22,
           "anchor": "start"
         }
       },
@@ -10817,10 +10817,10 @@
       "electrical": true,
       "palette": true,
       "frame": {
-        "x": -34,
-        "y": -27,
-        "width": 68,
-        "height": 55
+        "x": -40,
+        "y": -30,
+        "width": 80,
+        "height": 60
       },
       "selectionBox": {
         "x": -22,
@@ -10836,10 +10836,10 @@
       },
       "artwork": {
         "type": "svg",
-        "viewBox": "-34 -27 68 55",
+        "viewBox": "-40 -30 80 60",
         "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"><line x1=\"-20\" y1=\"-10\" x2=\"-13\" y2=\"-10\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><circle cx=\"-10\" cy=\"-10\" r=\"3\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"-7\" y1=\"-12.4\" x2=\"6.4\" y2=\"-22.8\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><circle cx=\"11\" cy=\"-10\" r=\"3\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"14\" y1=\"-10\" x2=\"20\" y2=\"-10\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"-20\" y1=\"20\" x2=\"-10\" y2=\"20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"10\" y1=\"20\" x2=\"20\" y2=\"20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><path d=\"M -10 14 L 10 14 L 10 26 L -10 26 Z\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><path d=\"M -8 20 L -2 20 M -5 17 L -5 23\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"2\" y1=\"20\" x2=\"8\" y2=\"20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"0\" y1=\"14\" x2=\"0\" y2=\"10\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"0\" y1=\"6\" x2=\"0\" y2=\"2\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"0\" y1=\"-2\" x2=\"0\" y2=\"-4\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/></g>",
-        "source": "voltage-controlled-switch.svg",
-        "sourceSha256": "f1a412d15c66aaf6b8751290b1688e81187d37435492a9078583efc76b59c92b"
+        "source": "device-grid/voltage-controlled-switch.svg",
+        "sourceSha256": "c9314145a71a1c815a827ad28f2fa033e66362edf4d1b8c5af743ad5f5c80476"
       },
       "pins": [
         {
@@ -10850,7 +10850,7 @@
           "direction": "west",
           "side": "west",
           "x": -20,
-          "y": -10.5
+          "y": -10
         },
         {
           "id": "N",
@@ -10860,7 +10860,7 @@
           "direction": "east",
           "side": "east",
           "x": 20,
-          "y": -10.5
+          "y": -10
         },
         {
           "id": "CP",
@@ -10870,7 +10870,7 @@
           "direction": "west",
           "side": "west",
           "x": -20,
-          "y": 19.5
+          "y": 20
         },
         {
           "id": "CN",
@@ -10880,18 +10880,18 @@
           "direction": "east",
           "side": "east",
           "x": 20,
-          "y": 19.5
+          "y": 20
         }
       ],
       "labelAnchors": {
         "reference": {
-          "x": 40,
-          "y": -2.5,
+          "x": 46,
+          "y": -3,
           "anchor": "start"
         },
         "value": {
-          "x": 40,
-          "y": 12.5,
+          "x": 46,
+          "y": 12,
           "anchor": "start"
         }
       },
@@ -10924,10 +10924,10 @@
       "electrical": true,
       "palette": true,
       "frame": {
-        "x": -24,
-        "y": -24,
-        "width": 39,
-        "height": 48
+        "x": -30,
+        "y": -30,
+        "width": 60,
+        "height": 60
       },
       "selectionBox": {
         "x": -22.058139,
@@ -10943,10 +10943,10 @@
       },
       "artwork": {
         "type": "svg",
-        "viewBox": "-24 -24 39 48",
+        "viewBox": "-30 -30 60 60",
         "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"><circle cx=\"0\" cy=\"0\" r=\"10.755814\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line data-part=\"upright-polarity-positive-horizontal\" x1=\"-20.058139\" y1=\"-14.534884\" x2=\"-11.918605\" y2=\"-14.534884\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line data-part=\"upright-polarity-positive-vertical\" x1=\"-15.988372\" y1=\"-18.604651\" x2=\"-15.988372\" y2=\"-10.465117\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line data-part=\"upright-polarity-negative\" x1=\"-20.058139\" y1=\"13.372093\" x2=\"-11.918605\" y2=\"13.372093\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"0\" y1=\"-10.755814\" x2=\"0\" y2=\"-20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"0\" y1=\"10.755814\" x2=\"0\" y2=\"20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/></g>",
-        "source": "voltage-source.svg",
-        "sourceSha256": "80b1713623ee03f2f4bae2042b6b11fee468f0e26397cc4239150424e42f08a8"
+        "source": "device-grid/voltage-source.svg",
+        "sourceSha256": "83ad4a3f0ab2f073aa72089f6e75a7a1d1199beb8904fc9f42c1dbd1827d455a"
       },
       "pins": [
         {
@@ -10956,7 +10956,7 @@
           "role": "positive",
           "direction": "north",
           "side": "north",
-          "x": 4.5,
+          "x": 0,
           "y": -20
         },
         {
@@ -10966,18 +10966,18 @@
           "role": "negative",
           "direction": "south",
           "side": "south",
-          "x": 4.5,
+          "x": 0,
           "y": 20
         }
       ],
       "labelAnchors": {
         "reference": {
-          "x": 21,
+          "x": 36,
           "y": -3,
           "anchor": "start"
         },
         "value": {
-          "x": 21,
+          "x": 36,
           "y": 12,
           "anchor": "start"
         }
@@ -11327,29 +11327,29 @@
       "electrical": false,
       "palette": false,
       "frame": {
-        "x": -44,
-        "y": -24,
-        "width": 88,
-        "height": 48
+        "x": -50,
+        "y": -30,
+        "width": 100,
+        "height": 60
       },
       "selectionBox": {
-        "x": -32,
-        "y": -19.737379,
-        "width": 74,
-        "height": 39.706688
+        "x": -42,
+        "y": -19.171724,
+        "width": 84,
+        "height": 48.63336
       },
       "labelBounds": {
-        "x": -30,
-        "y": -17.737379,
-        "width": 70,
-        "height": 35.706688
+        "x": -40,
+        "y": -17.171724,
+        "width": 80,
+        "height": 44.63336
       },
       "artwork": {
         "type": "svg",
-        "viewBox": "-44 -24 88 48",
-        "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"><line x1=\"-30\" y1=\"-12\" x2=\"-16.128847\" y2=\"-12\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"-30\" y1=\"-4\" x2=\"-12.846395\" y2=\"-4\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"-30\" y1=\"4\" x2=\"-13.036194\" y2=\"4\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"-30\" y1=\"12\" x2=\"-16.268314\" y2=\"12\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><path d=\"M 22.287907 0.002616 C 22.287907 0.002616 22.287907 0.002616 19.90409 2.213794 C 17.520272 4.424972 12.752638 8.849071 6.792223 11.829279 C 0.833552 14.807743 -6.3179 16.344058 -9.894498 17.113087 C -13.471096 17.880373 -13.471096 17.880373 -13.471096 17.880373 C -13.471096 17.880373 -13.471096 17.880373 -11.608684 14.785073 C -9.746272 11.689772 -6.021449 5.497428 -6.021449 -0.440317 C -6.021449 -6.376319 -9.746272 -12.057721 -11.608684 -14.896678 C -13.471096 -17.737379 -13.471096 -17.737379 -13.471096 -17.737379 C -13.471096 -17.737379 -13.471096 -17.737379 -9.894498 -16.992763 C -6.3179 -16.248147 0.833552 -14.757172 6.792223 -11.801378 C 12.752638 -8.84384 17.520272 -4.421484 19.90409 -2.210306 C 22.287907 0.002616 22.287907 0.002616 22.287907 0.002616\" stroke-width=\"2.4\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"/><path d=\"M -20 -17.735635 C -20 -17.735635 -20 -17.735635 -18.177696 -14.910629 C -16.353649 -12.083878 -12.709041 -6.432121 -12.695091 -0.482169 C -12.682884 5.467783 -16.303077 11.717674 -18.11143 14.842619 C -19.921527 17.969309 -19.921527 17.969309 -19.921527 17.969309\" stroke-width=\"2.4\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"/><circle cx=\"26.494028\" cy=\"0.002616\" r=\"3.374313\" stroke-width=\"2.4\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"/><line x1=\"29.868341\" y1=\"0\" x2=\"40\" y2=\"0\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/></g>",
-        "source": "xnor-gate-4.svg",
-        "sourceSha256": "b3a31c946b89922abd9779c772ea38b0b2162e5da4671fde41c9b7d2864dad0b"
+        "viewBox": "-50 -30 100 60",
+        "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"><line x1=\"-40\" y1=\"-10\" x2=\"-16.128847\" y2=\"-10\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"-40\" y1=\"0\" x2=\"-12.846395\" y2=\"0\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"-40\" y1=\"10\" x2=\"-13.036194\" y2=\"10\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"-40\" y1=\"20\" x2=\"-16.268314\" y2=\"20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><path d=\"M 22.287907 5.00327 C 22.287907 5.00327 22.287907 5.00327 19.90409 7.7672425 C 17.520272 10.531215 12.752638 16.06133875 6.792223 19.78659875 C 0.833552 23.50967875 -6.3179 25.4300725 -9.894498 26.39135875 C -13.471096 27.35046625 -13.471096 27.35046625 -13.471096 27.35046625 C -13.471096 27.35046625 -13.471096 27.35046625 -11.608684 23.48134125 C -9.746272 19.612215 -6.021449 11.871785 -6.021449 4.44960375 C -6.021449 -2.97039875 -9.746272 -10.07215125 -11.608684 -13.6208475 C -13.471096 -17.17172375 -13.471096 -17.17172375 -13.471096 -17.17172375 C -13.471096 -17.17172375 -13.471096 -17.17172375 -9.894498 -16.24095375 C -6.3179 -15.31018375 0.833552 -13.446465 6.792223 -9.7517225 C 12.752638 -6.0548 17.520272 -0.526855 19.90409 2.2371175 C 22.287907 5.00327 22.287907 5.00327 22.287907 5.00327\" stroke-width=\"2.4\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"/><path d=\"M -20 -17.16954375 C -20 -17.16954375 -20 -17.16954375 -18.177696 -13.63828625 C -16.353649 -10.1048475 -12.709041 -3.04015125 -12.695091 4.39728875 C -12.682884 11.83472875 -16.303077 19.6470925 -18.11143 23.55327375 C -19.921527 27.46163625 -19.921527 27.46163625 -19.921527 27.46163625\" stroke-width=\"2.4\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"/><circle cx=\"26.494028\" cy=\"5.00327\" r=\"3.374313\" stroke-width=\"2.4\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"/><line x1=\"29.868341\" y1=\"5\" x2=\"40\" y2=\"5\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/></g>",
+        "source": "device-grid/xnor-gate-4.svg",
+        "sourceSha256": "de9daa6be050bdb579ac4c3daa4481fbbf7e7f2f63f3573b97e84d87a48093c7"
       },
       "pins": [
         {
@@ -11359,8 +11359,8 @@
           "role": "input",
           "direction": "west",
           "side": "west",
-          "x": -30,
-          "y": -12
+          "x": -40,
+          "y": -10
         },
         {
           "id": "B",
@@ -11369,8 +11369,8 @@
           "role": "input",
           "direction": "west",
           "side": "west",
-          "x": -30,
-          "y": -4
+          "x": -40,
+          "y": 0
         },
         {
           "id": "C",
@@ -11379,8 +11379,8 @@
           "role": "input",
           "direction": "west",
           "side": "west",
-          "x": -30,
-          "y": 4
+          "x": -40,
+          "y": 10
         },
         {
           "id": "D",
@@ -11389,8 +11389,8 @@
           "role": "input",
           "direction": "west",
           "side": "west",
-          "x": -30,
-          "y": 12
+          "x": -40,
+          "y": 20
         },
         {
           "id": "Y",
@@ -11400,17 +11400,17 @@
           "direction": "east",
           "side": "east",
           "x": 40,
-          "y": 0
+          "y": 5
         }
       ],
       "labelAnchors": {
         "reference": {
-          "x": 50,
+          "x": 56,
           "y": -3,
           "anchor": "start"
         },
         "value": {
-          "x": 50,
+          "x": 56,
           "y": 12,
           "anchor": "start"
         }
@@ -11654,29 +11654,29 @@
       "electrical": false,
       "palette": false,
       "frame": {
-        "x": -44,
-        "y": -24,
-        "width": 88,
-        "height": 48
+        "x": -50,
+        "y": -30,
+        "width": 100,
+        "height": 60
       },
       "selectionBox": {
-        "x": -32,
-        "y": -19.737379,
-        "width": 64,
-        "height": 39.706688
+        "x": -42,
+        "y": -19.171724,
+        "width": 74,
+        "height": 48.63336
       },
       "labelBounds": {
-        "x": -30,
-        "y": -17.737379,
-        "width": 60,
-        "height": 35.706688
+        "x": -40,
+        "y": -17.171724,
+        "width": 70,
+        "height": 44.63336
       },
       "artwork": {
         "type": "svg",
-        "viewBox": "-44 -24 88 48",
-        "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"><line x1=\"-30\" y1=\"-12\" x2=\"-16.128847\" y2=\"-12\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"-30\" y1=\"-4\" x2=\"-12.846395\" y2=\"-4\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"-30\" y1=\"4\" x2=\"-13.036194\" y2=\"4\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"-30\" y1=\"12\" x2=\"-16.268314\" y2=\"12\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><path d=\"M 22.287907 0.002616 C 22.287907 0.002616 22.287907 0.002616 19.90409 2.213794 C 17.520272 4.424972 12.752638 8.849071 6.792223 11.829279 C 0.833552 14.807743 -6.3179 16.344058 -9.894498 17.113087 C -13.471096 17.880373 -13.471096 17.880373 -13.471096 17.880373 C -13.471096 17.880373 -13.471096 17.880373 -11.608684 14.785073 C -9.746272 11.689772 -6.021449 5.497428 -6.021449 -0.440317 C -6.021449 -6.376319 -9.746272 -12.057721 -11.608684 -14.896678 C -13.471096 -17.737379 -13.471096 -17.737379 -13.471096 -17.737379 C -13.471096 -17.737379 -13.471096 -17.737379 -9.894498 -16.992763 C -6.3179 -16.248147 0.833552 -14.757172 6.792223 -11.801378 C 12.752638 -8.84384 17.520272 -4.421484 19.90409 -2.210306 C 22.287907 0.002616 22.287907 0.002616 22.287907 0.002616\" stroke-width=\"2.4\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"/><path d=\"M -20 -17.735635 C -20 -17.735635 -20 -17.735635 -18.177696 -14.910629 C -16.353649 -12.083878 -12.709041 -6.432121 -12.695091 -0.482169 C -12.682884 5.467783 -16.303077 11.717674 -18.11143 14.842619 C -19.921527 17.969309 -19.921527 17.969309 -19.921527 17.969309\" stroke-width=\"2.4\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"/><line x1=\"22.287907\" y1=\"0\" x2=\"30\" y2=\"0\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/></g>",
-        "source": "xor-gate-4.svg",
-        "sourceSha256": "c369faa31b587576486ef9c54699721358e9cd6959afa581a11330aff665cd3c"
+        "viewBox": "-50 -30 100 60",
+        "body": "<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"><line x1=\"-40\" y1=\"-10\" x2=\"-16.128847\" y2=\"-10\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"-40\" y1=\"0\" x2=\"-12.846395\" y2=\"0\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"-40\" y1=\"10\" x2=\"-13.036194\" y2=\"10\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><line x1=\"-40\" y1=\"20\" x2=\"-16.268314\" y2=\"20\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/><path d=\"M 22.287907 5.00327 C 22.287907 5.00327 22.287907 5.00327 19.90409 7.7672425 C 17.520272 10.531215 12.752638 16.06133875 6.792223 19.78659875 C 0.833552 23.50967875 -6.3179 25.4300725 -9.894498 26.39135875 C -13.471096 27.35046625 -13.471096 27.35046625 -13.471096 27.35046625 C -13.471096 27.35046625 -13.471096 27.35046625 -11.608684 23.48134125 C -9.746272 19.612215 -6.021449 11.871785 -6.021449 4.44960375 C -6.021449 -2.97039875 -9.746272 -10.07215125 -11.608684 -13.6208475 C -13.471096 -17.17172375 -13.471096 -17.17172375 -13.471096 -17.17172375 C -13.471096 -17.17172375 -13.471096 -17.17172375 -9.894498 -16.24095375 C -6.3179 -15.31018375 0.833552 -13.446465 6.792223 -9.7517225 C 12.752638 -6.0548 17.520272 -0.526855 19.90409 2.2371175 C 22.287907 5.00327 22.287907 5.00327 22.287907 5.00327\" stroke-width=\"2.4\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"/><path d=\"M -20 -17.16954375 C -20 -17.16954375 -20 -17.16954375 -18.177696 -13.63828625 C -16.353649 -10.1048475 -12.709041 -3.04015125 -12.695091 4.39728875 C -12.682884 11.83472875 -16.303077 19.6470925 -18.11143 23.55327375 C -19.921527 27.46163625 -19.921527 27.46163625 -19.921527 27.46163625\" stroke-width=\"2.4\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" stroke-miterlimit=\"4\"/><line x1=\"22.287907\" y1=\"5\" x2=\"30\" y2=\"5\" stroke-width=\"1.6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/></g>",
+        "source": "device-grid/xor-gate-4.svg",
+        "sourceSha256": "a1716eefafda32f4fb8913be39e191cf88c75092ac5d61bae2d802194dbcc9bf"
       },
       "pins": [
         {
@@ -11686,8 +11686,8 @@
           "role": "input",
           "direction": "west",
           "side": "west",
-          "x": -30,
-          "y": -12
+          "x": -40,
+          "y": -10
         },
         {
           "id": "B",
@@ -11696,8 +11696,8 @@
           "role": "input",
           "direction": "west",
           "side": "west",
-          "x": -30,
-          "y": -4
+          "x": -40,
+          "y": 0
         },
         {
           "id": "C",
@@ -11706,8 +11706,8 @@
           "role": "input",
           "direction": "west",
           "side": "west",
-          "x": -30,
-          "y": 4
+          "x": -40,
+          "y": 10
         },
         {
           "id": "D",
@@ -11716,8 +11716,8 @@
           "role": "input",
           "direction": "west",
           "side": "west",
-          "x": -30,
-          "y": 12
+          "x": -40,
+          "y": 20
         },
         {
           "id": "Y",
@@ -11727,17 +11727,17 @@
           "direction": "east",
           "side": "east",
           "x": 30,
-          "y": 0
+          "y": 5
         }
       ],
       "labelAnchors": {
         "reference": {
-          "x": 50,
+          "x": 56,
           "y": -3,
           "anchor": "start"
         },
         "value": {
-          "x": 50,
+          "x": 56,
           "y": 12,
           "anchor": "start"
         }

@@ -100,6 +100,23 @@ export interface DevicePinLike {
 export interface DeviceArtworkValidationOptions {
   requireShapes?: boolean;
   pinGrid?: number;
+  shapeGrid?: number;
+  pinGridExemptIds?: ReadonlySet<string>;
+}
+
+/** Keep editable geometry on the artwork grid, including after resizing. */
+export function snapArtworkShape(shape: DeviceArtworkShape): DeviceArtworkShape {
+  const unit = (value: number) => Math.round(value);
+  const size = (value: number) => Math.max(1, unit(value));
+  switch (shape.kind) {
+    case "line": return { ...shape, x1: unit(shape.x1), y1: unit(shape.y1), x2: unit(shape.x2), y2: unit(shape.y2) };
+    case "polyline": return { ...shape, points: shape.points.map(point => ({ x: unit(point.x), y: unit(point.y) })) };
+    case "rect": return { ...shape, x: unit(shape.x), y: unit(shape.y), width: size(shape.width), height: size(shape.height) };
+    case "circle": return { ...shape, cx: unit(shape.cx), cy: unit(shape.cy), r: size(shape.r) };
+    case "ellipse": return { ...shape, cx: unit(shape.cx), cy: unit(shape.cy), rx: size(shape.rx), ry: size(shape.ry) };
+    case "arc": return { ...shape, cx: unit(shape.cx), cy: unit(shape.cy), r: size(shape.r) };
+    case "text": return { ...shape, x: unit(shape.x), y: unit(shape.y) };
+  }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -746,6 +763,10 @@ export function validateDeviceArtwork(
         break;
       }
     }
+    if (options.shapeGrid && shapeCoordinates(shape).some(value =>
+      Math.abs(value / options.shapeGrid! - Math.round(value / options.shapeGrid!)) > 1e-6)) {
+      errors.push(`Shape ${shape.id} must sit on the ${options.shapeGrid}-unit grid.`);
+    }
   }
   const pinIds = new Set<string>();
   const pinPoints = new Set<string>();
@@ -772,7 +793,7 @@ export function validateDeviceArtwork(
       errors.push(`Pin ${pin.id} is outside the frame.`);
     }
     if (
-      pinGrid > 0 &&
+      pinGrid > 0 && !options.pinGridExemptIds?.has(pin.id) &&
       (Math.abs(pin.x / pinGrid - Math.round(pin.x / pinGrid)) > 1e-6 ||
         Math.abs(pin.y / pinGrid - Math.round(pin.y / pinGrid)) > 1e-6)
     ) {
@@ -785,6 +806,12 @@ export function validateDeviceArtwork(
     pinPoints.add(pointKey);
   }
   return errors;
+}
+
+function shapeCoordinates(shape: DeviceArtworkShape): number[] {
+  if (shape.kind === "arc") return [shape.cx, shape.cy, shape.r];
+  if (shape.kind === "text") return [shape.x, shape.y];
+  return shapeNumbers(shape);
 }
 
 function shapeNumbers(shape: DeviceArtworkShape): number[] {

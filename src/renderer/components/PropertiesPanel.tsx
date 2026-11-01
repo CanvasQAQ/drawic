@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, type ReactNode } from "react";
+import React, { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { nodeLabelVisible } from "../../core/geometry";
 import {
   clampNoteTextOffset,
@@ -36,6 +36,7 @@ import { Icon } from "./Icons";
 import { NumberStepperField, SliderField } from "./NumberControls";
 import { RichTextEditor } from "./RichTextEditor";
 import { RichLabelEditor } from "./RichLabelEditor";
+import { FilterSelect } from "./FilterSelect";
 import {
   COLOR_PRESETS,
   SHAPE_PALETTE,
@@ -120,6 +121,7 @@ function CommitField({
   multiline?: boolean;
   action?: ReactNode;
 }) {
+  const inputId = useId();
   const [draft, setDraft] = useState(value);
   useEffect(() => setDraft(value), [value]);
   const commit = (): void => {
@@ -128,13 +130,12 @@ function CommitField({
     }
   };
   return (
-    <label className="property-field">
-      <span className={action ? "property-label-row" : undefined}>
-        {label}
-        {action}
-      </span>
+    <div className="property-field">
+      <label htmlFor={inputId}>{label}</label>
+      <div className={action ? "property-input-with-action" : undefined}>
       {multiline ? (
         <textarea
+          id={inputId}
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
           onBlur={commit}
@@ -142,6 +143,7 @@ function CommitField({
         />
       ) : (
         <input
+          id={inputId}
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
           onBlur={commit}
@@ -152,7 +154,9 @@ function CommitField({
           }}
         />
       )}
-    </label>
+      {action}
+      </div>
+    </div>
   );
 }
 
@@ -213,6 +217,22 @@ function ColorPresetRow({
       </div>
     </div>
   );
+}
+
+function CoordinatePair({ title, xLabel, yLabel, xShortLabel = "X", yShortLabel = "Y", x, y, step = 10, min,
+  onX, onY }: {
+  title: string; xLabel: string; yLabel: string; x: number; y: number;
+  xShortLabel?: string; yShortLabel?: string;
+  step?: number; min?: number; onX: (value: number) => void; onY: (value: number) => void;
+}): ReactNode {
+  const onGrid = (value: number) => Math.max(min ?? -Infinity, Math.round(value / step) * step);
+  return <div className="property-coordinate-field">
+    <span className="numeric-field-label">{title}</span>
+    <div className="property-coordinate-pair">
+      <NumberStepperField label={xLabel} displayLabel={xShortLabel} value={x} step={step} min={min} onCommit={value => onX(onGrid(value))}/>
+      <NumberStepperField label={yLabel} displayLabel={yShortLabel} value={y} step={step} min={min} onCommit={value => onY(onGrid(value))}/>
+    </div>
+  </div>;
 }
 
 function RichTextField({
@@ -282,7 +302,7 @@ interface PropertiesPanelProps {
   netNameByWire: ReadonlyMap<string, string>;
   onUpdateNode: (
     nodeId: string,
-    patch: Partial<Pick<ComponentNode, "reference" | "value">>,
+    patch: Partial<Pick<ComponentNode, "reference" | "value" | "x" | "y">>,
   ) => void;
   onUpdateNodeLabel: (
     nodeId: string,
@@ -548,26 +568,10 @@ export function PropertiesPanel({
               </button>
             }
           />
-          <dl className="property-grid">
-            <div>
-              <dt>Symbol</dt>
-              <dd>{selectedNode.symbolId}</dd>
-            </div>
-            <div>
-              <dt>Position</dt>
-              <dd>
-                {selectedNode.x}, {selectedNode.y}
-              </dd>
-            </div>
-            <div>
-              <dt>Rotation</dt>
-              <dd>{selectedNode.rotation}°</dd>
-            </div>
-            <div>
-              <dt>Mirror</dt>
-              <dd>{selectedNode.mirrored ? "Yes" : "No"}</dd>
-            </div>
-          </dl>
+          <CoordinatePair title="Position" xLabel="Position X" yLabel="Position Y"
+            x={selectedNode.x} y={selectedNode.y}
+            onX={x => onUpdateNode(selectedNode.id, { x })}
+            onY={y => onUpdateNode(selectedNode.id, { y })}/>
           <div className="button-row">
             <button type="button" onClick={onRotate}>
               <Icon name="rotate" /> Rotate
@@ -803,21 +807,17 @@ export function PropertiesPanel({
                   })
                 }
               />
-              <label className="property-field">
+              <div className="property-field">
                 <span>Alignment</span>
-                <select
+                <FilterSelect label="Alignment"
                   value={selectedAnnotation.align ?? "start"}
-                  onChange={(event) =>
+                  onChange={(value) =>
                     onUpdateAnnotation(selectedAnnotation.id, {
-                      align: event.currentTarget.value as "start" | "middle" | "end",
+                      align: value as "start" | "middle" | "end",
                     })
                   }
-                >
-                  <option value="start">Left</option>
-                  <option value="middle">Center</option>
-                  <option value="end">Right</option>
-                </select>
-              </label>
+                  options={[{ value: "start", label: "Left" }, { value: "middle", label: "Center" }, { value: "end", label: "Right" }]}/>
+              </div>
               <div className="button-row">
                 <button
                   type="button"
@@ -858,24 +858,19 @@ export function PropertiesPanel({
                 ? "Ellipse"
                 : "Rectangle"}
           </div>
-          <dl className="property-grid">
-            <div>
-              <dt>Position</dt>
-              <dd>
-                {selectedShape.x}, {selectedShape.y}
-              </dd>
-            </div>
-            <div>
-              <dt>Size</dt>
-              <dd>
-                {selectedShape.width} × {selectedShape.height}
-              </dd>
-            </div>
-            <div>
-              <dt>Rotation</dt>
-              <dd>{selectedShape.rotation}°</dd>
-            </div>
-          </dl>
+          <CoordinatePair title="Position" xLabel="Position X" yLabel="Position Y"
+            x={selectedShape.x} y={selectedShape.y}
+            onX={x => onUpdateShape(selectedShape.id, { x })}
+            onY={y => onUpdateShape(selectedShape.id, { y })}/>
+          <CoordinatePair title="Size" xLabel="Width" yLabel="Height" xShortLabel="W" yShortLabel="H"
+            x={selectedShape.width} y={selectedShape.height} min={10}
+            onX={width => onUpdateShape(selectedShape.id, { width })}
+            onY={height => onUpdateShape(selectedShape.id, {
+              height: isNoteShape ? Math.max(height, noteContentHeight(
+                selectedShape.text ?? "", selectedShape.width,
+                selectedShape.textSize ?? DEFAULT_SHAPE_TEXT_SIZE,
+              )) : height,
+            })}/>
           <ShapePaletteRow
             onSelect={(preset) =>
               onUpdateShape(selectedShape.id, {
@@ -909,21 +904,17 @@ export function PropertiesPanel({
             onPreviewStart={onPreviewStart}
             onPreviewEnd={onPreviewEnd}
           />
-          <label className="property-field">
+          <div className="property-field">
             <span>Line style</span>
-            <select
+            <FilterSelect label="Line style"
               value={selectedShape.dash ?? "solid"}
-              onChange={(event) =>
+              onChange={(value) =>
                 onUpdateShape(selectedShape.id, {
-                  dash: event.currentTarget.value as "solid" | "dashed" | "dotted",
+                  dash: value as "solid" | "dashed" | "dotted",
                 })
               }
-            >
-              <option value="solid">Solid</option>
-              <option value="dashed">Dashed</option>
-              <option value="dotted">Dotted</option>
-            </select>
-          </label>
+              options={[{ value: "solid", label: "Solid" }, { value: "dashed", label: "Dashed" }, { value: "dotted", label: "Dotted" }]}/>
+          </div>
           <SliderField
             label="Opacity"
             value={Math.round((selectedShape.opacity ?? 1) * 100)}
@@ -1006,29 +997,25 @@ export function PropertiesPanel({
               onUpdateShape(selectedShape.id, { textColor })
             }
           />
-          <label className="property-field">
+          <div className="property-field">
             <span>Label alignment</span>
-            <select
+            <FilterSelect label="Label alignment"
               value={selectedShape.textAlign ?? DEFAULT_SHAPE_TEXT_ALIGN}
-              onChange={(event) =>
+              onChange={(value) =>
                 onUpdateShape(selectedShape.id, {
-                  textAlign: event.currentTarget.value as "start" | "middle" | "end",
+                  textAlign: value as "start" | "middle" | "end",
                 })
               }
-            >
-              <option value="start">Left</option>
-              <option value="middle">Center</option>
-              <option value="end">Right</option>
-            </select>
-          </label>
+              options={[{ value: "start", label: "Left" }, { value: "middle", label: "Center" }, { value: "end", label: "Right" }]}/>
+          </div>
 
           {isNoteShape ? (
             <>
-              <NumberStepperField
-                label="Text offset X"
-                value={Math.round(selectedShape.textOffset?.x ?? 0)}
-                step={1}
-                onCommit={(x) => {
+              <CoordinatePair
+                title="Text offset" xLabel="Text offset X" yLabel="Text offset Y"
+                x={Math.round(selectedShape.textOffset?.x ?? 0)}
+                y={Math.round(selectedShape.textOffset?.y ?? 0)} step={1}
+                onX={(x) => {
                   const offset = clampNoteTextOffset(
                     {
                       x,
@@ -1046,12 +1033,7 @@ export function PropertiesPanel({
                     },
                   });
                 }}
-              />
-              <NumberStepperField
-                label="Text offset Y"
-                value={Math.round(selectedShape.textOffset?.y ?? 0)}
-                step={1}
-                onCommit={(y) => {
+                onY={(y) => {
                   const offset = clampNoteTextOffset(
                     {
                       x: selectedShape.textOffset?.x ?? 0,
@@ -1098,14 +1080,6 @@ export function PropertiesPanel({
             <span className="kind-swatch kind-wire" />
             Explicit junction
           </div>
-          <dl className="property-grid">
-            <div>
-              <dt>Position</dt>
-              <dd>
-                {selectedJunction.point.x}, {selectedJunction.point.y}
-              </dd>
-            </div>
-          </dl>
         </PropertiesSection>
       ) : null}
 
@@ -1170,20 +1144,17 @@ export function PropertiesPanel({
               onPreviewStart={onPreviewStart}
               onPreviewEnd={onPreviewEnd}
             />
-            <label className="property-field">
+            <div className="property-field">
               <span>Diagram font</span>
-              <select
+              <FilterSelect label="Diagram font"
                 value={typography?.family ?? "sans"}
-                onChange={(event) =>
+                onChange={(value) =>
                   onUpdateTypography({
-                    family: event.currentTarget.value as DocumentTypography["family"],
+                    family: value as DocumentTypography["family"],
                   })
                 }
-              >
-                <option value="sans">Sans</option>
-                <option value="serif">Serif</option>
-              </select>
-            </label>
+                options={[{ value: "sans", label: "Sans" }, { value: "serif", label: "Serif" }]}/>
+            </div>
           </PropertiesSection>
         </>
       ) : null}

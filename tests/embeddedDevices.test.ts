@@ -9,6 +9,7 @@ import {
   buildDeviceLibraryFile,
   embedReferencedDevices,
 } from "../src/core/deviceLibraryRegistry";
+import { catalogFilter } from "../src/core/deviceCatalog";
 import { addComponent } from "../src/core/editor";
 import {
   createDocument,
@@ -117,6 +118,19 @@ function fixture(): {
 }
 
 describe("embedded project device library", () => {
+  it("matches catalog records and placement symbols by the same pin, keyword and source rules", () => {
+    const device = record("custom-a","My device");
+    device.pins[0]!.name = "Feedback";
+    device.keywords = ["Sense"];
+    const symbol = loadDeviceLibrary(buildDeviceLibraryFile({id:"user",title:"User",collection:"user",devices:[device]})).symbols[0]!;
+    for (const query of [" FEEDBACK ", "sense", "passive", "test", "custom-a"]) {
+      const matches = catalogFilter(query,"test","custom");
+      expect(matches(device,"custom")).toBe(true);
+      expect(matches(symbol,"custom")).toBe(true);
+      expect(matches(symbol,"project")).toBe(false);
+    }
+  });
+
   it("round-trips referenced custom devices without the user library", () => {
     const { embedded } = fixture();
     expect(embedded.embeddedLibrary?.devices.map((device) => device.id)).toEqual([
@@ -164,6 +178,29 @@ describe("embedded project device library", () => {
       refreshExisting: true,
     }).document;
     expect(refreshed.embeddedLibrary?.devices[0]?.title).toBe("Revised Custom A");
+  });
+
+  it("blocks the entire refresh when a wired pin key disappears, even if its display name or ID survives", () => {
+    const { embedded } = fixture();
+    const page = embedded.pages[0]!;
+    const net = {id:"net", junctions:[], wires:[{
+      id:"wire", points:[{x:50,y:0},{x:80,y:0}],
+      start:{kind:"open" as const}, end:{kind:"pin" as const,deviceId:"node-1",pinId:"2"},
+    }]};
+    const document = { ...embedded, pages:[{...page,nets:[net]}] };
+    const revised = record("custom-a","New appearance");
+    revised.pins[1]!.key = "replacement";
+    const options = {
+      refreshExisting:true,
+      builtIn:loadDeviceLibrary(buildDeviceLibraryFile({id:"built-in",title:"Builtin",collection:"builtin",devices:[record("resistor","Resistor")]})),
+      userLibrary:buildDeviceLibraryFile({id:"user",title:"User",collection:"user",devices:[revised]}),
+    };
+    const blocked = embedReferencedDevices(document, options);
+    expect(blocked.document).toBe(document);
+    expect(blocked.incompatiblePins).toEqual([{page:page.name,device:"X1",pin:"2",wire:"wire"}]);
+    revised.pins[1]!.key = "2";
+    revised.pins.shift(); // Removing an unused pin is safe.
+    expect(embedReferencedDevices(document, options).document.embeddedLibrary?.devices[0]?.title).toBe("New appearance");
   });
 
   it("accepts schema version 3 projects and normalizes them to version 4", () => {

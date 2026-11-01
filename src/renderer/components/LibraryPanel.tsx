@@ -1,3 +1,5 @@
+import { FilterSelect } from "./FilterSelect";
+import { catalogFilter, type CatalogSource } from "../../core/deviceCatalog";
 import React, { useMemo, useState } from "react";
 import type { DeviceSymbol } from "../../core/library";
 import {
@@ -7,7 +9,12 @@ import {
 } from "../../core/deviceLibraryRegistry";
 import { Icon } from "./Icons";
 
-type LibrarySource = "all" | "built-in" | "custom" | "project";
+type LibrarySource = "all" | CatalogSource;
+const origins: Partial<Record<string, CatalogSource>> = {
+  [BUILT_IN_DEVICE_LIBRARY_ID]: "built-in",
+  [USER_DEVICE_LIBRARY_ID]: "custom",
+  [EMBEDDED_DEVICE_LIBRARY_ID]: "project",
+};
 
 interface LibraryPanelProps {
   symbols: readonly DeviceSymbol[];
@@ -45,24 +52,9 @@ export function LibraryPanel({
     [symbols],
   );
   const filtered = useMemo(() => {
-    const normalized = query.trim().toLowerCase();
+    const matches = catalogFilter(query, category, source);
     return symbols
-      .filter(
-        (symbol) =>
-          symbol.palette &&
-          (category === "all" || symbol.category === category) &&
-          (source === "all" ||
-            (source === "built-in" &&
-              symbol.libraryId === BUILT_IN_DEVICE_LIBRARY_ID) ||
-            (source === "custom" &&
-              symbol.libraryId === USER_DEVICE_LIBRARY_ID) ||
-            (source === "project" &&
-              symbol.libraryId === EMBEDDED_DEVICE_LIBRARY_ID)) &&
-          (!normalized ||
-            symbol.label.toLowerCase().includes(normalized) ||
-            symbol.id.toLowerCase().includes(normalized) ||
-            symbol.keywords.some((keyword) => keyword.includes(normalized))),
-      )
+      .filter(symbol => symbol.palette && matches(symbol, origins[symbol.libraryId]))
       .sort((a, b) => a.label.localeCompare(b.label));
   }, [symbols, query, category, source]);
 
@@ -96,29 +88,15 @@ export function LibraryPanel({
           type="search"
         />
       </label>
-      <label className="category-field">
-        <span>Category</span>
-        <select value={category} onChange={(event) => setCategory(event.target.value)}>
-          <option value="all">All categories</option>
-          {categories.map((item) => (
-            <option key={item} value={item}>
-              {item}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="category-field">
-        <span>Source</span>
-        <select
-          value={source}
-          onChange={(event) => setSource(event.target.value as LibrarySource)}
-        >
-          <option value="all">All sources</option>
-          <option value="built-in">Built-in</option>
-          <option value="custom">Custom</option>
-          <option value="project">This project</option>
-        </select>
-      </label>
+      <div className="category-field"><span>Category</span>
+        <FilterSelect label="Category" value={category} onChange={setCategory}
+          options={[{ value: "all", label: "All categories" }, ...categories.map(value => ({ value, label: value }))]} />
+      </div>
+      <div className="category-field"><span>Source</span>
+        <FilterSelect label="Source" value={source} onChange={value => setSource(value as typeof source)}
+          options={[{ value: "all", label: "All sources" }, { value: "built-in", label: "Built-in" },
+            { value: "custom", label: "Custom" }, { value: "project", label: "This project" }]} />
+      </div>
       <div className="library-count" aria-live="polite">
         {filtered.length} placeable {filtered.length === 1 ? "symbol" : "symbols"}
         {onManageDevices ? (

@@ -51,6 +51,8 @@ export interface DeviceLibraryRecord {
     type: "svg";
     viewBox: string;
     body: string;
+    /** Original SVG retained alongside editable shapes added in the editor. */
+    baseBody?: string;
     shapes?: DeviceArtworkShape[];
     source: string;
     sourceSha256: string;
@@ -194,7 +196,18 @@ function parseDevice(
     value.artwork.body === undefined && shapes
       ? ""
       : expectString(value.artwork.body, `${field}.artwork.body`);
-  const rawBody = shapes ? serializeDeviceArtwork(shapes) : storedBody;
+  const suppliedBaseBody = value.artwork.baseBody === undefined
+    ? undefined
+    : expectString(value.artwork.baseBody, `${field}.artwork.baseBody`);
+  if (suppliedBaseBody && /<script\b|\son[a-z]+\s*=|javascript:/i.test(suppliedBaseBody)) {
+    throw new Error(`${field}.artwork.baseBody contains executable content.`);
+  }
+  let baseBody = suppliedBaseBody;
+  if (sanitize && baseBody !== undefined) {
+    try { baseBody = sanitizeSvgFragment(baseBody); }
+    catch { throw new Error(`${field}.artwork.baseBody is not safe SVG.`); }
+  }
+  const rawBody = shapes ? (baseBody ?? "") + serializeDeviceArtwork(shapes) : storedBody;
   if (!rawBody) {
     throw new Error(`${field}.artwork.body must not be empty.`);
   }
@@ -275,6 +288,7 @@ function parseDevice(
       type: "svg",
       viewBox: expectString(value.artwork.viewBox, `${field}.artwork.viewBox`),
       body,
+      ...(baseBody !== undefined ? { baseBody } : {}),
       ...(shapes ? { shapes } : {}),
       source: expectString(value.artwork.source, `${field}.artwork.source`),
       sourceSha256: expectString(value.artwork.sourceSha256, `${field}.artwork.sourceSha256`),

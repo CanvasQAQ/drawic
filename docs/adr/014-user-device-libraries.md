@@ -44,7 +44,15 @@ libraries, and portability of projects that use them.
 6. Editable device artwork extends the library format to schema version 2 with
    optional `artwork.shapes` made of constrained primitives. The rendered SVG
    body is regenerated from those primitives. Built-in records have no editable
-   source and remain immutable.
+   source and remain immutable. Cloning preserves the SVG geometry in a new
+   user record. That copy exposes allowlisted SVG element attributes in the
+   editor; edits use the same undo history, draft save, and library persistence
+   as primitive artwork without converting or approximating the original paths.
+   When new primitives are drawn over a copied SVG, `artwork.baseBody` retains
+   the original fragment and `artwork.shapes` retains the editable primitives.
+   The rendered body is reconstructed from both on load. New primitive geometry
+   snaps to the 1-unit grid; new or moved pins snap to the 10-unit grid.
+   Existing imported contacts remain at their recorded positions until moved.
 7. Device creation is limited to the primitive set documented in the plan. The
    editor is not a general-purpose vector editor.
 

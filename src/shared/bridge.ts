@@ -1,3 +1,5 @@
+export type AppearancePreference = "light" | "dark" | "system";
+
 export type ExportKind = "svg" | "png" | "pdf";
 
 export type AppCommand =
@@ -83,6 +85,12 @@ export interface RecoveryPayload {
 }
 
 export interface DrawicBridge {
+  agent?: {
+    enable: () => Promise<string>;
+    disable: () => Promise<void>;
+    onRequest: (listener: (id: string, request: unknown) => void) => () => void;
+    reply: (id: string, response: unknown) => void;
+  };
   openProject: () => Promise<OpenProjectPayload | null>;
   saveProject: (request: SaveProjectRequest) => Promise<SaveProjectResult>;
   openRecentProject: (path: string) => Promise<OpenProjectPayload | null>;
@@ -99,6 +107,7 @@ export interface DrawicBridge {
   clearRecovery: (projectId: string) => Promise<void>;
   getRecovery: () => Promise<RecoveryPayload | null>;
   getLaunchProject: () => Promise<OpenProjectPayload | null>;
+  setAppearance?: (preference: AppearancePreference) => void;
   setDocumentDirty: (dirty: boolean) => void;
   finishClose: () => void;
   isWindowMaximized: () => Promise<boolean>;

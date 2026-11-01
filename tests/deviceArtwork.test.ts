@@ -194,5 +194,10 @@ describe("device artwork model", () => {
     expect(
       validateDeviceArtwork([rect], [pin({ x: -15 })], frame, { pinGrid: 10 }),
     ).toContain("Pin pin-1 must sit on the 10-unit grid.");
+    expect(validateDeviceArtwork([{ ...rect, x: 0.5 }], [pin()], frame, { shapeGrid: 1 }))
+      .toContain(`Shape ${rect.id} must sit on the 1-unit grid.`);
+    expect(validateDeviceArtwork([rect], [pin({ x: -15 })], frame, {
+      pinGrid: 10, pinGridExemptIds: new Set(["pin-1"]),
+    })).toEqual([]);
   });
 });

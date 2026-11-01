@@ -33,7 +33,15 @@ export interface DeviceLibraryConflict {
   identical: boolean;
 }
 
+interface IncompatiblePin {
+  page: string;
+  device: string;
+  pin: string;
+  wire: string;
+}
+
 export interface EmbeddedDeviceLibraryResult {
+  incompatiblePins: IncompatiblePin[];
   document: DrawicDocument;
   missing: string[];
 }
@@ -140,10 +148,33 @@ export function embedReferencedDevices(
     }
   }
 
+  const incompatiblePins: IncompatiblePin[] = [];
+  if (options.refreshExisting) {
+    const replacementKeys = new Map(devices.filter(device => userById.has(device.id))
+      .map(device => [device.id, new Set(device.pins.map(pin => pin.key))]));
+    for (const page of document.pages) {
+      const nodes = new Map(page.nodes.map(node => [node.id, node]));
+      for (const net of page.nets) {
+        for (const wire of net.wires) {
+          for (const endpoint of [wire.start, wire.end]) {
+            if (endpoint.kind !== "pin") continue;
+            const node = nodes.get(endpoint.deviceId);
+            if (!node) continue;
+            const keys = replacementKeys.get(node.symbolId);
+            if (keys && !keys.has(endpoint.pinId)) {
+              incompatiblePins.push({ page: page.name, device: node.reference || node.id, pin: endpoint.pinId, wire: wire.id });
+            }
+          }
+        }
+      }
+    }
+    if (incompatiblePins.length) return { document, missing, incompatiblePins };
+  }
+
   const withoutEmbedded = { ...document };
   delete withoutEmbedded.embeddedLibrary;
   if (devices.length === 0) {
-    return { document: withoutEmbedded, missing };
+    return { document: withoutEmbedded, missing, incompatiblePins };
   }
   return {
     document: {
@@ -156,6 +187,7 @@ export function embedReferencedDevices(
       }),
     },
     missing,
+    incompatiblePins,
   };
 }
 

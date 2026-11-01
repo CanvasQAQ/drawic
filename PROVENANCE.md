@@ -71,3 +71,16 @@ packaged application at runtime. License notices are summarized in
 Exported `.drawic.json`, SVG, PNG, PDF, and SPICE files are generated entirely
 from local document data and the single-file bundled device library. Drawic does not add
 remote images, fonts, scripts, or service links to exported documents.
+
+
+### Drawic grid-corrected appearances
+
+The 28 SVGs under `src/renderer/assets/device-grid/` are Drawic derivatives of the
+locked SVGs listed by source path in `review.json`. The original inputs and
+their checksum ledger are preserved. Each derived viewBox encloses the
+original art and centers placement on the 10-unit connection grid. The six
+four-input gates use straight west leads at y = -10, 0, 10, 20. Their body profiles
+are stretched vertically to meet the leads; the east output and any inversion
+bubble are centered at y = 5. Pin IDs and audited escape directions are preserved. The generated record hashes the actual derivative SVG input.
+The previous pin offsets and directions in the review ledger are used for
+compatibility tests against pin-bound wires stored by earlier versions.

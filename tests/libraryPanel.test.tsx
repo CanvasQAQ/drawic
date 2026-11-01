@@ -77,13 +77,8 @@ describe("device library appearance", () => {
     );
     expect(onManageDevices).toHaveBeenCalledTimes(1);
 
-    const sourceSelect = [...container.querySelectorAll("label")].find(
-      (label) => label.querySelector("span")?.textContent === "Source",
-    )?.querySelector("select") as HTMLSelectElement;
-    flushSync(() => {
-      sourceSelect.value = "custom";
-      sourceSelect.dispatchEvent(new Event("change", { bubbles: true }));
-    });
+    flushSync(() => container.querySelector<HTMLButtonElement>('[aria-label="Source"]')!.click());
+    flushSync(() => [...document.querySelectorAll<HTMLElement>('[role="option"]')].find(option => option.textContent?.includes("Custom"))!.click());
     expect(container.textContent).toContain("Custom A");
     expect(container.textContent).not.toContain("Project B");
     root.unmount();

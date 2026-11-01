@@ -7,6 +7,7 @@ interface TitleBarProps {
   platform: string;
   theme: Theme;
   onToggleTheme: () => void;
+  actions?: ReactNode;
 }
 
 function ThemeIcon({ theme }: { theme: Theme }) {
@@ -27,6 +28,7 @@ export function TitleBar({
   platform,
   theme,
   onToggleTheme,
+  actions,
 }: TitleBarProps): ReactNode {
   const isMac = platform === "darwin";
   const [maximized, setMaximized] = useState(false);
@@ -72,6 +74,7 @@ export function TitleBar({
       </div>
 
       <div className="window-titlebar-actions">
+        {actions}
         <button
           type="button"
           className="window-theme-button"
@@ -80,7 +83,6 @@ export function TitleBar({
           onClick={onToggleTheme}
         >
           <ThemeIcon theme={theme} />
-          <span>{theme === "dark" ? "Light" : "Dark"}</span>
         </button>
 
         {!isMac ? (

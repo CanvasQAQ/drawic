@@ -20,7 +20,7 @@ Local implementation agents must begin with [AGENTS.md](AGENTS.md) and
 
 Version 0.3.0 is an **Unsigned Preview**. The editor uses independent drawing
 pages and a single-file device library, and can produce project, SPICE, SVG, PNG,
-and PDF files. Spectre/SCS and local MCP are explicitly not implemented.
+and PDF files. Local MCP can read the active page, place devices and connect pins. Spectre/SCS remains unimplemented.
 The capabilities below describe the current source tree; tagged packages may
 lag behind it.
 
@@ -45,7 +45,7 @@ tag such as `v1.0.0` is treated as a formal release.
   direction and role. The user library imports and exports `.drawiclib.json`,
   and referenced custom devices are embedded in saved project files so a shared
   project opens without the author's local library.
-- Built-in pin directions can be reviewed in the manager's Audit tab, with the
+- Built-in pin directions can be reviewed in the manager’s Browse → Maintenance tools, with the
   same JSON correction export as before.
 - Selection, Shift multi-selection, marquee selection, grid movement, deletion,
   rotation, and mirroring.
@@ -112,7 +112,7 @@ tag such as `v1.0.0` is treated as a formal release.
 - Basic ERC for empty/duplicate references, dangling pins, invalid wire
   geometry, missing symbols, and conflicting labels.
 - A frameless Windows/Linux shell with custom window controls, native macOS
-  traffic lights, and a locally persisted light/dark theme switch.
+  traffic lights, and a locally persisted light/dark/system appearance control.
 
 ## Development
 
@@ -197,7 +197,7 @@ service, sync, account, telemetry, or update-check request.
   device port before and after creates a wire bound to both ports.
 - The wheel zooms around the pointer. `F` fits the drawing, Ctrl+0 resets the
   view, and holding Space while dragging pans.
-- The title-bar theme button switches between light and dark appearance, and the
+- The title-bar appearance selector offers Light, Dark and System; its adjacent button switches between Light and Dark. The
   choice is remembered locally.
 - Select any wire and use the Net color control in Properties to recolor the
   complete Net.
@@ -266,3 +266,5 @@ Original Drawic source is MIT licensed. Bundled static device artwork has a
 separate owner-authorized distribution basis documented in
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Third-party software licenses
 remain with their respective projects.
+
+Local MCP setup and editing rules are documented in [Local Agent editing](docs/LOCAL_AGENT.md).

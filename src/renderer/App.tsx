@@ -1,3 +1,6 @@
+import { AgentControls } from "./components/AgentControls";
+import { EditorSession } from "../core/editorSession";
+import type { LibraryActions } from "./deviceWorkspace";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   defaultDeviceValue,
@@ -44,10 +47,8 @@ import { buildSchematicSvg } from "../core/export/svg";
 import { symbolLabelPosition } from "../core/geometry";
 import {
   commitHistory,
-  createHistory,
   redoHistory,
   undoHistory,
-  type HistoryState,
 } from "../core/history";
 import {
   allJunctions,
@@ -110,8 +111,8 @@ import {
 import {
   applyThemeToDocument,
   persistTheme,
-  resolveInitialTheme,
-  type Theme,
+  readThemePreference, effectiveTheme, SYSTEM_DARK_QUERY,
+  type ThemePreference,
 } from "./theme";
 
 const builtInLibraryFile = parseDeviceLibrary(builtInDeviceLibraryJson);
@@ -154,9 +155,12 @@ export function App() {
   const [activePageId, setActivePageId] = useState(
     () => initialDocument.pages[0]?.id ?? "",
   );
-  const [history, setHistory] = useState<HistoryState<DrawicDocument>>(() =>
-    createHistory(initialDocument),
-  );
+  const [session] = useState(() => new EditorSession(initialDocument));
+  const history = React.useSyncExternalStore(session.subscribe, session.snapshot);
+  const setHistory = session.update;
+  const workspace = useRef<LibraryActions | null>(null);
+  const [editorDirty, setEditorDirty] = useState(false);
+  const draftFile = useRef<DeviceLibraryFile | null>(null);
   const [savedText, setSavedText] = useState(() => serializeProject(initialDocument));
   const [filePath, setFilePath] = useState<string | null>(null);
   const [selection, setSelection] = useState<SelectionRef[]>([]);
@@ -180,7 +184,17 @@ export function App() {
     useState<DeviceLibraryFile | null>(null);
   const [pendingTextAnnotationId, setPendingTextAnnotationId] = useState<string | null>(null);
   const [pendingNoteShapeId, setPendingNoteShapeId] = useState<string | null>(null);
-  const [theme, setTheme] = useState<Theme>(() => resolveInitialTheme());
+  const [themePreference, setThemePreference] = useState<ThemePreference>(() => readThemePreference());
+  const [systemDark, setSystemDark] = useState(() => window.matchMedia?.(SYSTEM_DARK_QUERY).matches ?? true);
+  const theme = effectiveTheme(themePreference, systemDark);
+  useEffect(() => {
+    if (themePreference !== "system" || !window.matchMedia) return;
+    const media = window.matchMedia(SYSTEM_DARK_QUERY);
+    const sync = () => setSystemDark(media.matches);
+    sync();
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
+  }, [themePreference]);
   const [recovery, setRecovery] = useState<{
     content: string;
     savedAt: string;
@@ -191,6 +205,7 @@ export function App() {
   const logSequence = useRef(0);
   const historyPreview = useRef(createHistoryPreview<DrawicDocument>());
 
+  draftFile.current = userLibraryFile;
   const document = history.present;
   const library = useMemo(
     () =>
@@ -205,6 +220,13 @@ export function App() {
       }),
     [document.embeddedLibrary, userLibraryFile],
   );
+  const observedUserLibrary = useRef(userLibraryFile);
+  React.useLayoutEffect(() => {
+    if (observedUserLibrary.current !== userLibraryFile) {
+      session.invalidateDeviceContext();
+      observedUserLibrary.current = userLibraryFile;
+    }
+  }, [session, userLibraryFile]);
   const page = useMemo(
     () => document.pages.find((candidate) => candidate.id === activePageId) ?? document.pages[0]!,
     [activePageId, document],
@@ -282,11 +304,29 @@ export function App() {
     [],
   );
 
+  const gestureActive = useRef(false);
+  const markGesture = useCallback((busy: boolean) => { gestureActive.current = busy; }, []);
+  React.useLayoutEffect(() => window.drawic.agent?.onRequest((id, request) => {
+    try {
+      const focused = window.document.activeElement;
+      const typing = focused instanceof HTMLElement && (focused.isContentEditable || focused.matches("input, textarea, select"));
+      const busy = Boolean(historyPreview.current.active || gestureActive.current || inlineEditing || deviceLibraryOpen || pendingAction || nameDialog || recovery || typing);
+      const result = session.request(request, page.id, library, busy);
+      if ("committedRevision" in result && !result.replayed) appendLog("Agent edited " + result.ids.length + " objects in " + page.name, "success");
+      if (JSON.stringify(result).length > 240000) throw new Error("response_limit");
+      window.drawic.agent?.reply(id,result);
+    } catch (e) {
+      const error = errorMessage(e).slice(0,300);
+      appendLog("Agent: " + error, "warning");
+      window.drawic.agent?.reply(id,{error, sessionId:session.sessionId, revision:session.revision});
+    }
+  }), [appendLog, session, page, library, inlineEditing, deviceLibraryOpen, pendingAction, nameDialog, recovery]);
+
   const replaceDocument = useCallback(
     (next: DrawicDocument, saved: string | null, path: string | null, resetHistory = true) => {
       resetHistoryPreview(historyPreview.current);
       if (resetHistory) {
-        setHistory(createHistory(next));
+        session.replace(next);
       } else {
         commitDocument(next);
       }
@@ -306,9 +346,10 @@ export function App() {
   const saveProject = useCallback(
     async (forceDialog = false): Promise<boolean> => {
       try {
+        const savingSession = session.sessionId;
         const embedded = embedReferencedDevices(history.present, {
           builtIn: builtInLibrary,
-          ...(userLibraryFile ? { userLibrary: userLibraryFile } : {}),
+          ...(draftFile.current ? { userLibrary: draftFile.current } : {}),
         });
         const content = serializeProject(embedded.document);
         const result = await window.drawic.saveProject({
@@ -317,12 +358,12 @@ export function App() {
           content,
           projectId: history.present.id,
         });
-        if (result.canceled || !result.path) {
+        if (result.canceled || !result.path || session.sessionId !== savingSession) {
           return false;
         }
         setFilePath(result.path);
         setHistory((current) =>
-          serializeProject(current.present) === serializeProject(history.present)
+          current.present === history.present
             ? { ...current, present: embedded.document }
             : current,
         );
@@ -335,7 +376,7 @@ export function App() {
             "warning",
           );
         }
-        return true;
+        return session.sessionId === savingSession && session.snapshot().present === embedded.document;
       } catch (error) {
         appendLog(`Save failed: ${errorMessage(error)}`, "error");
         return false;
@@ -933,11 +974,11 @@ export function App() {
 
   const saveUserLibrary = useCallback(async (): Promise<boolean> => {
     try {
-      const library = userLibraryFile ?? emptyUserDeviceLibrary();
+      const library = draftFile.current ?? emptyUserDeviceLibrary();
       await window.drawic.saveUserDeviceLibrary({
         content: serializeDeviceLibraryFile(library),
       });
-      setUserLibraryFile(library);
+      if (!draftFile.current) setUserLibraryFile(library);
       setSavedUserLibraryFile(library);
       appendLog("Saved the custom device library.", "success");
       return true;
@@ -964,23 +1005,28 @@ export function App() {
     [],
   );
 
-  const refreshEmbeddedDevices = useCallback((): string => {
+  const refreshEmbeddedDevices = useCallback(() => {
     const result = embedReferencedDevices(history.present, {
       builtIn: builtInLibrary,
       ...(userLibraryFile ? { userLibrary: userLibraryFile } : {}),
       refreshExisting: true,
     });
+    if (result.incompatiblePins.length) {
+      const details = result.incompatiblePins.slice(0, 3).map(issue =>
+        `${issue.page}: ${issue.device} pin ${issue.pin} (wire ${issue.wire})`);
+      return { kind: "error" as const, message: `Refresh blocked. ${result.incompatiblePins.length} connected endpoint(s) reference missing pins. ${details.join("; ")}. Project devices were kept.` };
+    }
     commitDocument(result.document);
     const count = result.document.embeddedLibrary?.devices.length ?? 0;
     if (result.missing.length > 0) {
-      return `Refreshed ${count} project device definition(s); ${result.missing.length} still missing.`;
+      return { kind: "info" as const, message: `Refreshed ${count} project device definition(s); ${result.missing.length} still missing.` };
     }
-    return `Refreshed ${count} project device definition(s) from the draft library.`;
+    return { kind: "success" as const, message: `Refreshed ${count} project device definition(s) from the draft library.` };
   }, [commitDocument, history.present, userLibraryFile]);
 
   useEffect(() => {
-    window.drawic.setDocumentDirty(dirty);
-  }, [dirty]);
+    window.drawic.setDocumentDirty(dirty || userLibraryDirty || editorDirty);
+  }, [dirty, userLibraryDirty, editorDirty]);
 
   useEffect(() => {
     if (userLibraryChecked.current) {
@@ -1006,8 +1052,11 @@ export function App() {
 
   useEffect(() => {
     applyThemeToDocument(theme);
-    persistTheme(theme);
   }, [theme]);
+  useEffect(() => {
+    persistTheme(themePreference);
+    window.drawic.setAppearance?.(themePreference);
+  }, [themePreference]);
 
   useEffect(() => {
     if (!dirty) {
@@ -1159,6 +1208,15 @@ export function App() {
 
   const handleCommand = useCallback(
     (command: AppCommand) => {
+      if (workspace.current) {
+        if (command === "save-project-before-close") {
+          void (async () => {
+            if ((editorDirty || userLibraryDirty) && !await workspace.current?.saveAll()) return;
+            if (!dirty || await saveProject(false)) window.drawic.finishClose();
+          })();
+        } else workspace.current.command(command);
+        return;
+      }
       switch (command) {
         case "new-project":
           newProject();
@@ -1224,7 +1282,7 @@ export function App() {
       }
     },
     [
-      deleteSelection,
+      dirty, editorDirty, userLibraryDirty, deleteSelection,
       exportDiagram,
       importSpiceFile,
       mirrorSelected,
@@ -1300,9 +1358,8 @@ export function App() {
         documentTitle={`${projectNameFromPath(filePath)}${dirty ? " •" : ""}`}
         platform={window.drawic.platform}
         theme={theme}
-        onToggleTheme={() =>
-          setTheme((current) => (current === "dark" ? "light" : "dark"))
-        }
+        actions={<AgentControls />}
+        onToggleTheme={() => setThemePreference(theme === "dark" ? "light" : "dark")}
       />
       <Toolbar
         tool={tool}
@@ -1381,6 +1438,8 @@ export function App() {
             onMoveTo={movePageTo}
           />
           <SchematicCanvas
+            shortcutsEnabled={!deviceLibraryOpen}
+            onGestureChange={markGesture}
             page={page}
             typography={document.typography}
             library={library}
@@ -1568,9 +1627,12 @@ export function App() {
           builtInFile={builtInLibraryFile}
           userFile={userLibraryFile}
           embeddedFile={document.embeddedLibrary}
+          savedUserFile={savedUserLibraryFile}
           userDirty={userLibraryDirty}
           onClose={() => setDeviceLibraryOpen(false)}
-          onChangeUserLibrary={setUserLibraryFile}
+          actions={workspace}
+          onEditorDirty={setEditorDirty}
+          onChangeUserLibrary={file => { draftFile.current = file; setUserLibraryFile(file); }}
           onDiscardUserLibrary={() => setUserLibraryFile(savedUserLibraryFile)}
           onSaveUserLibrary={saveUserLibrary}
           onImportLibrary={importUserLibrary}

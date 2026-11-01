@@ -25,16 +25,16 @@ const excludedSourceMarkers = [
 const sourceExtensions = new Set([".ts", ".tsx", ".css", ".html", ".json"]);
 const failures = [];
 
-async function visit(directory) {
+async function visit(directory, extensions = sourceExtensions) {
   for (const entry of await readdir(directory, { withFileTypes: true })) {
     const path = join(directory, entry.name);
     if (entry.isDirectory()) {
       if (entry.name !== "assets") {
-        await visit(path);
+        await visit(path, extensions);
       }
       continue;
     }
-    if (!sourceExtensions.has(extname(entry.name))) {
+    if (!extensions.has(extname(entry.name))) {
       continue;
     }
     const text = await readFile(path, "utf8");
@@ -45,7 +45,7 @@ async function visit(directory) {
     }
   }
 }
-await visit(resolve("src"));
+await visit(resolve("src"), new Set([...sourceExtensions, ".mjs"]));
 await visit(resolve("scripts"));
 
 const lock = JSON.parse(

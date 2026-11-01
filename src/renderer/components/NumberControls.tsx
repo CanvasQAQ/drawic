@@ -53,6 +53,7 @@ function formatNumber(value: number, precision: number): string {
 
 interface NumberStepperFieldProps {
   label: string;
+  displayLabel?: string;
   value: number;
   min?: number | undefined;
   max?: number | undefined;
@@ -66,6 +67,7 @@ interface NumberStepperFieldProps {
  */
 export function NumberStepperField({
   label,
+  displayLabel,
   value,
   min,
   max,
@@ -129,7 +131,7 @@ export function NumberStepperField({
   return (
     <div className="property-field numeric-field">
       <label className="numeric-field-label" htmlFor={inputId}>
-        {label}
+        {displayLabel ?? label}
       </label>
       <div className="number-stepper">
         <button
@@ -144,6 +146,7 @@ export function NumberStepperField({
         </button>
         <input
           id={inputId}
+          aria-label={label}
           className="number-stepper-input"
           type="number"
           inputMode="decimal"

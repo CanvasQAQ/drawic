@@ -23,3 +23,9 @@ network and CSP enforcement. Use the desktop build and packaged smoke test for
 those. The preview has its own HTML entry and development CSP for Vite HMR; the
 production renderer entry retains `connect-src 'none'`. Preview files are not
 production build inputs and are not included in the Electron package.
+
+The title bar exposes Agent setup in preview, with copyable instructions and an
+explicit desktop-only connection notice. No local Agent endpoint is started.
+Browse shows an audit-style grid of all matching artwork with pin arrows and
+short labels on each card. Clones with SVG artwork expose element geometry editing in the
+inspector, while authored primitive devices retain their drawing tools.

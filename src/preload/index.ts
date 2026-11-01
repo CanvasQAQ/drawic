@@ -2,6 +2,16 @@ import { contextBridge, ipcRenderer } from "electron";
 import type { AppCommand, DrawicBridge } from "../shared/bridge";
 
 const bridge: DrawicBridge = {
+  agent: {
+    enable: () => ipcRenderer.invoke("agent:enable"),
+    disable: () => ipcRenderer.invoke("agent:disable"),
+    onRequest: listener => {
+      const wrap = (_event: Electron.IpcRendererEvent, id: string, request: unknown) => listener(id, request);
+      ipcRenderer.on("agent:request", wrap);
+      return () => { ipcRenderer.removeListener("agent:request", wrap); };
+    },
+    reply: (id,result) => ipcRenderer.send("agent:reply",id,result),
+  },
   openProject: () => ipcRenderer.invoke("project:open"),
   saveProject: (request) => ipcRenderer.invoke("project:save", request),
   openRecentProject: (path) => ipcRenderer.invoke("project:open-recent", path),
@@ -21,6 +31,7 @@ const bridge: DrawicBridge = {
   clearRecovery: (projectId) => ipcRenderer.invoke("recovery:clear", projectId),
   getRecovery: () => ipcRenderer.invoke("recovery:latest"),
   getLaunchProject: () => ipcRenderer.invoke("app:launch-project"),
+  setAppearance: preference => ipcRenderer.send("window:set-appearance", preference),
   setDocumentDirty: (dirty) => ipcRenderer.send("window:set-dirty", dirty),
   finishClose: () => ipcRenderer.send("window:finish-close"),
   isWindowMaximized: () => ipcRenderer.invoke("window:is-maximized"),

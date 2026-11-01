@@ -143,6 +143,62 @@ describe("App user device library", () => {
     expect(container.textContent).toContain("Save library");
   });
 
+  it("routes native Save to the active device and persists the draft before window close", async () => {
+    const bridge = window.drawic;
+    await vi.waitFor(() => expect(container.textContent).toContain("Custom A"));
+    const click = (selector: string) => flushSync(() =>
+      (container.querySelector(selector) as HTMLButtonElement).click(),
+    );
+    click(".library-manage");
+    click(".catalog-card button");
+    const command = (name: import("../src/shared/bridge").AppCommand) =>
+      flushSync(() => vi.mocked(bridge.onCommand).mock.calls.at(-1)![0](name));
+    const title = [...container.querySelectorAll("label")].find(label => label.textContent?.trim() === "Title")!.querySelector("input")!;
+    flushSync(() => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value")!.set!.call(title,"Bench device");
+      title.dispatchEvent(new Event("input",{bubbles:true}));
+    });
+    expect(bridge.setDocumentDirty).toHaveBeenLastCalledWith(true);
+    command("save-project");
+    expect(bridge.saveProject).not.toHaveBeenCalled();
+    expect(bridge.saveUserDeviceLibrary).not.toHaveBeenCalled();
+    expect(bridge.setDocumentDirty).toHaveBeenLastCalledWith(true);
+    command("save-project-before-close");
+    await vi.waitFor(() => expect(bridge.finishClose).toHaveBeenCalledOnce());
+    const saved = vi.mocked(bridge.saveUserDeviceLibrary).mock.calls[0]![0].content;
+    expect(parseDeviceLibraryText(saved).devices.some(d => d.title === "Bench device")).toBe(true);
+  });
+
+  it("shows editor-only, draft and disk states across a failed library save and retry", async () => {
+    await vi.waitFor(() => expect(container.textContent).toContain("Custom A"));
+    const click = (selector: string) => flushSync(() =>
+      (container.querySelector(selector) as HTMLButtonElement).click());
+    click(".library-manage");
+    click(".device-library-tabs button:last-child");
+    click(".custom-record .custom-buttons button");
+    expect(container.textContent).toContain("Device saved to disk");
+    click(".editor-pin-index button");
+    const input = [...container.querySelectorAll("label")].find(el => el.textContent?.trim() === "Name")!.querySelector("input")!;
+    flushSync(() => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value")!.set!.call(input,"Sense");
+      input.dispatchEvent(new Event("input",{bubbles:true}));
+    });
+    expect(container.textContent).toContain("Edits only in this editor");
+    click(".device-editor-header-actions button");
+    expect(container.textContent).toContain("Saved to library draft · not on disk");
+    click(".device-editor-back");
+    expect(container.textContent).toContain("Library draft · not saved to disk");
+    vi.mocked(window.drawic.saveUserDeviceLibrary).mockRejectedValueOnce(new Error("Write failed"));
+    click(".custom-save .custom-primary");
+    await vi.waitFor(() => expect(container.textContent).toContain("Could not save"));
+    expect(container.textContent).toContain("Library draft · not saved to disk");
+    click(".custom-save .custom-primary");
+    await vi.waitFor(() => expect(container.textContent).toContain("Local library saved to disk"));
+    click(".custom-record .custom-buttons button");
+    expect(container.textContent).toContain("Device saved to disk");
+    expect(container.querySelector(".editor-pin-index")?.textContent).toContain("Sense");
+  });
+
   it("keeps the embedded device snapshot in memory after saving a project", async () => {
     const user = loadDeviceLibrary(parseDeviceLibraryText(userLibraryText()));
     const initial = createDocument({ id: "project", pageId: "page", now: "2026-11-01T00:00:00.000Z" });
@@ -182,6 +238,6 @@ describe("App user device library", () => {
     flushSync(() =>
       (container.querySelector(".library-manage") as HTMLButtonElement).click(),
     );
-    expect(container.querySelector(".device-source.is-project")).not.toBeNull();
+    expect(container.querySelector(".device-catalog")?.textContent).toContain("This project");
   });
 });

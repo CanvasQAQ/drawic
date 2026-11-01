@@ -123,6 +123,8 @@ export interface Viewport {
 }
 
 interface SchematicCanvasProps {
+  shortcutsEnabled?: boolean;
+  onGestureChange?: (busy: boolean) => void;
   page: DrawingPage;
   typography?: DocumentTypography | undefined;
   library: readonly SymbolDefinition[];
@@ -932,7 +934,7 @@ export function SchematicCanvas({
   onInitialEditShapeConsumed,
   onNoteEditingFinished,
   onTextEditingFinished,
-  onInlineEditingChange,
+  onInlineEditingChange, onGestureChange, shortcutsEnabled = true,
 }: SchematicCanvasProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const viewportSizeRef = useRef<{ width: number; height: number } | null>(null);
@@ -997,6 +999,11 @@ export function SchematicCanvas({
   const [duplicatePointerActive, setDuplicatePointerActive] = useState(false);
   const [placementRotation, setPlacementRotation] = useState<Rotation>(0);
   const [duplicateRotationOffset, setDuplicateRotationOffset] = useState<Rotation>(0);
+  const gestureBusy = Boolean(drag || marquee || wireDraft || segmentDrag || shapeDraft || labelDrag || annotationDrag || shapeDrag || shapeResize || noteTextDrag || inlineEditor);
+  React.useLayoutEffect(() => {
+    onGestureChange?.(gestureBusy);
+    return () => onGestureChange?.(false);
+  }, [gestureBusy,onGestureChange]);
   const previousToolRef = useRef(tool);
   const activeDuplicateSourceId =
     tool === "duplicate" ? duplicateSourceId : null;
@@ -1109,6 +1116,7 @@ export function SchematicCanvas({
   }, [connectivity, selection, hovered, displayPage.nodes, symbols]);
 
   useEffect(() => {
+    if (!shortcutsEnabled) return;
     const handleKeyDown = (event: KeyboardEvent): void => {
       const target = event.target as HTMLElement | null;
       const isTyping =
@@ -1190,6 +1198,7 @@ export function SchematicCanvas({
       window.removeEventListener("keyup", handleKeyUp);
     };
   }, [
+    shortcutsEnabled,
     duplicateRotationOffset,
     activeDuplicateSourceId,
     page,
