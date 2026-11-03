@@ -88,6 +88,7 @@ export interface DrawicBridge {
   agent?: {
     enable: () => Promise<string>;
     disable: () => Promise<void>;
+    copy: (text: string) => Promise<void>;
     onRequest: (listener: (id: string, request: unknown) => void) => () => void;
     reply: (id: string, response: unknown) => void;
   };

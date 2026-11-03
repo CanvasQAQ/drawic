@@ -5,6 +5,7 @@ const bridge: DrawicBridge = {
   agent: {
     enable: () => ipcRenderer.invoke("agent:enable"),
     disable: () => ipcRenderer.invoke("agent:disable"),
+    copy: text => ipcRenderer.invoke("agent:copy", text),
     onRequest: listener => {
       const wrap = (_event: Electron.IpcRendererEvent, id: string, request: unknown) => listener(id, request);
       ipcRenderer.on("agent:request", wrap);

@@ -2,6 +2,7 @@ import { AgentHost } from "./agentHost";
 import {
   app,
   BrowserWindow,
+  clipboard,
   dialog,
   ipcMain,
   Menu,
@@ -431,6 +432,12 @@ async function exportSchematic(request: ExportRequest): Promise<{
 
 const agentHost = new AgentHost();
 function registerIpc(): void {
+  ipcMain.handle("agent:copy", (event, text: unknown) => {
+    if (event.sender !== mainWindow?.webContents || typeof text !== "string" || text.length > 32768) {
+      throw new Error("Invalid clipboard request");
+    }
+    clipboard.writeText(text);
+  });
   ipcMain.handle("agent:enable", event => {
     if (event.sender !== mainWindow?.webContents) throw new Error("Invalid sender");
     const adapter = app.isPackaged ? join(process.resourcesPath,"agent","stdio.cjs") : join(__dirname,"../agent/stdio.cjs");

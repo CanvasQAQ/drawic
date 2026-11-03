@@ -1,5 +1,5 @@
 // Launch using Electron, with a disposable profile and a real stdio MCP client.
-const { app, BrowserWindow } = require("electron");
+const { app, BrowserWindow, clipboard } = require("electron");
 const { mkdtempSync, existsSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join } = require("node:path");
@@ -25,7 +25,14 @@ async function test() {
   await until(()=>js("document.querySelector('.agent-trigger')?.getAttribute('aria-label') === 'Agent Off'"));
   await js("document.querySelector('.agent-trigger').click()");
   await click("Enable Agent");
-  const config = JSON.parse(await until(()=>js("document.querySelector('textarea[aria-label=\"Agent connection configuration\"]')?.value"))).mcpServers.drawic;
+  const setup = await until(()=>js("document.querySelector('textarea[aria-label=\"Agent setup\"]')?.value"));
+  const config = JSON.parse(setup.slice(setup.indexOf("{"))).mcpServers.drawic;
+  const previousClipboard = clipboard.readText();
+  try {
+    await click("Copy all for Agent");
+    await until(()=>js("document.querySelector('[role=status]')?.textContent === 'Agent setup copied.'"));
+    assert.equal(clipboard.readText(), setup);
+  } finally { clipboard.writeText(previousClipboard); }
   const client = new Client({name:"drawic-desktop-test",version:"1"});
   try {
     await client.connect(new StdioClientTransport(config));

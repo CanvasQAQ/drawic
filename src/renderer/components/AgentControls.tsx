@@ -32,7 +32,8 @@ export function AgentControls() {
     setError("");
     setFeedback("");
     try {
-      if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(text);
+      if (bridge) await bridge.copy(text);
+      else if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(text);
       else {
         const field = document.createElement("textarea");
         field.value = text;
@@ -62,19 +63,24 @@ export function AgentControls() {
       }
     }}><ExportDialog title="Local Agent" onClose={close}>
       <div className="agent-settings">
-        <p>{!bridge ? "Agent connections are available in the desktop app. Browser preview does not start a connection." :
-          config ? "Enabled. Copy this private configuration to your local MCP client." : "Allow a local MCP client to read and edit the current drawing."}</p>
-        {bridge && <button type="button" className={config ? "danger-button" : "primary-button"} disabled={pending} onClick={() => void toggle()}>
-          {pending ? "Updating…" : config ? "Disable Agent" : "Enable Agent"}</button>}
-        <label>Instructions for your Agent<textarea aria-label="Agent instructions" readOnly onFocus={event => event.target.select()} value={instructions} rows={4}/></label>
-        <button type="button" onClick={() => void copy(instructions, "Instructions")}>Copy instructions</button>
-        {config && <>
-          <label>Connection configuration<textarea aria-label="Agent connection configuration" readOnly onFocus={event => event.target.select()} value={config} rows={10}/></label>
-          <div className="agent-copy-actions">
-            <button type="button" onClick={() => void copy(config, "Configuration")}>Copy configuration</button>
-            <button type="button" onClick={() => void copy(`${instructions}\n\n${config}`, "Agent setup")}>Copy all for Agent</button>
+        <div className="agent-overview">
+          <div className="agent-overview-copy">
+            <span className={`agent-badge${config ? " is-active" : ""}`}><span aria-hidden="true" />{config ? "Connection enabled" : "Connection disabled"}</span>
+            <p>{!bridge ? "Agent connections are available in the desktop app. Browser preview does not start a connection." :
+              config ? "Your local MCP client can read and edit the active drawing." : "Connect a local MCP client to read and edit the active drawing."}</p>
           </div>
-        </>}
+          {bridge && <button type="button" className={config ? "danger-button" : "primary-button"} disabled={pending} onClick={() => void toggle()}>
+            {pending ? "Updating…" : config ? "Disable Agent" : "Enable Agent"}</button>}
+        </div>
+        {config &&
+          <section className="agent-section">
+            <div className="agent-section-heading"><div><h3>Agent setup</h3><p>Keep this private. It grants access to your drawing.</p></div></div>
+            <textarea aria-label="Agent setup" readOnly onFocus={event => event.target.select()} value={`${instructions}\n\n${config}`} rows={10}/>
+            <div className="agent-copy-actions">
+            <button className="primary-button" type="button" onClick={() => void copy(`${instructions}\n\n${config}`, "Agent setup")}>Copy all for Agent</button>
+            </div>
+          </section>
+        }
         {feedback && <p role="status">{feedback}</p>}
         {error && <p role="alert">{error}</p>}
       </div>
