@@ -107,10 +107,6 @@ const RICH_INLINE_TOOLBAR_HEIGHT = 34;
 const RICH_INLINE_TEXT_HEIGHT = 26;
 const SNAP_PIXELS = 13;
 
-function netLabelPoint(point: Point): Point {
-  return { x: point.x, y: point.y - NET_LABEL_BASELINE_OFFSET };
-}
-
 export interface CanvasInlineEditingTarget {
   kind: "annotation" | "shape" | "node-label";
   id: string;
@@ -1374,11 +1370,7 @@ export function SchematicCanvas({
   }
 
   function snapWirePoint(point: Point): SnapResult {
-    const svg = svgRef.current;
-    const rect = svg?.getBoundingClientRect();
-    const tolerance = rect?.width
-      ? Math.max(8, (SNAP_PIXELS * view.width) / rect.width)
-      : SNAP_PIXELS;
+    const tolerance = currentSnapTolerance();
     let closestPin: { point: Point; anchor: ConnectionAnchor; distance: number } | null = null;
     for (const node of page.nodes) {
       const symbol = symbols.get(node.symbolId);
@@ -1405,8 +1397,14 @@ export function SchematicCanvas({
       return { point: closestPin.point, anchor: closestPin.anchor };
     }
 
-    let closest: { point: Point; distance: number; wireId: string } | null = null;
+    const match = snapToSegment(point, tolerance);
+    return match ?? { point: snapPoint(point) };
+  }
+
+  function snapToSegment(point: Point, tolerance: number, wireId?: string) {
+    let closest: { point: Point; distance: number; wireId: string; vertical: boolean } | null = null;
     for (const segment of connectivity.segments) {
+      if (wireId && segment.wireId !== wireId) continue;
       const dx = segment.end.x - segment.start.x;
       const dy = segment.end.y - segment.start.y;
       let candidate: Point | null = null;
@@ -1442,13 +1440,22 @@ export function SchematicCanvas({
             point: candidate,
             distance: candidateDistance,
             wireId: segment.wireId,
+            vertical: Math.abs(dx) < 0.001,
           };
         }
       }
     }
-    return closest
-      ? { point: { ...closest.point }, wireId: closest.wireId }
-      : { point: snapPoint(point) };
+    return closest;
+  }
+
+  function placeNetLabel(point: Point, wireId?: string): void {
+    const match = snapToSegment(point, currentSnapTolerance(), wireId);
+    if (!match) return;
+    const { x, y } = match.point;
+    const baseline = match.vertical
+      ? { x: x + NET_LABEL_BASELINE_OFFSET, y }
+      : { x, y: y - NET_LABEL_BASELINE_OFFSET };
+    onAddAnnotation("net", baseline, match.wireId);
   }
 
   function currentSnapTolerance(): number {
@@ -1657,10 +1664,7 @@ export function SchematicCanvas({
       return;
     }
     if (tool === "net-label") {
-      const snapped = snapWirePoint(point);
-      if (snapped.wireId) {
-        onAddAnnotation("net", netLabelPoint(snapped.point), snapped.wireId);
-      }
+      placeNetLabel(point);
       return;
     }
     if (tool === "text") {
@@ -2124,10 +2128,7 @@ export function SchematicCanvas({
       return;
     }
     if (tool === "net-label") {
-      const snapped = snapWirePoint(point);
-      if (snapped.wireId) {
-        onAddAnnotation("net", netLabelPoint(snapped.point), snapped.wireId);
-      }
+      placeNetLabel(point);
       return;
     }
     if (tool === "text") {
@@ -2912,8 +2913,7 @@ export function SchematicCanvas({
                   } else if (tool === "junction") {
                     onAddJunction(snapPoint(clientToSvg(event)));
                   } else if (tool === "net-label") {
-                    const snapped = snapWirePoint(clientToSvg(event));
-                    onAddAnnotation("net", netLabelPoint(snapped.point), wire.id);
+                    placeNetLabel(clientToSvg(event), wire.id);
                   } else if (tool === "text") {
                     onAddAnnotation("text", snapPoint(clientToSvg(event)));
                   } else if (tool === "select") {
@@ -3438,7 +3438,7 @@ export function SchematicCanvas({
                 </g>
               );
             }),
-            ...page.annotations.map((annotation) => {
+            ...displayPage.annotations.map((annotation) => {
             const network = connectivity.networkIdByAnnotation.get(annotation.id);
             const highlighted = network ? highlightedNetworks.has(network) : false;
             const delta =

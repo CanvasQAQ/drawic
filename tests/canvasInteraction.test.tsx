@@ -528,6 +528,17 @@ describe("canvas interactions", () => {
     root.unmount();
   });
 
+  it("places an upright net label beside a vertical conductor", () => {
+    const onAddAnnotation = vi.fn();
+    const page = createEmptyPage("Vertical net label");
+    addTestWire(page, "net_1", "vertical", [{ x: 100, y: 100 }, { x: 100, y: 240 }]);
+    const { container, root } = renderCanvas({ page, tool: "net-label", onAddAnnotation });
+    flushSync(() => container.querySelector(".wire-hit")!
+      .dispatchEvent(pointerEvent("pointerdown", 100, 160)));
+    expect(onAddAnnotation).toHaveBeenCalledWith("net", { x: 108, y: 160 }, "vertical");
+    root.unmount();
+  });
+
   it("keeps a highlighted straight wire rendered after selecting its device", () => {
     const page = createEmptyPage("Highlighted straight wire");
     addResistor(page, "r1", 100, 100);

@@ -243,9 +243,10 @@ function alignEndpoint(
     const escaped = insertEscape(endpoint, neighbor, direction!, "end");
     return simplifyOrthogonalPath([...points.slice(0, -2), ...escaped]);
   }
-  if (axis === "horizontal") {
+  // On a two-point edge the neighbor is the fixed endpoint, not a movable bend.
+  if (points.length > 2 && axis === "horizontal") {
     points[points.length - 2] = { ...neighbor, y: endpoint.y };
-  } else if (axis === "vertical") {
+  } else if (points.length > 2 && axis === "vertical") {
     points[points.length - 2] = { ...neighbor, x: endpoint.x };
   } else {
     points.splice(
@@ -426,22 +427,13 @@ function wireTouchesPoint(
   });
 }
 
-export function pathProjectionRatio(
-  point: Point,
-  points: readonly Point[],
-): number {
-  const lengths: number[] = [];
-  let total = 0;
-  for (let index = 1; index < points.length; index += 1) {
-    const start = points[index - 1]!;
-    const end = points[index]!;
-    const length = Math.hypot(end.x - start.x, end.y - start.y);
-    lengths.push(length);
-    total += length;
-  }
-  if (total <= 0.001) {
-    return 0;
-  }
+interface PathSample {
+  point: Point;
+  vertical: boolean;
+}
+
+function projectOntoPath(point: Point, points: readonly Point[]): PathSample & { ratio: number } {
+  let best: PathSample = { point: points[0]!, vertical: false };
   let bestDistance = Number.POSITIVE_INFINITY;
   let bestAlongPath = 0;
   let traversed = 0;
@@ -450,36 +442,31 @@ export function pathProjectionRatio(
     const end = points[index]!;
     const dx = end.x - start.x;
     const dy = end.y - start.y;
-    const lengthSquared = dx * dx + dy * dy;
-    const t =
-      lengthSquared <= 0.000001
-        ? 0
-        : Math.max(
-            0,
-            Math.min(
-              1,
-              ((point.x - start.x) * dx + (point.y - start.y) * dy) /
-                lengthSquared,
-            ),
-          );
+    const length = Math.hypot(dx, dy);
+    if (length === 0) continue;
+    const t = Math.max(0, Math.min(1,
+      ((point.x - start.x) * dx + (point.y - start.y) * dy) / (length * length),
+    ));
     const candidate = { x: start.x + t * dx, y: start.y + t * dy };
-    const candidateDistance = Math.hypot(
-      point.x - candidate.x,
-      point.y - candidate.y,
-    );
-    if (candidateDistance < bestDistance) {
-      bestDistance = candidateDistance;
-      bestAlongPath = traversed + lengths[index - 1]! * t;
+    const distance = Math.hypot(point.x - candidate.x, point.y - candidate.y);
+    if (distance < bestDistance) {
+      best = { point: candidate, vertical: Math.abs(dy) > Math.abs(dx) };
+      bestDistance = distance;
+      bestAlongPath = traversed + length * t;
     }
-    traversed += lengths[index - 1]!;
+    traversed += length;
   }
-  return bestAlongPath / total;
+  return { ...best, ratio: traversed ? bestAlongPath / traversed : 0 };
 }
 
-export function pointAtPathRatio(
+export function pathProjectionRatio(point: Point, points: readonly Point[]): number {
+  return projectOntoPath(point, points).ratio;
+}
+
+function samplePathAtRatio(
   points: readonly Point[],
   ratio: number,
-): Point {
+): PathSample {
   let total = 0;
   const lengths: number[] = [];
   for (let index = 1; index < points.length; index += 1) {
@@ -491,7 +478,7 @@ export function pointAtPathRatio(
     total += length;
   }
   if (total <= 0.001) {
-    return { ...points[0]! };
+    return { point: points[0]!, vertical: false };
   }
   let remaining = Math.max(0, Math.min(1, ratio)) * total;
   for (let index = 1; index < points.length; index += 1) {
@@ -501,13 +488,20 @@ export function pointAtPathRatio(
       const end = points[index]!;
       const t = length <= 0.001 ? 0 : remaining / length;
       return {
-        x: start.x + (end.x - start.x) * t,
-        y: start.y + (end.y - start.y) * t,
+        point: {
+          x: start.x + (end.x - start.x) * t,
+          y: start.y + (end.y - start.y) * t,
+        },
+        vertical: Math.abs(end.y - start.y) > Math.abs(end.x - start.x),
       };
     }
     remaining -= length;
   }
-  return { ...points.at(-1)! };
+  return { point: points.at(-1)!, vertical: false };
+}
+
+export function pointAtPathRatio(points: readonly Point[], ratio: number): Point {
+  return samplePathAtRatio(points, ratio).point;
 }
 
 function moveAttachedAnnotations(
@@ -529,11 +523,24 @@ function moveAttachedAnnotations(
     if (!sourcePoints || !targetPoints) {
       return annotation;
     }
-    const point = pointAtPathRatio(
-      targetPoints,
-      pathProjectionRatio(annotation, sourcePoints),
-    );
-    return { ...annotation, x: point.x, y: point.y };
+    if (
+      sourcePoints.length === targetPoints.length &&
+      sourcePoints.every((point, i) => pointsEqual(point, targetPoints[i]!))
+    ) {
+      return annotation;
+    }
+    const before = projectOntoPath(annotation, sourcePoints);
+    const after = samplePathAtRatio(targetPoints, before.ratio);
+    // The projection is the attachment, not the text baseline. Keep the
+    // user's clearance; above a horizontal segment maps to right of a vertical.
+    const dx = annotation.x - before.point.x;
+    const dy = annotation.y - before.point.y;
+    const turned = before.vertical !== after.vertical;
+    return {
+      ...annotation,
+      x: after.point.x + (turned ? -dy : dx),
+      y: after.point.y + (turned ? -dx : dy),
+    };
   });
 }
 

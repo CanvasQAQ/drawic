@@ -131,7 +131,7 @@ describe("wire movement plans", () => {
       kind: "net",
       text: "N001",
       x: 200,
-      y: 100,
+      y: 88,
       size: 14,
       wireId: "left_edge",
       netId: "net_1",
@@ -155,7 +155,7 @@ describe("wire movement plans", () => {
       })),
     );
     expect(allJunctions(moved)[0]?.junction.point).toEqual({ x: 240, y: 80 });
-    expect(moved.annotations[0]).toMatchObject({ x: 240, y: 80 });
+    expect(moved.annotations[0]).toMatchObject({ x: 240, y: 68 });
   });
 
   it("does not change wires outside the moving device group", () => {
@@ -169,6 +169,10 @@ describe("wire movement plans", () => {
         { x: 80, y: 20 },
       ],
     );
+    page.annotations.push({
+      id: "external_label", kind: "net", text: "N002", size: 16,
+      x: 40, y: 12, wireId: external.id, netId: "net_external",
+    });
     const moved = planNodeMove(
       page,
       library,
@@ -176,6 +180,19 @@ describe("wire movement plans", () => {
       { x: 20, y: 30 },
     );
     expect(wireInPage(moved, "wire_external")).toBe(external);
+    expect(moved.annotations[0]).toEqual(page.annotations[0]);
+  });
+
+  it("keeps an upright label clear when its horizontal wire rotates to vertical", () => {
+    const page = createEmptyPage("Rotate label");
+    addNode(page, "left", 100);
+    addNode(page, "right", 300);
+    addTestWire(page, "net_1", "wire", [{ x: 120, y: 100 }, { x: 280, y: 100 }],
+      { kind: "pin", deviceId: "left", pinId: "R" }, { kind: "pin", deviceId: "right", pinId: "L" });
+    page.annotations.push({ id: "label", kind: "net", text: "NET", size: 16,
+      x: 200, y: 92, netId: "net_1", wireId: "wire" });
+    const rotated = planNodeRotation(page, library, new Set(["left", "right"]));
+    expect(rotated.annotations[0]).toMatchObject({ x: 208, y: 100 });
   });
 
   it("uses the same plan for preview and committed history", () => {
