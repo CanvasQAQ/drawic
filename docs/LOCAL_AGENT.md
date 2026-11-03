@@ -1,8 +1,20 @@
 # Local Agent editing
 
-Open **Agent off** in the bottom status bar, then **Enable Agent**. Select the configuration text, copy it, and merge the drawic entry into your MCP client's local stdio settings. The client needs Node 20 or newer on PATH. Restart or reconnect the client after changing its configuration. Keep Drawic running on the desired project. **Disable Agent** closes the local endpoint. Enabling again creates a new credential and requires a fresh configuration.
+## Connect your MCP client
+
+Open your project in the Drawic desktop app. Your local MCP client needs Node.js
+20 or later on its PATH.
+
+1. Open the **Agent** button in the upper-right corner of the title bar and select **Enable Agent**.
+2. Select **Copy all for Agent**. If copying fails, select the setup text and copy it manually.
+3. Merge the `drawic` entry from the configuration into your client's local stdio settings.
+4. Restart or reconnect the client, keep the project open, and call `read_page` to check that the client can read the active page.
 
 The configuration is private. It authorizes reading and editing the current drawing, including unsaved content. The adapter communicates over stdio with the client and a private operating-system socket or named pipe with Drawic. No TCP port is opened. Drawic starts with access disabled and does not persist the credential.
+
+To end access, select **Disable Agent**. Enabling access again creates a new
+credential, so repeat the setup steps to reconnect. The browser preview shows
+the setup dialog, but connections require the desktop app.
 
 ## Agent workflow
 
@@ -36,8 +48,3 @@ Only repeat identical arguments when the outcome is uncertain. A replay reports 
 The adapter provides oriented placement, existing-device transformation and pin-to-pin connection on the active page. It limits requests to 32 KiB, batches to 32 operations and deduplication to the most recent 128 successes per session. Edits on large pages are restricted. Transport requests expire after 10 seconds. Drawing history is shared with manual edits and holds at most 150 past steps with an approximate 64 MiB undo budget. There are no change notifications. Project file operations and editing the device library remain UI operations.
 
 Run `npm run build` followed by `npm run test:agent:desktop` for the real-client desktop acceptance test.
-
-The upper-right **Agent** button opens setup. After enabling the connection, use
-**Copy configuration** or **Copy all for Agent** to copy the private setup text
-to your local MCP client. Copy failures leave selectable text for manual copying.
-Browser preview shows this entry and instructions but cannot enable a connection.

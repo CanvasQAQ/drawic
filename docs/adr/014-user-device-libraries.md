@@ -35,12 +35,13 @@ libraries, and portability of projects that use them.
    exposed.
 4. Projects use document schema version 4 and may carry an optional
    `embeddedLibrary`. On save, the renderer embeds only referenced non-built-in
-   devices, preferring live user-library records and falling back to an existing
-   embedded snapshot. Version 3 documents are accepted and normalized to 4;
+   devices. A normal save keeps the existing embedded record for each device
+   and uses the user library for devices without a snapshot.
+   Version 3 documents are accepted and normalized to 4;
    future versions are rejected.
 5. The embedded snapshot wins over the local user library for the same ID, so a
    shared project renders the same way for its recipient. Refreshing a project
-   snapshot from the user library is an explicit action.
+   snapshot from the user library requires **Refresh project devices**.
 6. Editable device artwork extends the library format to schema version 2 with
    optional `artwork.shapes` made of constrained primitives. The rendered SVG
    body is regenerated from those primitives. Built-in records have no editable

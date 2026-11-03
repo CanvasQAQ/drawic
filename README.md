@@ -8,6 +8,10 @@ Drawic is a local-first, cross-platform schematic editor for analog and
 mixed-signal work. It runs as a desktop Electron application, keeps project data
 on the local machine, and performs no runtime network requests.
 
+**New to Drawic?** [Draw your first schematic](docs/first-schematic.md) to
+connect two resistors, save the editable project, and export an SVG.
+See the [documentation overview](docs/README.md) for guides and references.
+
 This repository is an original implementation. See [CLEAN_ROOM.md](CLEAN_ROOM.md)
 for the development boundary and [PROVENANCE.md](PROVENANCE.md) for asset and
 dependency lineage. Brand and icon asset rules are documented in
@@ -40,7 +44,7 @@ tag such as `v1.0.0` is treated as a formal release.
   stored in one
   `.drawiclib.json` file, with sanitized themeable artwork, exact pin positions,
   label anchors, search terms, and SPICE metadata.
-- A user device library with a Browse / Audit / Custom manager. Custom devices
+- A device library manager with **Browse** and **Custom** tabs. Custom devices
   can be drawn in-app with line, polyline, rectangle, circle, ellipse, arc, and
   text primitives; pins are placed on the frame edge and edited with their
   direction and role. The user library imports and exports `.drawiclib.json`,
@@ -190,8 +194,8 @@ service, sync, account, telemetry, or update-check request.
 - Choose a symbol in the library, then click the canvas repeatedly to place
   copies. Press Escape to leave placement mode.
 - Open **Manage devices** from the palette to browse, audit, or edit custom
-  devices. **Save device** updates the library draft; **Save library** persists
-  it. Returning from an editor with unsaved device edits prompts to save or
+  devices. **Save device to draft** updates the draft. **Save library to disk**
+  persists it. Returning from an editor with unsaved device edits prompts to save or
   discard. Existing project snapshots change only when **Refresh project
   devices** is selected.
 - The Wire tool supports click-start, move preview, and click-finish. Clicking a
@@ -211,10 +215,9 @@ service, sync, account, telemetry, or update-check request.
 - New components show their Reference Name and hide Value. Select a component
   label to edit its font scale, weight, style, script, color, visibility, or
   manual position. Agent callers can request collision-avoiding placement.
-- Name labels use one compact Lexical rich-text editor: click a base or
-  subscript directly, select text, and apply bold, italic, sub/superscript
-  formatting with a live preview. The same renderer is available for future
-  TEXT and Note annotations.
+- Component Names, Text annotations, and shape labels (including Notes) share
+  a rich-text editor. Select characters to apply bold, italic, subscript, or
+  superscript to just that part of the label.
 - Press `C`, then left-click a device to choose the copy source and reveal its
   preview. A second left-click places the copy and exits Duplicate mode.
   Ctrl-dragging a device copies it directly at the drag destination.
