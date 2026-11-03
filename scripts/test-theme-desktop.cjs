@@ -44,7 +44,19 @@ async function until(fn,description) {
 function auditText(selector) {
   const root=document.querySelector(selector);
   if(!root)throw new Error("Missing "+selector);
-  const color=value=>(value.match(/[\d.]+/g)||[]).map(Number);
+  // Chromium may serialize Radix colors as display-p3. Read sRGB pixels for WCAG luminance.
+  const pixel = document.createElement("canvas").getContext("2d", {willReadFrequently:true});
+  const colors = new Map();
+  function color(value) {
+    if (!colors.has(value)) {
+      pixel.clearRect(0,0,1,1);
+      pixel.fillStyle = value;
+      pixel.fillRect(0,0,1,1);
+      const [r,g,b,a] = pixel.getImageData(0,0,1,1).data;
+      colors.set(value,[r,g,b,a/255]);
+    }
+    return colors.get(value);
+  }
   const luminance=rgb=>rgb.slice(0,3).map(c=>c/255).map(c=>c<=0.04045?c/12.92:((c+0.055)/1.055)**2.4)
     .reduce((sum,value,i)=>sum+value*[0.2126,0.7152,0.0722][i],0);
   const failures=[];
@@ -64,6 +76,7 @@ function auditText(selector) {
 async function run() {
   await app.whenReady();
   const win=await until(()=>BrowserWindow.getAllWindows()[0],"window");
+  win.webContents.setBackgroundThrottling(false);
   const js=code=>win.webContents.executeJavaScript(code);
   const exists=s=>until(()=>js("Boolean(document.querySelector("+JSON.stringify(s)+"))"),s);
   const click=async s=>{await exists(s);await js("document.querySelector("+JSON.stringify(s)+").click()");await wait(65);};
@@ -81,6 +94,10 @@ async function run() {
   const issues=[], seen=[];
   async function inspect(name,scope,capture=false){
     await exists(scope);
+    // Inspect the fully painted surface, including the menu/dialog entrance transition.
+    await js(`Promise.all(document.querySelector(${JSON.stringify(scope)}).getAnimations({subtree:true})
+      .filter(animation => animation.effect.getTiming().iterations !== Infinity)
+      .map(animation => animation.finished.catch(() => {}))).then(() => true)`);
     const findings=await js("("+auditText.toString()+")("+JSON.stringify(scope)+")");
     if(findings.length)issues.push([name,findings]);
     seen.push(name);
@@ -107,6 +124,17 @@ async function run() {
   assert.equal(await js("document.documentElement.dataset.theme"),"light");
   await emulate("dark");await until(()=>js("document.documentElement.dataset.theme==='dark'"),"system change");
   win.webContents.debugger.detach();
+  const darkPaint = new Map();
+  async function checkLibraryControl(theme, selector) {
+    const paint = await js(`(() => {
+      const el = document.querySelector(${JSON.stringify(selector)});
+      const owner = el.closest(".radix-themes");
+      return [owner?.classList.contains(${JSON.stringify(theme)}), getComputedStyle(el).color];
+    })()`);
+    assert(paint[0], selector + " inherits " + theme);
+    if (theme === "dark") darkPaint.set(selector, paint[1]);
+    else assert.notEqual(paint[1], darkPaint.get(selector), selector + " changes paint");
+  }
   let wirePaint;
   for(const theme of ["dark","light"]){
     await choose(theme);
@@ -134,7 +162,21 @@ async function run() {
     await click(".device-maintenance summary");await click(".device-maintenance button");await inspect(theme+"-audit",".pin-audit-panel");
     await click(".device-library-tabs button:last-child");await inspect(theme+"-custom",".custom-workspace",true);
     await clickText(".custom-heading","Import library…");await inspect(theme+"-import-conflict",".device-import-dialog");await clickText(".device-import-dialog","Cancel");
-    await clickText(".custom-record","Delete");await inspect(theme+"-delete-confirm","[role=alertdialog]");await clickText("[role=alertdialog]","Cancel");
+    await checkLibraryControl(theme, ".custom-record button");
+    await checkLibraryControl(theme, ".custom-filter input");
+    await js(`(() => {
+      const row = document.querySelector(".custom-record"), rect = row.getBoundingClientRect();
+      row.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, button: 2,
+        clientX: rect.left + 220, clientY: rect.top + rect.height / 2 }));
+    })()`);
+    await exists(".rt-ContextMenuContent");
+    await until(() => js('document.querySelector(".rt-ContextMenuContent").getBoundingClientRect().width > 0'), "menu positioned");
+    await inspect(theme+"-library-menu", ".rt-ContextMenuContent", true);
+    await checkLibraryControl(theme, ".rt-ContextMenuItem");
+    await click('.rt-ContextMenuItem:last-child');
+    await inspect(theme+"-delete-confirm","[role=alertdialog]",true);
+    await checkLibraryControl(theme, "[role=alertdialog] h1, [role=alertdialog] h2");
+    await clickText("[role=alertdialog]","Cancel");
     await clickText(".custom-record","Duplicate");await click('[aria-label="Close device library"]');
     await inspect(theme+"-library-unsaved","[role=alertdialog]");await clickText("[role=alertdialog]","Discard");
     await click(".library-manage");await click(".device-library-tabs button:last-child");await click(".custom-heading .custom-primary");

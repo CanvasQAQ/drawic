@@ -1624,6 +1624,7 @@ export function App() {
 
       {deviceLibraryOpen ? (
         <DeviceLibraryScreen
+          appearance={theme}
           builtInFile={builtInLibraryFile}
           userFile={userLibraryFile}
           embeddedFile={document.embeddedLibrary}

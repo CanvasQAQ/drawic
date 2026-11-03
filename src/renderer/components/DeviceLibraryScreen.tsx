@@ -1,3 +1,5 @@
+import { AlertDialog, Button, Flex, Theme, destructiveButtonProps } from "../ui";
+import type { Theme as Appearance } from "../theme";
 import { FilterSelect } from "./FilterSelect";
 import { CustomLibrary } from "./CustomLibrary";
 import { catalogFilter } from "../../core/deviceCatalog";
@@ -43,6 +45,7 @@ interface Status {
 }
 
 export interface DeviceLibraryScreenProps {
+  appearance: Appearance;
   actions?: React.RefObject<LibraryActions | null>;
   onEditorDirty?: (dirty: boolean) => void;
   builtInFile: DeviceLibraryFile;
@@ -105,6 +108,7 @@ function cloneRecord(
 }
 
 export function DeviceLibraryScreen({
+  appearance,
   builtInFile,
   userFile,
   embeddedFile,
@@ -204,7 +208,7 @@ export function DeviceLibraryScreen({
 
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") {
+      if (event.defaultPrevented || event.key !== "Escape") {
         return;
       }
       if (editor) {
@@ -455,8 +459,17 @@ export function DeviceLibraryScreen({
     );
   }
 
+  const pendingDelete = userDevices.find(device => device.id === pendingDeleteId);
+
   return (
-    <section
+    <Theme
+      appearance={appearance}
+      accentColor="violet"
+      grayColor="slate"
+      radius="small"
+      scaling="95%"
+      panelBackground="solid"
+      hasBackground={false}
       className="device-library-screen"
       role="dialog"
       aria-modal="true"
@@ -596,32 +609,22 @@ export function DeviceLibraryScreen({
         </div>
       ) : null}
 
-      {pendingDeleteId ? (
-        <div className="modal-backdrop" role="presentation">
-          <div className="modal-card" role="alertdialog" aria-modal="true">
-            <span className="modal-kicker">Delete device</span>
-            <h2>Remove {userDevices.find((device) => device.id === pendingDeleteId)?.title}?</h2>
-            <p>Existing project files that embed this device keep their snapshot.</p>
-            <div className="modal-actions">
-              <button type="button" onClick={() => setPendingDeleteId(null)}>
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="primary-button is-danger"
-                onClick={() => {
-                  const record = userDevices.find((device) => device.id === pendingDeleteId);
-                  if (record) {
-                    deleteDevice(record);
-                  }
-                }}
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      {pendingDelete && (
+        <AlertDialog.Root open onOpenChange={open => { if (!open) setPendingDeleteId(null); }}>
+          <AlertDialog.Content maxWidth="420px">
+            <AlertDialog.Title>Remove {pendingDelete.title}?</AlertDialog.Title>
+            <AlertDialog.Description>
+              Existing project files that embed this device keep their snapshot.
+            </AlertDialog.Description>
+            <Flex gap="2" mt="4" justify="end">
+              <AlertDialog.Cancel><Button variant="soft" color="gray">Cancel</Button></AlertDialog.Cancel>
+              <AlertDialog.Action>
+                <Button {...destructiveButtonProps} onClick={() => deleteDevice(pendingDelete)}>Delete</Button>
+              </AlertDialog.Action>
+            </Flex>
+          </AlertDialog.Content>
+        </AlertDialog.Root>
+      )}
 
       {confirmClose ? (
         <div className="modal-backdrop" role="presentation">
@@ -657,6 +660,6 @@ export function DeviceLibraryScreen({
           </div>
         </div>
       ) : null}
-    </section>
+    </Theme>
   );
 }

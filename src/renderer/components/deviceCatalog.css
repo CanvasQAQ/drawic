@@ -12,8 +12,7 @@
 .catalog-pin circle { fill: var(--ui-panel); stroke: var(--ui-info); stroke-width: 1.4; vector-effect: non-scaling-stroke; }
 .catalog-pin text { fill: var(--ui-info); font: 650 8px ui-monospace, monospace; paint-order: stroke; stroke: var(--ui-panel); stroke-width: 2.5px; vector-effect: non-scaling-stroke; }
 .catalog-card > footer { display: flex; justify-content: flex-end; gap: 8px; padding: 7px 10px; }
-.catalog-card > footer button, .device-maintenance button { min-height: 30px; padding: 4px 10px; border: 1px solid var(--ui-line); border-radius: 5px; background: var(--ui-raised); color: var(--ui-text); }
-.catalog-card > footer button:hover { background: var(--ui-selected); border-color: var(--ui-accent); }
+.device-maintenance button { min-height: 30px; padding: 4px 10px; border: 1px solid var(--ui-line); border-radius: 5px; background: var(--ui-raised); color: var(--ui-text); }
 .device-maintenance { padding: 4px 20px; color: var(--ui-muted); }
 .device-maintenance summary { cursor: pointer; }
 
@@ -23,23 +22,19 @@
 .custom-heading h3, .custom-empty h3 { margin: 4px 0; font-size: 20px; }
 .custom-heading .custom-buttons, .custom-filter > button, .custom-save .custom-buttons { margin-left: auto; }
 .custom-buttons { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.custom-workspace button, .editor-pin-index button {
+.editor-pin-index button {
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
   min-height: 36px; padding: 6px 12px; border: 1px solid var(--ui-line);
   border-radius: 5px; background: var(--ui-panel); color: var(--ui-text);
 }
-.custom-workspace button:hover:not(:disabled), .editor-pin-index button[aria-pressed="true"] { background: var(--ui-selected); border-color: var(--ui-accent); }
-.custom-workspace .custom-primary { background: var(--ui-primary); border-color: var(--ui-primary); color: var(--ui-on-primary); }
-.custom-workspace .custom-primary:hover:not(:disabled) { background: var(--ui-primary-hover); }
+.editor-pin-index button[aria-pressed="true"] { background: var(--ui-selected); border-color: var(--ui-accent); }
 .custom-workspace svg:not([viewBox]), .custom-workspace button svg { width: 16px; height: 16px; }
 .custom-workspace small, .custom-workspace code, .custom-filter > span { color: var(--ui-muted); font-size: 12px; }
 .custom-filter label { display: grid; gap: 4px; }
-.custom-filter input { min-height: 36px; padding: 6px 10px; border-radius: 4px; border: 1px solid var(--ui-line); background: var(--ui-shell); color: var(--ui-text); }
 .custom-records { flex: 1; min-height: 0; overflow: auto; padding: 0 24px; }
 .custom-record { display: grid; grid-template-columns: 20px 64px minmax(0,1fr) auto; align-items: center; gap: 12px; padding: 12px 0; }
 .custom-record > svg { width: 64px; height: 44px; }
 .custom-record strong, .custom-record small, .custom-record code, .custom-save small { display: block; margin: 3px 0; overflow-wrap: anywhere; }
-.custom-record .custom-remove { color: var(--ui-danger); }
 .custom-empty { padding: 32px 8px; }
 .custom-save { border-top: 1px solid var(--ui-line); }
 .editor-pin-index h3 { margin: 4px 0 8px; }

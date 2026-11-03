@@ -97,6 +97,7 @@ describe("device library manager", () => {
     flushSync(() =>
       root.render(
         <DeviceLibraryScreen
+          appearance="dark"
           builtInFile={builtInFile}
           userFile={userFile}
           embeddedFile={embeddedFile}

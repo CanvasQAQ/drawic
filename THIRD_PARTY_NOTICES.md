@@ -28,6 +28,7 @@ application where required by that package.
 - Model Context Protocol TypeScript SDK — MIT — https://github.com/modelcontextprotocol/typescript-sdk
 - Zod — MIT — https://github.com/colinhacks/zod
 - Electron — MIT — https://github.com/electron/electron
+- Radix Themes and Radix Primitives — MIT — https://www.radix-ui.com/
 - React and React DOM — MIT — https://github.com/facebook/react
 - Lexical, `@lexical/react`, and `@lexical/rich-text` — MIT —
   https://github.com/facebook/lexical

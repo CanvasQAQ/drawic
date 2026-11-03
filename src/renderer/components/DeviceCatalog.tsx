@@ -1,3 +1,4 @@
+import { Button } from "../ui";
 import React from "react";
 import type { DeviceLibraryRecord } from "../../core/library";
 import "./deviceCatalog.css";
@@ -40,8 +41,8 @@ function DeviceCard({ entry, onEdit, onClone }: { entry: BrowseEntry;
       })}
     </svg>
     <footer>
-      {source === "custom" && <button type="button" onClick={() => onEdit(record)}>Edit</button>}
-      <button type="button" onClick={() => onClone(record)}>Clone</button>
+      {source === "custom" && <Button variant="soft" type="button" onClick={() => onEdit(record)}>Edit</Button>}
+      <Button variant="soft" type="button" onClick={() => onClone(record)}>Clone</Button>
     </footer>
   </article>;
 }

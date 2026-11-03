@@ -1,3 +1,4 @@
+@import "@radix-ui/themes/styles.css";
 @import "./appearance.css";
 
 :root {
@@ -24,6 +25,11 @@ body,
   height: 100%;
   margin: 0;
   overflow: hidden;
+}
+
+/* Keep desktop chrome below themed menus and dialogs portalled to body. */
+#root {
+  isolation: isolate;
 }
 
 body {
