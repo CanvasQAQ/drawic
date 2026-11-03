@@ -48,3 +48,14 @@
   --ui-overlay: rgb(15 23 42 / 46%);
   --ui-shadow: 0 8px 28px rgb(34 46 70 / 15%);
 }
+
+/* Workspace accents follow the same palette and scale as the standard controls. */
+.radix-themes {
+  --ui-accent: var(--accent-11);
+  --ui-selected: var(--accent-3);
+  --ui-primary: var(--accent-9);
+  --ui-primary-hover: var(--accent-10);
+  --ui-on-primary: var(--accent-contrast);
+  --ui-radius: var(--radius-2);
+  --ui-control-height: calc(36px * var(--scaling));
+}

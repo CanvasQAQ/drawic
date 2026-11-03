@@ -1,6 +1,7 @@
 import React from "react";
 import { flushSync } from "react-dom";
-import { createRoot, type Root } from "react-dom/client";
+import type { Root } from "react-dom/client";
+import { createThemedRoot as createRoot } from "./themedRoot";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { buildDeviceLibraryFile } from "../src/core/deviceLibraryRegistry";
 import {
@@ -97,7 +98,6 @@ describe("device library manager", () => {
     flushSync(() =>
       root.render(
         <DeviceLibraryScreen
-          appearance="dark"
           builtInFile={builtInFile}
           userFile={userFile}
           embeddedFile={embeddedFile}
@@ -187,9 +187,9 @@ describe("device library manager", () => {
     flushSync(() => button(container, "Custom").click());
     flushSync(() => button(container, "Import library").click());
     await vi.waitFor(() =>
-      expect(container.textContent).toContain("conflicting devices"),
+      expect(document.body.textContent).toContain("conflicting devices"),
     );
-    flushSync(() => button(container, "Import as copies").click());
+    flushSync(() => button(document.body, "Import as copies").click());
     const next = handlers.onChangeUserLibrary.mock.calls[0]![0] as DeviceLibraryFile;
     expect(next.devices.map((device) => device.id).sort()).toEqual([
       "custom-a",
@@ -230,8 +230,8 @@ describe("device library manager", () => {
         ) as HTMLButtonElement
       ).click(),
     );
-    expect(container.textContent).toContain("Save the custom device library?");
-    flushSync(() => button(container, "Discard").click());
+    expect(document.body.textContent).toContain("Save the custom device library?");
+    flushSync(() => button(document.body, "Discard").click());
     expect(handlers.onDiscardUserLibrary).toHaveBeenCalledTimes(1);
     expect(handlers.onClose).toHaveBeenCalledTimes(1);
   });

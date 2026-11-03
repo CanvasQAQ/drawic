@@ -1,6 +1,7 @@
 import React from "react";
 import { flushSync } from "react-dom";
-import { createRoot, type Root } from "react-dom/client";
+import type { Root } from "react-dom/client";
+import { createThemedRoot as createRoot } from "./themedRoot";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createEmptyPage,
@@ -1374,13 +1375,13 @@ describe("canvas interactions", () => {
       node.dispatchEvent(pointerEvent("pointerup", 100, 100, { button: 2 })),
     );
     expect(onSelectionChange).toHaveBeenCalledWith([{ kind: "node", id: "r1" }]);
-    const menu = container.querySelector('[role="menu"]');
+    const menu = document.querySelector('[role="menu"]');
     expect(menu).not.toBeNull();
-    const front = [...container.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')].find(
+    const front = [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find(
       (candidate) => candidate.textContent === "Bring to front",
     );
-    expect(front?.disabled).toBe(true);
-    const item = [...container.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')].find(
+    expect(front?.hasAttribute("data-disabled")).toBe(true);
+    const item = [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find(
       (candidate) => candidate.textContent === "Delete",
     );
     flushSync(() => item!.click());
@@ -1412,7 +1413,7 @@ describe("canvas interactions", () => {
     flushSync(() =>
       node.dispatchEvent(pointerEvent("pointerup", 160, 100, { button: 2 })),
     );
-    expect(container.querySelector('[role="menu"]')).toBeNull();
+    expect(document.querySelector('[role="menu"]')).toBeNull();
     root.unmount();
     container.remove();
   });
@@ -1443,7 +1444,7 @@ describe("canvas interactions", () => {
     flushSync(() =>
       shape.dispatchEvent(pointerEvent("pointerup", 60, 60, { button: 2 })),
     );
-    const swatch = container.querySelector<HTMLButtonElement>(
+    const swatch = document.querySelector<HTMLElement>(
       '.context-menu [aria-label="Note"]',
     );
     expect(swatch).not.toBeNull();

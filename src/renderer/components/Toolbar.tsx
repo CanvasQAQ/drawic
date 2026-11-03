@@ -1,3 +1,4 @@
+import { Button } from "../ui";
 import React, { type ReactNode } from "react";
 import { Icon, type IconName } from "./Icons";
 
@@ -36,7 +37,7 @@ function ToolButton({
     description ? ` — ${description}` : ""
   }`;
   return (
-    <button
+    <Button variant={active ? "solid" : "soft"}
       type="button"
       className={`tool-button${active ? " is-active" : ""}`}
       aria-pressed={active}
@@ -47,7 +48,7 @@ function ToolButton({
     >
       <Icon name={icon} />
       <span>{label}</span>
-    </button>
+    </Button>
   );
 }
 

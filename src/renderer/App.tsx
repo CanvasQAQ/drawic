@@ -1,3 +1,4 @@
+import { AppTheme, Button, ownsShortcut } from "./ui";
 import { AgentControls } from "./components/AgentControls";
 import { EditorSession } from "../core/editorSession";
 import type { LibraryActions } from "./deviceWorkspace";
@@ -1138,6 +1139,7 @@ export function App() {
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
+      if (ownsShortcut(event)) return;
       const isTyping =
         target?.tagName === "INPUT" ||
         target?.tagName === "TEXTAREA" ||
@@ -1353,7 +1355,7 @@ export function App() {
   }, [pendingAction]);
 
   return (
-    <div className="app-shell">
+    <AppTheme appearance={theme}><div className="app-shell">
       <TitleBar
         documentTitle={`${projectNameFromPath(filePath)}${dirty ? " •" : ""}`}
         platform={window.drawic.platform}
@@ -1381,12 +1383,12 @@ export function App() {
             {new Date(recovery.savedAt).toLocaleString()}.
           </span>
           <div>
-            <button type="button" className="text-button" onClick={() => void dismissRecovery()}>
+            <Button variant="ghost" type="button" className="text-button" onClick={() => void dismissRecovery()}>
               Dismiss
-            </button>
-            <button type="button" className="primary-button small" onClick={restoreRecovery}>
+            </Button>
+            <Button variant="solid" type="button" className="primary-button small" onClick={restoreRecovery}>
               Restore
-            </button>
+            </Button>
           </div>
         </div>
       ) : null}
@@ -1403,7 +1405,7 @@ export function App() {
             onManageDevices={openDeviceLibrary}
           />
         ) : (
-          <button
+          <Button
             type="button"
             className="panel-rail panel-rail-left"
             onClick={() => setLibraryVisible(true)}
@@ -1411,7 +1413,7 @@ export function App() {
           >
             <span>Devices</span>
             <Icon name="chevron" />
-          </button>
+          </Button>
         )}
 
         <main className="editor-column">
@@ -1567,7 +1569,7 @@ export function App() {
             onCollapse={() => setPropertiesVisible(false)}
           />
         ) : (
-          <button
+          <Button
             type="button"
             className="panel-rail panel-rail-right"
             onClick={() => setPropertiesVisible(true)}
@@ -1575,7 +1577,7 @@ export function App() {
           >
             <Icon name="chevron" />
             <span>Properties</span>
-          </button>
+          </Button>
         )}
       </div>
 
@@ -1604,10 +1606,10 @@ export function App() {
                 ? "Net Label"
                 : tool}
           </span>
-          <button type="button" onClick={runErc}>
+          <Button type="button" onClick={runErc}>
             Run ERC
-          </button>
-          <button
+          </Button>
+          <Button variant={consoleOpen ? "solid" : "soft"}
             type="button"
             className="console-toggle"
             aria-pressed={consoleOpen}
@@ -1616,7 +1618,7 @@ export function App() {
             onClick={() => setConsoleOpen((open) => !open)}
           >
             Log {logs.length > 0 ? `(${logs.length})` : ""}
-          </button>
+          </Button>
           <span>{dirty ? "Modified" : "Local file synced"}</span>
           <span>Preview 0.3.0</span>
         </div>
@@ -1624,7 +1626,6 @@ export function App() {
 
       {deviceLibraryOpen ? (
         <DeviceLibraryScreen
-          appearance={theme}
           builtInFile={builtInLibraryFile}
           userFile={userLibraryFile}
           embeddedFile={document.embeddedLibrary}
@@ -1678,7 +1679,7 @@ export function App() {
       {exportOpen ? (
         <ExportDialog title="Export & tools" onClose={() => setExportOpen(false)}>
           <div className="export-grid">
-            <button
+            <Button
               type="button"
               onClick={() => {
                 setExportOpen(false);
@@ -1688,8 +1689,8 @@ export function App() {
               <span className="export-format">SPICE</span>
               <strong>Import netlist</strong>
               <small>Basic R, C, L, V, I, D, M, Q elements</small>
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
               onClick={() => {
                 setExportOpen(false);
@@ -1699,23 +1700,23 @@ export function App() {
               <span className="export-format">CIR</span>
               <strong>Export SPICE</strong>
               <small>Deterministic local netlist</small>
-            </button>
-            <button type="button" onClick={() => void exportDiagram("svg")}>
+            </Button>
+            <Button type="button" onClick={() => void exportDiagram("svg")}>
               <span className="export-format">SVG</span>
               <strong>Export vector</strong>
               <small>Self-contained SVG with no external resources</small>
-            </button>
-            <button type="button" onClick={() => void exportDiagram("png")}>
+            </Button>
+            <Button type="button" onClick={() => void exportDiagram("png")}>
               <span className="export-format">PNG</span>
               <strong>Export image</strong>
               <small>White-paper raster image</small>
-            </button>
-            <button type="button" onClick={() => void exportDiagram("pdf")}>
+            </Button>
+            <Button type="button" onClick={() => void exportDiagram("pdf")}>
               <span className="export-format">PDF</span>
               <strong>Export document</strong>
               <small>Local bitmap-backed PDF</small>
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
               onClick={() => {
                 setExportOpen(false);
@@ -1725,8 +1726,8 @@ export function App() {
               <span className="export-format">ERC</span>
               <strong>Check active page</strong>
               <small>References, dangling pins, and wire geometry</small>
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
               onClick={() => {
                 setExportOpen(false);
@@ -1736,13 +1737,13 @@ export function App() {
               <span className="export-format">DEVICES</span>
               <strong>Device library</strong>
               <small>Browse, audit, and create custom devices</small>
-            </button>
+            </Button>
           </div>
           <p className="dialog-footnote">
             Current file: <code>{visiblePathName}</code>
           </p>
         </ExportDialog>
       ) : null}
-    </div>
+    </div></AppTheme>
   );
 }

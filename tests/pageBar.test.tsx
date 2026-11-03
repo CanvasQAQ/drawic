@@ -1,6 +1,7 @@
 import React from "react";
 import { flushSync } from "react-dom";
-import { createRoot, type Root } from "react-dom/client";
+import type { Root } from "react-dom/client";
+import { createThemedRoot as createRoot } from "./themedRoot";
 import { describe, expect, it, vi } from "vitest";
 import { PageBar } from "../src/renderer/components/PageBar";
 
@@ -123,10 +124,10 @@ describe("page bar", () => {
     );
     expect(handlers.onSelect).toHaveBeenCalledWith("page_b");
     expect(
-      handlers.container.querySelector('[role="menu"]'),
+      document.querySelector('[role="menu"]'),
     ).not.toBeNull();
 
-    clickMenuItem(handlers.container, "Duplicate");
+    clickMenuItem(document.body, "Duplicate");
     expect(handlers.onDuplicatePage).toHaveBeenCalledWith("page_b");
 
     flushSync(() =>
@@ -134,7 +135,7 @@ describe("page bar", () => {
         new MouseEvent("contextmenu", { bubbles: true, clientX: 40, clientY: 20 }),
       ),
     );
-    clickMenuItem(handlers.container, "Delete");
+    clickMenuItem(document.body, "Delete");
     expect(handlers.onDeletePage).toHaveBeenCalledWith("page_b");
 
     flushSync(() =>
@@ -142,7 +143,7 @@ describe("page bar", () => {
         new MouseEvent("contextmenu", { bubbles: true, clientX: 40, clientY: 20 }),
       ),
     );
-    clickMenuItem(handlers.container, "Move left");
+    clickMenuItem(document.body, "Move left");
     expect(handlers.onMoveTo).toHaveBeenCalledWith("page_b", 0);
     handlers.root.unmount();
     handlers.container.remove();
@@ -155,10 +156,10 @@ describe("page bar", () => {
         new MouseEvent("contextmenu", { bubbles: true, clientX: 10, clientY: 10 }),
       ),
     );
-    const moveLeft = [...view.container.querySelectorAll<HTMLButtonElement>(
+    const moveLeft = [...document.querySelectorAll<HTMLButtonElement>(
       '[role="menuitem"]',
     )].find((item) => item.textContent?.trim() === "Move left");
-    expect(moveLeft?.disabled).toBe(true);
+    expect(moveLeft?.hasAttribute("data-disabled")).toBe(true);
     view.root.unmount();
     view.container.remove();
   });
@@ -210,10 +211,10 @@ describe("page bar", () => {
         new MouseEvent("contextmenu", { bubbles: true, clientX: 10, clientY: 10 }),
       ),
     );
-    const remove = [...single.container.querySelectorAll<HTMLButtonElement>(
+    const remove = [...document.querySelectorAll<HTMLButtonElement>(
       '[role="menuitem"]',
     )].find((item) => item.textContent?.trim() === "Delete");
-    expect(remove?.disabled).toBe(true);
+    expect(remove?.hasAttribute("data-disabled")).toBe(true);
     single.root.unmount();
     single.container.remove();
   });

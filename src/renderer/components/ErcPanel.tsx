@@ -1,3 +1,4 @@
+import { Button, IconButton } from "../ui";
 import type { Diagnostic } from "../../core/model";
 import { Icon } from "./Icons";
 
@@ -17,9 +18,9 @@ export function ErcPanel({ diagnostics, onClose, onSelectItem }: ErcPanelProps) 
           <span className="eyebrow">Electrical rules</span>
           <h2>{diagnostics.length === 0 ? "No issues found" : `${errors} errors · ${warnings} warnings`}</h2>
         </div>
-        <button className="icon-button" type="button" onClick={onClose} aria-label="Close ERC results">
+        <IconButton variant="ghost" className="icon-button" type="button" onClick={onClose} aria-label="Close ERC results">
           <Icon name="close" />
-        </button>
+        </IconButton>
       </header>
       {diagnostics.length === 0 ? (
         <p className="erc-empty">
@@ -29,7 +30,7 @@ export function ErcPanel({ diagnostics, onClose, onSelectItem }: ErcPanelProps) 
         <ul>
           {diagnostics.map((diagnostic, index) => (
             <li key={`${diagnostic.code}_${diagnostic.itemId ?? index}`}>
-              <button
+              <Button
                 type="button"
                 onClick={() => diagnostic.itemId && onSelectItem(diagnostic.itemId)}
                 disabled={!diagnostic.itemId}
@@ -39,7 +40,7 @@ export function ErcPanel({ diagnostics, onClose, onSelectItem }: ErcPanelProps) 
                 </span>
                 <span>{diagnostic.message}</span>
                 <code>{diagnostic.code}</code>
-              </button>
+              </Button>
             </li>
           ))}
         </ul>

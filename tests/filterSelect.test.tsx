@@ -1,3 +1,5 @@
+import { TestTheme } from "./themedRoot";
+import userEvent from "@testing-library/user-event";
 import React, { useState } from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -12,33 +14,32 @@ function Example() {
 }
 
 describe("themed filters", () => {
-  it("supports arrow selection, typeahead and Escape without committing", () => {
+  it("supports arrow selection, typeahead and Escape without committing", async () => {
     const shortcut = vi.fn();
     window.addEventListener("keydown", shortcut);
-    render(<Example/>);
+    render(<Example/>, { wrapper: TestTheme });
     const trigger = screen.getByRole("combobox");
-    fireEvent.keyDown(trigger, { key: "ArrowDown" });
-    fireEvent.keyDown(trigger, { key: "ArrowDown" });
-    fireEvent.keyDown(trigger, { key: "Enter" });
+    const user = userEvent.setup();
+    trigger.focus();
+    await user.keyboard("{ArrowDown}{ArrowDown}{Enter}");
     expect(trigger.textContent).toBe("Custom");
-    fireEvent.keyDown(trigger, { key: "t" });
-    fireEvent.keyDown(trigger, { key: "Escape" });
+    await user.keyboard("t{Escape}");
     expect(screen.queryByRole("listbox")).toBeNull();
     expect(trigger.textContent).toBe("Custom");
-    fireEvent.keyDown(trigger, { key: "End" });
-    fireEvent.keyDown(trigger, { key: "Enter" });
+    await user.keyboard("{End}{Enter}");
     expect(trigger.textContent).toBe("This project");
     expect(shortcut).not.toHaveBeenCalled();
     window.removeEventListener("keydown", shortcut);
   });
 
-  it("selects by pointer and dismisses when clicking outside", () => {
-    render(<Example/>);
+  it("selects by pointer and dismisses when clicking outside", async () => {
+    render(<Example/>, { wrapper: TestTheme });
     const trigger = screen.getByRole("combobox");
     fireEvent.click(trigger);
     fireEvent.click(screen.getByRole("option", { name: "Custom" }));
     expect(trigger.textContent).toBe("Custom");
     fireEvent.click(trigger);
+    await new Promise(resolve => setTimeout(resolve, 0));
     fireEvent.pointerDown(document.body);
     expect(screen.queryByRole("listbox")).toBeNull();
   });

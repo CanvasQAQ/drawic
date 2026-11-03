@@ -1,3 +1,4 @@
+import { Button, TextField } from "../ui";
 import React, {
   useEffect,
   useId,
@@ -134,7 +135,7 @@ export function NumberStepperField({
         {displayLabel ?? label}
       </label>
       <div className="number-stepper">
-        <button
+        <Button
           type="button"
           className="number-stepper-button"
           aria-label={`Decrease ${label}`}
@@ -143,8 +144,8 @@ export function NumberStepperField({
           onClick={() => nudge(-1)}
         >
           −
-        </button>
-        <input
+        </Button>
+        <TextField.Root
           id={inputId}
           aria-label={label}
           className="number-stepper-input"
@@ -172,7 +173,7 @@ export function NumberStepperField({
             }
           }}
         />
-        <button
+        <Button
           type="button"
           className="number-stepper-button"
           aria-label={`Increase ${label}`}
@@ -181,7 +182,7 @@ export function NumberStepperField({
           onClick={() => nudge(1)}
         >
           +
-        </button>
+        </Button>
       </div>
     </div>
   );

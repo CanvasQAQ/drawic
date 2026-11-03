@@ -1,3 +1,4 @@
+import { Button, TextField } from "../ui";
 import React, { useMemo, useState } from "react";
 import { FilterSelect } from "./FilterSelect";
 
@@ -36,9 +37,9 @@ export function SvgArtworkEditor({ body, selected, onSelect, onChange }: {
       options={[{ value: "-1", label: "Choose an element" }, { value: "-2", label: "All artwork" }, ...elements.map((item, index) => ({ value: String(index), label: `${index + 1} · ${item.tagName}` }))]}/>
     {selected === -2 && <div className="svg-element-fields">
       <p>Move all SVG artwork on the 1-unit grid. Pins stay at their contact positions.</p>
-      <label>Move X<input type="number" step="1" aria-label="Move all artwork X" value={groupX} onChange={event => setGroupX(Number(event.target.value))}/></label>
-      <label>Move Y<input type="number" step="1" aria-label="Move all artwork Y" value={groupY} onChange={event => setGroupY(Number(event.target.value))}/></label>
-      <button type="button" disabled={!groupX && !groupY} onClick={() => {
+      <label>Move X<TextField.Root type="number" step="1" aria-label="Move all artwork X" value={groupX} onChange={event => setGroupX(Number(event.target.value))}/></label>
+      <label>Move Y<TextField.Root type="number" step="1" aria-label="Move all artwork Y" value={groupY} onChange={event => setGroupY(Number(event.target.value))}/></label>
+      <Button type="button" disabled={!groupX && !groupY} onClick={() => {
         const x = Math.round(groupX), y = Math.round(groupY);
         const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
         group.setAttribute("transform", `translate(${x} ${y})`);
@@ -46,7 +47,7 @@ export function SvgArtworkEditor({ body, selected, onSelect, onChange }: {
         document.documentElement.appendChild(group);
         onChange(document.documentElement.innerHTML);
         setGroupX(0); setGroupY(0);
-      }}>Move selected artwork</button>
+      }}>Move selected artwork</Button>
     </div>}
     {element && <ElementFields key={`${selected}:${body}`} element={element} onApply={values => {
       for (const [name, value] of Object.entries(values)) {
@@ -80,9 +81,9 @@ function ElementFields({ element, onApply, onDelete }: {
     onApply(values);
   };
   return <div className="svg-element-fields">
-    {fields.map(name => <label key={name} className={["d", "points", "transform", "text"].includes(name) ? "is-wide" : undefined}>{name}<input aria-label={`SVG ${name}`} value={values[name]}
+    {fields.map(name => <label key={name} className={["d", "points", "transform", "text"].includes(name) ? "is-wide" : undefined}>{name}<TextField.Root aria-label={`SVG ${name}`} value={values[name] ?? ""}
       onChange={event => { setValues({ ...values, [name]: event.target.value }); setError(""); }}/></label>)}
-    <div><button type="button" onClick={apply}>Apply artwork changes</button><button type="button" onClick={onDelete}>Delete element</button></div>
+    <div><Button type="button" onClick={apply}>Apply artwork changes</Button><Button type="button" onClick={onDelete}>Delete element</Button></div>
     {error && <p role="alert">{error}</p>}
   </div>;
 }

@@ -1,3 +1,5 @@
+import { FilterSelect } from "./FilterSelect";
+import { Button, Checkbox, IconButton, TextField } from "../ui";
 import React, { useMemo, useState } from "react";
 import type { DeviceSymbol } from "../../core/library";
 import {
@@ -161,9 +163,9 @@ function DeviceAuditCard({
           </p>
         </div>
         {changed ? (
-          <button type="button" className="text-button" onClick={onReset}>
+          <Button variant="ghost" type="button" className="text-button" onClick={onReset}>
             Reset
-          </button>
+          </Button>
         ) : null}
       </header>
       <PinAuditPreview symbol={symbol} directions={directions} />
@@ -191,17 +193,9 @@ function DeviceAuditCard({
                       ? "↓"
                       : "←"}
               </span>
-              <select
-                value={direction}
-                aria-label={`${symbol.label} ${pin.name || pin.id} direction`}
-                onChange={(event) => onChange(pin.id, event.target.value as SymbolSide)}
-              >
-                {(Object.keys(DIRECTION_LABELS) as SymbolSide[]).map((side) => (
-                  <option key={side} value={side}>
-                    {side} — {DIRECTION_LABELS[side].split(" / ")[1]}
-                  </option>
-                ))}
-              </select>
+              <FilterSelect label={`${symbol.label} ${pin.name || pin.id} direction`} value={direction}
+                options={Object.entries(DIRECTION_LABELS).map(([value, label]) => ({ value, label: value + " — " + label.split(" / ")[1] }))}
+                onChange={value => onChange(pin.id, value as SymbolSide)} />
               {corrected ? <span className="pin-audit-change-tag">changed</span> : null}
               {warningPins.has(pin.id) ? (
                 <span
@@ -376,21 +370,21 @@ export function PinAuditScreen({
           <span>corrections</span>
         </div>
         {onClose ? (
-          <button
+          <IconButton variant="ghost"
             type="button"
             className="icon-button"
             onClick={onClose}
             aria-label="Close pin audit"
           >
             <Icon name="close" />
-          </button>
+          </IconButton>
         ) : null}
       </header>
 
       <div className="pin-audit-controls">
         <label className="search-field pin-audit-search">
           <span className="sr-only">Search devices and pins</span>
-          <input
+          <TextField.Root
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search device, pin, role"
@@ -399,35 +393,27 @@ export function PinAuditScreen({
         </label>
         <label className="category-field">
           <span>Category</span>
-          <select value={category} onChange={(event) => setCategory(event.target.value)}>
-            <option value="all">All categories</option>
-            {categories.map((item) => (
-              <option key={item} value={item}>
-                {item}
-              </option>
-            ))}
-          </select>
+          <FilterSelect label="Category" value={category} onChange={setCategory}
+            options={[{ value: "all", label: "All categories" }, ...categories.map(value => ({ value, label: value }))]} />
         </label>
         <label className="pin-audit-toggle">
-          <input
-            type="checkbox"
+          <Checkbox
             checked={changedOnly}
-            onChange={(event) => setChangedOnly(event.target.checked)}
+            onCheckedChange={checked => setChangedOnly(checked === true)}
           />
           Changed only
         </label>
         <label className="pin-audit-toggle">
-          <input
-            type="checkbox"
+          <Checkbox
             checked={warningsOnly}
-            onChange={(event) => setWarningsOnly(event.target.checked)}
+            onCheckedChange={checked => setWarningsOnly(checked === true)}
           />
           Position warnings
         </label>
         <span className="pin-audit-filter-count">
           {filtered.length} of {symbols.length} devices
         </span>
-        <button
+        <Button variant="ghost"
           type="button"
           className="text-button"
           disabled={corrections.length === 0}
@@ -437,8 +423,8 @@ export function PinAuditScreen({
           }}
         >
           Reset all
-        </button>
-        <button
+        </Button>
+        <Button variant="solid"
           type="button"
           className="primary-button"
           disabled={corrections.length === 0 || exportState.kind === "saving"}
@@ -446,7 +432,7 @@ export function PinAuditScreen({
         >
           <Icon name="export" />
           Export corrections ({corrections.length})
-        </button>
+        </Button>
       </div>
 
       {exportState.message ? (

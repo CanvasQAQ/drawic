@@ -1,4 +1,5 @@
-import React, { useEffect, useRef, useState } from "react";
+import { AlertDialog, Dialog, Button, IconButton, TextField } from "../ui";
+import React, { useRef, useState } from "react";
 import { Icon } from "./Icons";
 
 interface NameDialogProps {
@@ -20,41 +21,38 @@ export function NameDialog({
 }: NameDialogProps) {
   const [value, setValue] = useState(initialValue);
   const inputRef = useRef<HTMLInputElement>(null);
-  useEffect(() => {
-    inputRef.current?.focus();
-    inputRef.current?.select();
-  }, []);
   return (
-    <div className="modal-backdrop" role="presentation" onMouseDown={onCancel}>
-      <form
-        className="modal-card"
-        onMouseDown={(event) => event.stopPropagation()}
-        onSubmit={(event) => {
-          event.preventDefault();
-          if (value.trim()) {
-            onConfirm(value.trim());
-          }
-        }}
-      >
-        <h2>{title}</h2>
-        <label className="property-field">
-          <span>{label}</span>
-          <input
-            ref={inputRef}
-            value={value}
-            onChange={(event) => setValue(event.target.value)}
-          />
-        </label>
-        <div className="modal-actions">
-          <button type="button" onClick={onCancel}>
-            Cancel
-          </button>
-          <button type="submit" className="primary-button" disabled={!value.trim()}>
-            {confirmLabel}
-          </button>
-        </div>
-      </form>
-    </div>
+    <Dialog.Root open onOpenChange={open => { if (!open) onCancel(); }}>
+      <Dialog.Content className="modal-card" aria-describedby={undefined}
+        onOpenAutoFocus={event => { event.preventDefault(); inputRef.current?.focus(); inputRef.current?.select(); }}>
+        <Dialog.Title>{title}</Dialog.Title>
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (value.trim()) {
+              onConfirm(value.trim());
+            }
+          }}
+        >
+          <label className="property-field">
+            <span>{label}</span>
+            <TextField.Root
+              ref={inputRef}
+              value={value}
+              onChange={(event) => setValue(event.target.value)}
+            />
+          </label>
+          <div className="modal-actions">
+            <Button type="button" onClick={onCancel}>
+              Cancel
+            </Button>
+            <Button variant="solid" type="submit" className="primary-button" disabled={!value.trim()}>
+              {confirmLabel}
+            </Button>
+          </div>
+        </form>
+      </Dialog.Content>
+    </Dialog.Root>
   );
 }
 
@@ -66,27 +64,27 @@ interface UnsavedDialogProps {
 
 export function UnsavedDialog({ onSave, onDiscard, onCancel }: UnsavedDialogProps) {
   return (
-    <div className="modal-backdrop" role="presentation">
-      <div className="modal-card unsaved-dialog" role="alertdialog" aria-modal="true">
+    <AlertDialog.Root open onOpenChange={open => { if (!open) onCancel(); }}>
+      <AlertDialog.Content className="modal-card unsaved-dialog">
         <span className="modal-kicker">Unsaved changes</span>
-        <h2>Save before continuing?</h2>
-        <p>
+        <AlertDialog.Title>Save before continuing?</AlertDialog.Title>
+        <AlertDialog.Description>
           Your document has changes that are not in a project file. Save them, discard them,
           or return to the editor.
-        </p>
+        </AlertDialog.Description>
         <div className="modal-actions">
-          <button type="button" onClick={onCancel}>
+          <AlertDialog.Cancel><Button type="button">
             Cancel
-          </button>
-          <button type="button" onClick={onDiscard}>
+          </Button></AlertDialog.Cancel>
+          <Button type="button" onClick={onDiscard}>
             Discard
-          </button>
-          <button type="button" className="primary-button" onClick={onSave}>
+          </Button>
+          <Button variant="solid" type="button" className="primary-button" onClick={onSave}>
             <Icon name="save" /> Save
-          </button>
+          </Button>
         </div>
-      </div>
-    </div>
+      </AlertDialog.Content>
+    </AlertDialog.Root>
   );
 }
 
@@ -94,26 +92,22 @@ interface ExportDialogProps {
   title: string;
   children: React.ReactNode;
   onClose: () => void;
+  returnFocus?: React.RefObject<HTMLButtonElement | null>;
 }
 
-export function ExportDialog({ title, children, onClose }: ExportDialogProps) {
+export function ExportDialog({ title, children, onClose, returnFocus }: ExportDialogProps) {
   return (
-    <div className="modal-backdrop" role="presentation" onMouseDown={onClose}>
-      <div
-        className="modal-card export-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
-        onMouseDown={(event) => event.stopPropagation()}
-      >
+    <Dialog.Root open onOpenChange={open => { if (!open) onClose(); }}>
+      <Dialog.Content className="modal-card export-dialog" aria-describedby={undefined}
+        onCloseAutoFocus={event => { if (returnFocus?.current) { event.preventDefault(); returnFocus.current.focus(); } }}>
         <header>
-          <h2>{title}</h2>
-          <button className="icon-button" type="button" onClick={onClose} aria-label="Close">
+          <Dialog.Title>{title}</Dialog.Title>
+          <IconButton variant="ghost" className="icon-button" type="button" onClick={onClose} aria-label="Close">
             <Icon name="close" />
-          </button>
+          </IconButton>
         </header>
         {children}
-      </div>
-    </div>
+      </Dialog.Content>
+    </Dialog.Root>
   );
 }

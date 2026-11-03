@@ -34,6 +34,8 @@ containing many self-contained device records.
 8. Every behavior change needs a focused test or a documented reason why an
    automated test is not practical.
 
+For renderer UI work, follow the [shared controls and theme guide](docs/UI_CONTROLS.md).
+
 ## Before editing
 
 ```bash

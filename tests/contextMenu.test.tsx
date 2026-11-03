@@ -1,6 +1,7 @@
+import { waitFor } from "@testing-library/react";
 import React from "react";
 import { flushSync } from "react-dom";
-import { createRoot } from "react-dom/client";
+import { createThemedRoot as createRoot } from "./themedRoot";
 import { describe, expect, it, vi } from "vitest";
 import {
   ContextMenu,
@@ -19,7 +20,7 @@ function renderMenu(
       <ContextMenu x={20} y={20} entries={entries} label="Test menu" onClose={onClose} />,
     ),
   );
-  return { container, root, onClose };
+  return { container: document.body, root, onClose };
 }
 
 const entries: ContextMenuEntry[] = [
@@ -29,36 +30,34 @@ const entries: ContextMenuEntry[] = [
 ];
 
 describe("ContextMenu", () => {
-  it("renders a labelled menu and focuses the first enabled item", () => {
+  it("renders a labelled menu and focuses the first enabled item", async () => {
     const { container, root } = renderMenu(entries);
     const menu = container.querySelector('[role="menu"]');
     expect(menu?.getAttribute("aria-label")).toBe("Test menu");
-    expect(document.activeElement?.textContent).toBe("Bring to front");
+    await waitFor(() => expect(document.activeElement?.textContent).toBe("Bring to front"));
     expect(
       [...container.querySelectorAll('[role="menuitem"]')].map((item) =>
-        item.getAttribute("disabled"),
+        item.getAttribute("data-disabled"),
       ),
     ).toEqual([null, "", null]);
     root.unmount();
-    container.remove();
   });
 
-  it("roves focus with arrows, Home, and End", () => {
+  it("roves focus with arrows, Home, and End", async () => {
     const { container, root } = renderMenu(entries);
-    window.dispatchEvent(
+    document.activeElement!.dispatchEvent(
       new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }),
     );
-    expect(document.activeElement?.textContent).toBe("Delete");
-    window.dispatchEvent(
+    await waitFor(() => expect(document.activeElement?.textContent).toBe("Delete"));
+    document.activeElement!.dispatchEvent(
       new KeyboardEvent("keydown", { key: "Home", bubbles: true }),
     );
-    expect(document.activeElement?.textContent).toBe("Bring to front");
-    window.dispatchEvent(
+    await waitFor(() => expect(document.activeElement?.textContent).toBe("Bring to front"));
+    document.activeElement!.dispatchEvent(
       new KeyboardEvent("keydown", { key: "End", bubbles: true }),
     );
-    expect(document.activeElement?.textContent).toBe("Delete");
+    await waitFor(() => expect(document.activeElement?.textContent).toBe("Delete"));
     root.unmount();
-    container.remove();
   });
 
   it("runs the chosen item and then closes", () => {
@@ -72,19 +71,18 @@ describe("ContextMenu", () => {
     expect(onSelect).toHaveBeenCalledOnce();
     expect(onClose).toHaveBeenCalledOnce();
     root.unmount();
-    container.remove();
   });
 
-  it("closes on Escape and on an outside pointer press", () => {
+  it("closes on Escape and on an outside pointer press", async () => {
     const first = renderMenu(entries);
-    window.dispatchEvent(
+    document.activeElement!.dispatchEvent(
       new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
     );
     expect(first.onClose).toHaveBeenCalledOnce();
     first.root.unmount();
-    first.container.remove();
 
     const second = renderMenu(entries);
+    await new Promise(resolve => setTimeout(resolve, 0));
     flushSync(() =>
       document.body.dispatchEvent(
         new MouseEvent("pointerdown", { bubbles: true }),
@@ -92,7 +90,6 @@ describe("ContextMenu", () => {
     );
     expect(second.onClose).toHaveBeenCalledOnce();
     second.root.unmount();
-    second.container.remove();
   });
 
   it("stays open when the pointer press lands inside the menu", () => {
@@ -104,7 +101,6 @@ describe("ContextMenu", () => {
     );
     expect(onClose).not.toHaveBeenCalled();
     root.unmount();
-    container.remove();
   });
 
   it("renders swatch rows that report the picked colour", () => {
@@ -132,6 +128,5 @@ describe("ContextMenu", () => {
     expect(onPick).toHaveBeenCalledWith("#f2c777");
     expect(onClose).toHaveBeenCalledOnce();
     root.unmount();
-    container.remove();
   });
 });

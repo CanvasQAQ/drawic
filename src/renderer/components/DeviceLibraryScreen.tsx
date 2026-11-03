@@ -1,5 +1,4 @@
-import { AlertDialog, Button, Flex, Theme, destructiveButtonProps } from "../ui";
-import type { Theme as Appearance } from "../theme";
+import { AlertDialog, Button, Flex, IconButton, TextField, ownsShortcut } from "../ui";
 import { FilterSelect } from "./FilterSelect";
 import { CustomLibrary } from "./CustomLibrary";
 import { catalogFilter } from "../../core/deviceCatalog";
@@ -45,7 +44,6 @@ interface Status {
 }
 
 export interface DeviceLibraryScreenProps {
-  appearance: Appearance;
   actions?: React.RefObject<LibraryActions | null>;
   onEditorDirty?: (dirty: boolean) => void;
   builtInFile: DeviceLibraryFile;
@@ -108,7 +106,6 @@ function cloneRecord(
 }
 
 export function DeviceLibraryScreen({
-  appearance,
   builtInFile,
   userFile,
   embeddedFile,
@@ -208,7 +205,7 @@ export function DeviceLibraryScreen({
 
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
-      if (event.defaultPrevented || event.key !== "Escape") {
+      if (ownsShortcut(event) || event.key !== "Escape") {
         return;
       }
       if (editor) {
@@ -462,14 +459,7 @@ export function DeviceLibraryScreen({
   const pendingDelete = userDevices.find(device => device.id === pendingDeleteId);
 
   return (
-    <Theme
-      appearance={appearance}
-      accentColor="violet"
-      grayColor="slate"
-      radius="small"
-      scaling="95%"
-      panelBackground="solid"
-      hasBackground={false}
+    <section
       className="device-library-screen"
       role="dialog"
       aria-modal="true"
@@ -480,7 +470,7 @@ export function DeviceLibraryScreen({
           <h2 id="device-library-title">Device library</h2>
         </div>
         <div className="device-library-tabs" role="tablist" aria-label="Device library sections">
-          <button
+          <Button variant={tab === "browse" ? "solid" : "soft"}
             type="button"
             role="tab"
             aria-selected={tab === "browse"}
@@ -488,8 +478,8 @@ export function DeviceLibraryScreen({
             onClick={() => setTab("browse")}
           >
             Browse <span>{browseEntries.length}</span>
-          </button>
-          <button
+          </Button>
+          <Button variant={tab === "custom" ? "solid" : "soft"}
             type="button"
             role="tab"
             aria-selected={tab === "custom"}
@@ -497,16 +487,16 @@ export function DeviceLibraryScreen({
             onClick={() => setTab("custom")}
           >
             Custom <span>{userDevices.length}</span>
-          </button>
+          </Button>
         </div>
-        <button
+        <IconButton variant="ghost"
           type="button"
           className="icon-button"
           onClick={requestClose}
           aria-label="Close device library"
         >
           <Icon name="close" />
-        </button>
+        </IconButton>
       </header>
 
       {status.message ? (
@@ -520,7 +510,7 @@ export function DeviceLibraryScreen({
           <div className="device-library-controls">
             <label className="search-field">
               <span className="sr-only">Search devices</span>
-              <input
+              <TextField.Root
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Search device, pin, keyword"
@@ -542,7 +532,7 @@ export function DeviceLibraryScreen({
           </div>
           <DeviceCatalog entries={filteredEntries} onClone={openCloneDevice} onEdit={openEditDevice} />
           <details className="device-maintenance"><summary>Maintenance tools</summary>
-            <button type="button" onClick={() => setTab("audit")}>Audit built-in pins</button>
+            <Button type="button" onClick={() => setTab("audit")}>Audit built-in pins</Button>
           </details>
         </>
       ) : null}
@@ -573,14 +563,14 @@ export function DeviceLibraryScreen({
       />}
 
       {importState ? (
-        <div className="modal-backdrop" role="presentation">
-          <div className="modal-card device-import-dialog" role="dialog" aria-modal="true">
+        <AlertDialog.Root open onOpenChange={open => { if (!open) setImportState(null); }}>
+          <AlertDialog.Content className="modal-card device-import-dialog">
             <span className="modal-kicker">Library import</span>
-            <h2>{importState.conflicts.filter((conflict) => !conflict.identical).length} conflicting devices</h2>
-            <p>
+            <AlertDialog.Title>{importState.conflicts.filter((conflict) => !conflict.identical).length} conflicting devices</AlertDialog.Title>
+            <AlertDialog.Description>
               The imported library defines device IDs that already exist locally.
               Choose how to resolve them. Identical devices are always skipped.
-            </p>
+            </AlertDialog.Description>
             <ul>
               {importState.conflicts
                 .filter((conflict) => !conflict.identical)
@@ -592,21 +582,19 @@ export function DeviceLibraryScreen({
                 ))}
             </ul>
             <div className="modal-actions">
-              <button type="button" onClick={() => setImportState(null)}>
-                Cancel
-              </button>
-              <button type="button" onClick={() => applyImport("keep-local")}>
+              <AlertDialog.Cancel><Button type="button">Cancel</Button></AlertDialog.Cancel>
+              <Button type="button" onClick={() => applyImport("keep-local")}>
                 Keep local
-              </button>
-              <button type="button" onClick={() => applyImport("copy")}>
+              </Button>
+              <Button type="button" onClick={() => applyImport("copy")}>
                 Import as copies
-              </button>
-              <button type="button" className="primary-button" onClick={() => applyImport("replace")}>
+              </Button>
+              <Button variant="solid" type="button" className="primary-button" onClick={() => applyImport("replace")}>
                 Replace
-              </button>
+              </Button>
             </div>
-          </div>
-        </div>
+          </AlertDialog.Content>
+        </AlertDialog.Root>
       ) : null}
 
       {pendingDelete && (
@@ -617,9 +605,9 @@ export function DeviceLibraryScreen({
               Existing project files that embed this device keep their snapshot.
             </AlertDialog.Description>
             <Flex gap="2" mt="4" justify="end">
-              <AlertDialog.Cancel><Button variant="soft" color="gray">Cancel</Button></AlertDialog.Cancel>
+              <AlertDialog.Cancel><Button color="gray">Cancel</Button></AlertDialog.Cancel>
               <AlertDialog.Action>
-                <Button {...destructiveButtonProps} onClick={() => deleteDevice(pendingDelete)}>Delete</Button>
+                <Button color="red" onClick={() => deleteDevice(pendingDelete)}>Delete</Button>
               </AlertDialog.Action>
             </Flex>
           </AlertDialog.Content>
@@ -627,18 +615,16 @@ export function DeviceLibraryScreen({
       )}
 
       {confirmClose ? (
-        <div className="modal-backdrop" role="presentation">
-          <div className="modal-card" role="alertdialog" aria-modal="true">
+        <AlertDialog.Root open onOpenChange={open => { if (!open) setConfirmClose(false); }}>
+          <AlertDialog.Content className="modal-card">
             <span className="modal-kicker">Unsaved library change</span>
-            <h2>Save the custom device library?</h2>
-            <p>
+            <AlertDialog.Title>Save the custom device library?</AlertDialog.Title>
+            <AlertDialog.Description>
               Device edits are kept in the draft until you save the library.
-            </p>
+            </AlertDialog.Description>
             <div className="modal-actions">
-              <button type="button" onClick={() => setConfirmClose(false)}>
-                Cancel
-              </button>
-              <button
+              <AlertDialog.Cancel><Button type="button">Cancel</Button></AlertDialog.Cancel>
+              <Button
                 type="button"
                 onClick={() => {
                   onDiscardUserLibrary();
@@ -647,19 +633,19 @@ export function DeviceLibraryScreen({
                 }}
               >
                 Discard
-              </button>
-              <button
+              </Button>
+              <Button variant="solid"
                 type="button"
                 className="primary-button"
                 disabled={saving}
                 onClick={() => void saveUserLibrary()}
               >
                 <Icon name="save" /> Save
-              </button>
+              </Button>
             </div>
-          </div>
-        </div>
+          </AlertDialog.Content>
+        </AlertDialog.Root>
       ) : null}
-    </Theme>
+    </section>
   );
 }

@@ -1,4 +1,5 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { DropdownMenu } from "../ui";
+import React, { useEffect, useRef } from "react";
 
 export interface ContextMenuItem {
   kind: "item";
@@ -29,161 +30,45 @@ interface ContextMenuProps {
   onClose: () => void;
 }
 
-const VIEWPORT_MARGIN = 8;
-
-/**
- * Small floating menu anchored at client coordinates. Closes on Escape, an
- * outside pointer press, scrolling, or resizing, and keeps arrow-key focus
- * inside its entries.
- */
+/** Canvas hit testing supplies a client point, including for keyboard-invoked page menus. */
 export function ContextMenu({ x, y, entries, label, onClose }: ContextMenuProps) {
-  const menuRef = useRef<HTMLDivElement>(null);
-  const [position, setPosition] = useState({ left: x, top: y });
-
-  useLayoutEffect(() => {
-    const menu = menuRef.current;
-    if (!menu) {
-      return;
-    }
-    const rect = menu.getBoundingClientRect();
-    const left = Math.max(
-      VIEWPORT_MARGIN,
-      Math.min(x, window.innerWidth - rect.width - VIEWPORT_MARGIN),
-    );
-    const top = Math.max(
-      VIEWPORT_MARGIN,
-      Math.min(y, window.innerHeight - rect.height - VIEWPORT_MARGIN),
-    );
-    setPosition({ left, top });
-  }, [x, y, entries]);
-
+  const content = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    const menu = menuRef.current;
-    const focusableItems = (): HTMLElement[] =>
-      Array.from(
-        menu?.querySelectorAll<HTMLElement>('[role="menuitem"]:not(:disabled)') ??
-          [],
-      );
-    focusableItems()[0]?.focus();
-
-    const handlePointerDown = (event: PointerEvent): void => {
-      if (
-        menu &&
-        event.target instanceof Node &&
-        menu.contains(event.target)
-      ) {
-        return;
-      }
-      onClose();
+    const dismiss = (event: Event) => {
+      if (!(event.target instanceof Node && content.current?.contains(event.target))) onClose();
     };
-    const handleKeyDown = (event: KeyboardEvent): void => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        event.stopPropagation();
-        onClose();
-        return;
-      }
-      if (
-        event.key !== "ArrowDown" &&
-        event.key !== "ArrowUp" &&
-        event.key !== "Home" &&
-        event.key !== "End"
-      ) {
-        return;
-      }
-      const items = focusableItems();
-      if (items.length === 0) {
-        return;
-      }
-      event.preventDefault();
-      event.stopPropagation();
-      const current = items.indexOf(document.activeElement as HTMLElement);
-      let next: number;
-      if (event.key === "Home") {
-        next = 0;
-      } else if (event.key === "End") {
-        next = items.length - 1;
-      } else if (event.key === "ArrowDown") {
-        next = current < 0 ? 0 : (current + 1) % items.length;
-      } else {
-        next = current <= 0 ? items.length - 1 : current - 1;
-      }
-      items[next]?.focus();
-    };
-    const handleDismiss = (): void => onClose();
-
-    window.addEventListener("pointerdown", handlePointerDown, true);
-    window.addEventListener("keydown", handleKeyDown, true);
-    window.addEventListener("resize", handleDismiss);
-    window.addEventListener("scroll", handleDismiss, true);
+    window.addEventListener("resize", dismiss);
+    window.addEventListener("scroll", dismiss, true);
     return () => {
-      window.removeEventListener("pointerdown", handlePointerDown, true);
-      window.removeEventListener("keydown", handleKeyDown, true);
-      window.removeEventListener("resize", handleDismiss);
-      window.removeEventListener("scroll", handleDismiss, true);
+      window.removeEventListener("resize", dismiss);
+      window.removeEventListener("scroll", dismiss, true);
     };
   }, [onClose]);
 
-  return (
-    <div
-      ref={menuRef}
-      className="context-menu"
-      role="menu"
-      aria-label={label}
-      style={{ left: position.left, top: position.top }}
-    >
+  return <DropdownMenu.Root open modal={false} onOpenChange={open => { if (!open) onClose(); }}>
+    <DropdownMenu.Trigger>
+      <span aria-hidden="true" tabIndex={-1} style={{ position: "fixed", left: x, top: y }} />
+    </DropdownMenu.Trigger>
+    <DropdownMenu.Content ref={content} className="context-menu" aria-label={label}
+      aria-labelledby={undefined}
+      onFocus={event => {
+        if (event.target === event.currentTarget) {
+          event.currentTarget.querySelector<HTMLElement>('[role="menuitem"]:not([data-disabled])')?.focus();
+        }
+      }}
+      align="start" sideOffset={0} collisionPadding={8} loop>
       {entries.map((entry, index) => {
-        if (entry === "separator") {
-          return (
-            <div
-              key={`separator-${index}`}
-              className="context-menu-separator"
-              role="separator"
-            />
-          );
-        }
-        if (entry.kind === "swatches") {
-          return (
-            <div
-              key={entry.id}
-              className="context-menu-swatches"
-              role="group"
-              aria-label={entry.label}
-            >
-              {entry.colors.map((color) => (
-                <button
-                  key={color.value}
-                  type="button"
-                  role="menuitem"
-                  className="context-menu-swatch"
-                  style={{ backgroundColor: color.value }}
-                  aria-label={color.label}
-                  title={color.label}
-                  onClick={() => {
-                    entry.onSelect(color.value);
-                    onClose();
-                  }}
-                />
-              ))}
-            </div>
-          );
-        }
-        return (
-          <button
-            key={entry.id}
-            type="button"
-            role="menuitem"
-            className="context-menu-item"
-            disabled={entry.disabled === true}
-            onClick={() => {
-              entry.onSelect();
-              onClose();
-            }}
-          >
-            {entry.label}
-          </button>
-        );
+        if (entry === "separator") return <DropdownMenu.Separator key={index} />;
+        if (entry.kind === "swatches") return <DropdownMenu.Group key={entry.id} aria-label={entry.label}
+          className="context-menu-swatches">
+          {entry.colors.map(color => <DropdownMenu.Item key={color.value} aria-label={color.label}
+            title={color.label} onSelect={() => entry.onSelect(color.value)}>
+            <span className="menu-color-chip" style={{ backgroundColor: color.value }} />
+          </DropdownMenu.Item>)}
+        </DropdownMenu.Group>;
+        return <DropdownMenu.Item key={entry.id} disabled={entry.disabled === true}
+          onSelect={entry.onSelect}>{entry.label}</DropdownMenu.Item>;
       })}
-    </div>
-  );
+    </DropdownMenu.Content>
+  </DropdownMenu.Root>;
 }

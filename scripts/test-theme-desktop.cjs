@@ -80,7 +80,7 @@ async function run() {
   const js=code=>win.webContents.executeJavaScript(code);
   const exists=s=>until(()=>js("Boolean(document.querySelector("+JSON.stringify(s)+"))"),s);
   const click=async s=>{await exists(s);await js("document.querySelector("+JSON.stringify(s)+").click()");await wait(65);};
-  const key=async k=>{await js("window.dispatchEvent(new KeyboardEvent('keydown',{key:"+JSON.stringify(k)+",bubbles:true}))");await wait(40);};
+  const key=async k=>{await js("document.activeElement.dispatchEvent(new KeyboardEvent('keydown',{cancelable:true,key:"+JSON.stringify(k)+",bubbles:true}))");await wait(40);};
   const choose=async theme=>{
     if(await js("document.documentElement.dataset.theme")===theme && nativeTheme.themeSource!==theme) await click(".window-theme-button");
     if(await js("document.documentElement.dataset.theme")!==theme) await click(".window-theme-button");
@@ -141,6 +141,10 @@ async function run() {
     assert.equal(nativeTheme.themeSource,theme);
     win.setSize(1440,865);await wait(80);
     await inspect(theme+"-shell",".app-shell",true);
+    const titleButtons = await js(`Array.from(document.querySelectorAll(".window-theme-button, .window-control"),
+      el => { const {width,height,top} = el.getBoundingClientRect(); return [width,height,top]; })`);
+    assert(titleButtons[0][0] >= 32 && titleButtons[0][1] >= 32, "theme button hit target");
+    for (const bounds of titleButtons.slice(1)) assert.deepEqual(bounds, titleButtons[0], "equal title-bar hit targets");
     const stroke=await js("getComputedStyle(document.querySelector('.wire-visible')).stroke");
     if(wirePaint)assert.equal(stroke,wirePaint); else wirePaint=stroke;
     await pointer('[data-node-id="r1"]',2);await inspect(theme+"-canvas-menu",".context-menu");await key("Escape");

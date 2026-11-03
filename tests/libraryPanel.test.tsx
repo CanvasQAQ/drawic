@@ -1,6 +1,6 @@
 import React from "react";
 import { flushSync } from "react-dom";
-import { createRoot } from "react-dom/client";
+import { createThemedRoot as createRoot } from "./themedRoot";
 import { describe, expect, it, vi } from "vitest";
 import type { DeviceSymbol } from "../src/core/library";
 import { LibraryPanel } from "../src/renderer/components/LibraryPanel";

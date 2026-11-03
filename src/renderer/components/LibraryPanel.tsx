@@ -1,3 +1,4 @@
+import { Button, IconButton, TextField } from "../ui";
 import { FilterSelect } from "./FilterSelect";
 import { catalogFilter, type CatalogSource } from "../../core/deviceCatalog";
 import React, { useMemo, useState } from "react";
@@ -65,7 +66,7 @@ export function LibraryPanel({
           <span className="eyebrow">Drawic symbols</span>
           <h2>Device library</h2>
         </div>
-        <button
+        <IconButton variant="ghost"
           className="icon-button"
           type="button"
           title="Hide device library"
@@ -73,20 +74,23 @@ export function LibraryPanel({
           onClick={onCollapse}
         >
           <Icon name="close" />
-        </button>
+        </IconButton>
       </div>
       <label className="search-field">
         <span className="sr-only">Search devices</span>
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <circle cx="10" cy="10" r="6" />
-          <path d="m15 15 5 5" />
-        </svg>
-        <input
+        <TextField.Root
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Search symbols"
           type="search"
-        />
+        >
+          <TextField.Slot>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="10" cy="10" r="6" />
+              <path d="m15 15 5 5" />
+            </svg>
+          </TextField.Slot>
+        </TextField.Root>
       </label>
       <div className="category-field"><span>Category</span>
         <FilterSelect label="Category" value={category} onChange={setCategory}
@@ -100,18 +104,18 @@ export function LibraryPanel({
       <div className="library-count" aria-live="polite">
         {filtered.length} placeable {filtered.length === 1 ? "symbol" : "symbols"}
         {onManageDevices ? (
-          <button
+          <Button variant="ghost"
             type="button"
             className="text-button library-manage"
             onClick={onManageDevices}
           >
             Manage devices
-          </button>
+          </Button>
         ) : null}
       </div>
       <div className="symbol-grid">
         {filtered.map((symbol) => (
-          <button
+          <Button variant={selectedSymbolId === symbol.id ? "solid" : "soft"}
             type="button"
             className={`symbol-tile${selectedSymbolId === symbol.id ? " is-active" : ""}`}
             key={symbol.id}
@@ -124,13 +128,13 @@ export function LibraryPanel({
             <span className="symbol-meta">
               {symbol.category} · {symbol.pins.length}p
             </span>
-          </button>
+          </Button>
         ))}
       </div>
       {filtered.length === 0 ? (
         <div className="empty-library">
           No symbols match this filter.
-          <button
+          <Button variant="ghost"
             type="button"
             className="text-button"
             onClick={() => {
@@ -140,7 +144,7 @@ export function LibraryPanel({
             }}
           >
             Clear filters
-          </button>
+          </Button>
         </div>
       ) : null}
     </aside>

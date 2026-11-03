@@ -1,3 +1,4 @@
+import { Button, IconButton, TextArea, TextField } from "../ui";
 import React, { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { nodeLabelVisible } from "../../core/geometry";
 import {
@@ -89,19 +90,19 @@ function ColorField({
           />
         ))}
         {allowTransparent ? (
-          <button
+          <Button variant={value === "transparent" ? "solid" : "soft"}
             type="button"
             className="net-color-reset"
             aria-pressed={value === "transparent"}
             onClick={() => onChange("transparent")}
           >
             None
-          </button>
+          </Button>
         ) : null}
         {onReset ? (
-          <button type="button" className="net-color-reset" onClick={onReset}>
+          <Button type="button" className="net-color-reset" onClick={onReset}>
             Default
-          </button>
+          </Button>
         ) : null}
       </div>
     </div>
@@ -134,7 +135,7 @@ function CommitField({
       <label htmlFor={inputId}>{label}</label>
       <div className={action ? "property-input-with-action" : undefined}>
       {multiline ? (
-        <textarea
+        <TextArea
           id={inputId}
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
@@ -142,7 +143,7 @@ function CommitField({
           rows={3}
         />
       ) : (
-        <input
+        <TextField.Root
           id={inputId}
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
@@ -485,7 +486,7 @@ export function PropertiesPanel({
           <span className="eyebrow">Inspector</span>
           <h2>Properties</h2>
         </div>
-        <button
+        <IconButton variant="ghost"
           className="icon-button"
           type="button"
           title="Hide properties"
@@ -493,7 +494,7 @@ export function PropertiesPanel({
           onClick={onCollapse}
         >
           <Icon name="close" />
-        </button>
+        </IconButton>
       </div>
 
       {selectedNode ? (
@@ -507,7 +508,7 @@ export function PropertiesPanel({
             value={selectedNode.reference}
             onCommit={(reference) => onUpdateNode(selectedNode.id, { reference })}
             action={
-              <button
+              <Button variant={nodeLabelVisible(selectedNode, "reference") ? "solid" : "soft"}
                 type="button"
                 className="label-visibility-toggle"
                 aria-label={`${
@@ -533,7 +534,7 @@ export function PropertiesPanel({
                       : "eye-off"
                   }
                 />
-              </button>
+              </Button>
             }
           />
           <CommitField
@@ -541,7 +542,7 @@ export function PropertiesPanel({
             value={selectedNode.value}
             onCommit={(value) => onUpdateNode(selectedNode.id, { value })}
             action={
-              <button
+              <Button variant={nodeLabelVisible(selectedNode, "value") ? "solid" : "soft"}
                 type="button"
                 className="label-visibility-toggle"
                 aria-label={`${
@@ -565,7 +566,7 @@ export function PropertiesPanel({
                     nodeLabelVisible(selectedNode, "value") ? "eye" : "eye-off"
                   }
                 />
-              </button>
+              </Button>
             }
           />
           <CoordinatePair title="Position" xLabel="Position X" yLabel="Position Y"
@@ -573,15 +574,15 @@ export function PropertiesPanel({
             onX={x => onUpdateNode(selectedNode.id, { x })}
             onY={y => onUpdateNode(selectedNode.id, { y })}/>
           <div className="button-row">
-            <button type="button" onClick={onRotate}>
+            <Button type="button" onClick={onRotate}>
               <Icon name="rotate" /> Rotate
-            </button>
-            <button type="button" onClick={onMirror}>
+            </Button>
+            <Button type="button" onClick={onMirror}>
               <Icon name="mirror" /> Mirror
-            </button>
-            <button type="button" onClick={onMirrorVertical}>
+            </Button>
+            <Button type="button" onClick={onMirrorVertical}>
               <Icon name="mirror" /> Flip V
-            </button>
+            </Button>
           </div>
         </PropertiesSection>
       ) : null}
@@ -653,7 +654,7 @@ export function PropertiesPanel({
               />
             </label>
           </div>
-          <button
+          <Button variant="ghost"
             type="button"
             className="text-button"
             onClick={() =>
@@ -664,8 +665,8 @@ export function PropertiesPanel({
             }
           >
             Reset appearance
-          </button>
-          <button
+          </Button>
+          <Button variant="ghost"
             type="button"
             className="text-button"
             onClick={() =>
@@ -677,7 +678,7 @@ export function PropertiesPanel({
             }
           >
             Hide this label
-          </button>
+          </Button>
         </PropertiesSection>
       ) : null}
 
@@ -725,14 +726,14 @@ export function PropertiesPanel({
                   onClick={() => onUpdateNetColor(selectedWire.id, color)}
                 />
               ))}
-              <button
+              <Button
                 type="button"
                 className="net-color-reset"
                 disabled={!selectedNetColor}
                 onClick={() => onUpdateNetColor(selectedWire.id, null)}
               >
                 Default
-              </button>
+              </Button>
             </div>
           </div>
         </PropertiesSection>
@@ -819,7 +820,7 @@ export function PropertiesPanel({
                   options={[{ value: "start", label: "Left" }, { value: "middle", label: "Center" }, { value: "end", label: "Right" }]}/>
               </div>
               <div className="button-row">
-                <button
+                <Button
                   type="button"
                   onClick={() =>
                     onUpdateAnnotation(selectedAnnotation.id, {
@@ -829,12 +830,12 @@ export function PropertiesPanel({
                   }
                 >
                   <Icon name="rotate" /> Rotate 90°
-                </button>
+                </Button>
               </div>
             </>
           ) : null}
           <div className="button-row">
-            <button
+            <Button
               type="button"
               onClick={() =>
                 onUpdateAnnotation(selectedAnnotation.id, {
@@ -843,7 +844,7 @@ export function PropertiesPanel({
               }
             >
               Change to {selectedAnnotation.kind === "net" ? "text" : "net"}
-            </button>
+            </Button>
           </div>
         </PropertiesSection>
       ) : null}
@@ -1053,7 +1054,7 @@ export function PropertiesPanel({
                 }}
               />
               <div className="button-row">
-                <button
+                <Button
                   type="button"
                   onClick={() =>
                     onUpdateShape(selectedShape.id, {
@@ -1062,14 +1063,14 @@ export function PropertiesPanel({
                   }
                 >
                   Reset text position
-                </button>
+                </Button>
               </div>
             </>
           ) : null}
           <div className="button-row">
-            <button type="button" onClick={onRotate}>
+            <Button type="button" onClick={onRotate}>
               <Icon name="rotate" /> Rotate
-            </button>
+            </Button>
           </div>
         </PropertiesSection>
       ) : null}
@@ -1090,23 +1091,23 @@ export function PropertiesPanel({
             {selection.length} objects selected
           </div>
           <div className="button-row">
-            <button type="button" onClick={onRotate}>
+            <Button type="button" onClick={onRotate}>
               <Icon name="rotate" /> Rotate
-            </button>
-            <button type="button" onClick={onMirror}>
+            </Button>
+            <Button type="button" onClick={onMirror}>
               <Icon name="mirror" /> Mirror
-            </button>
-            <button type="button" onClick={onMirrorVertical}>
+            </Button>
+            <Button type="button" onClick={onMirrorVertical}>
               <Icon name="mirror" /> Flip V
-            </button>
+            </Button>
           </div>
         </PropertiesSection>
       ) : null}
 
       {selection.length > 0 ? (
-        <button type="button" className="danger-button" onClick={onDelete}>
+        <Button color="red" type="button" className="danger-button" onClick={onDelete}>
           <Icon name="delete" /> Delete selection
-        </button>
+        </Button>
       ) : null}
 
       {selection.length === 0 ? (

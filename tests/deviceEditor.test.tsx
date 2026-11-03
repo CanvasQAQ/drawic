@@ -1,6 +1,7 @@
 import React from "react";
 import { flushSync } from "react-dom";
-import { createRoot, type Root } from "react-dom/client";
+import type { Root } from "react-dom/client";
+import { createThemedRoot as createRoot } from "./themedRoot";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { DeviceLibraryRecord } from "../src/core/library";
 import { DeviceEditor } from "../src/renderer/components/DeviceEditor";
@@ -195,8 +196,8 @@ describe("device editor", () => {
     pointer("pointerup", 350, 200);
 
     flushSync(() => button(container, "Device library").click());
-    expect(container.textContent).toContain("Return to the device library?");
-    flushSync(() => button(container, "Keep editing").click());
+    expect(document.body.textContent).toContain("Return to the device library?");
+    flushSync(() => button(document.body, "Keep editing").click());
     expect(onCancel).not.toHaveBeenCalled();
 
     flushSync(() => button(container, "Save device").click());
@@ -205,7 +206,7 @@ describe("device editor", () => {
     expect(container.querySelector(".device-editor")).not.toBeNull();
 
     flushSync(() => button(container, "Device library").click());
-    expect(container.textContent).not.toContain("Return to the device library?");
+    expect(document.body.textContent).not.toContain("Return to the device library?");
     expect(onCancel).toHaveBeenCalledTimes(1);
   });
 
@@ -220,7 +221,7 @@ describe("device editor", () => {
     pointer("pointerup", 350, 200);
 
     flushSync(() => button(container, "Device library").click());
-    flushSync(() => button(container, "Save and return").click());
+    flushSync(() => button(document.body, "Save and return").click());
     expect(onSave).toHaveBeenCalledTimes(1);
     expect(onCancel).toHaveBeenCalledTimes(1);
   });
@@ -233,7 +234,7 @@ describe("device editor", () => {
     setInputValue(title!, "Changed title");
     flushSync(() => button(container, "Device library").click());
     expect(onCancel).not.toHaveBeenCalled();
-    flushSync(() => button(container, "Discard changes").click());
+    flushSync(() => button(document.body, "Discard changes").click());
     expect(onSave).not.toHaveBeenCalled();
     expect(onCancel).toHaveBeenCalledTimes(1);
   });

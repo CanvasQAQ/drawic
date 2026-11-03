@@ -1,7 +1,6 @@
 import { Button } from "../ui";
 import React from "react";
 import type { DeviceLibraryRecord } from "../../core/library";
-import "./deviceCatalog.css";
 
 export type { CatalogSource as DeviceSource } from "../../core/deviceCatalog";
 import type { CatalogSource as DeviceSource } from "../../core/deviceCatalog";
@@ -41,8 +40,8 @@ function DeviceCard({ entry, onEdit, onClone }: { entry: BrowseEntry;
       })}
     </svg>
     <footer>
-      {source === "custom" && <Button variant="soft" type="button" onClick={() => onEdit(record)}>Edit</Button>}
-      <Button variant="soft" type="button" onClick={() => onClone(record)}>Clone</Button>
+      {source === "custom" && <Button type="button" onClick={() => onEdit(record)}>Edit</Button>}
+      <Button type="button" onClick={() => onClone(record)}>Clone</Button>
     </footer>
   </article>;
 }

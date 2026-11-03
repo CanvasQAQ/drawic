@@ -1,3 +1,4 @@
+import { IconButton } from "../ui";
 import React, { useEffect, useState, type ReactNode } from "react";
 import brandIconUrl from "../../../build/icon.svg?url";
 import type { Theme } from "../theme";
@@ -75,7 +76,7 @@ export function TitleBar({
 
       <div className="window-titlebar-actions">
         {actions}
-        <button
+        <IconButton variant="ghost"
           type="button"
           className="window-theme-button"
           aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
@@ -83,11 +84,11 @@ export function TitleBar({
           onClick={onToggleTheme}
         >
           <ThemeIcon theme={theme} />
-        </button>
+        </IconButton>
 
         {!isMac ? (
           <div className="window-controls" aria-label="Window controls">
-            <button
+            <IconButton variant="ghost"
               type="button"
               className="window-control"
               aria-label="Minimize window"
@@ -97,8 +98,8 @@ export function TitleBar({
               <svg viewBox="0 0 12 12" aria-hidden="true">
                 <path d="M2 6.5h8" />
               </svg>
-            </button>
-            <button
+            </IconButton>
+            <IconButton variant="ghost"
               type="button"
               className="window-control"
               aria-label={maximized ? "Restore window" : "Maximize window"}
@@ -114,8 +115,8 @@ export function TitleBar({
                   <rect x="1.8" y="1.8" width="8.4" height="8.4" />
                 </svg>
               )}
-            </button>
-            <button
+            </IconButton>
+            <IconButton variant="ghost"
               type="button"
               className="window-control window-control-close"
               aria-label="Close window"
@@ -125,7 +126,7 @@ export function TitleBar({
               <svg viewBox="0 0 12 12" aria-hidden="true">
                 <path d="m2.2 2.2 7.6 7.6M9.8 2.2 2.2 9.8" />
               </svg>
-            </button>
+            </IconButton>
           </div>
         ) : null}
       </div>

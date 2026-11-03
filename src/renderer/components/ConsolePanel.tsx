@@ -1,3 +1,4 @@
+import { Button, IconButton } from "../ui";
 import React, { useEffect, useRef } from "react";
 import { Icon } from "./Icons";
 
@@ -36,17 +37,17 @@ export function ConsolePanel({
         <strong>Console</strong>
         <span className="console-count">{entries.length}</span>
         <div>
-          <button type="button" onClick={onClear} disabled={entries.length === 0}>
+          <Button type="button" onClick={onClear} disabled={entries.length === 0}>
             Clear
-          </button>
-          <button
+          </Button>
+          <IconButton variant="ghost"
             type="button"
             className="icon-button"
             onClick={onClose}
             aria-label="Hide console"
           >
             <Icon name="close" />
-          </button>
+          </IconButton>
         </div>
       </header>
       <div

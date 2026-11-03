@@ -1,4 +1,4 @@
-import { Button, ContextMenu, TextField, destructiveButtonProps } from "../ui";
+import { Button, Checkbox, ContextMenu, TextField } from "../ui";
 import React, { useMemo, useState } from "react";
 import { catalogFilter } from "../../core/deviceCatalog";
 import type { DeviceLibraryRecord } from "../../core/library";
@@ -33,7 +33,7 @@ export function CustomLibrary(props: Props) {
     <header className="custom-heading">
       <div><small>Local library</small><h3>Custom devices</h3></div>
       <div className="custom-buttons">
-        <Button variant="soft" onClick={props.onImport}>Import library…</Button>
+        <Button onClick={props.onImport}>Import library…</Button>
         <Button variant="solid" className="custom-primary" onClick={props.onNew}><Icon name="new"/> New device</Button>
       </div>
     </header>
@@ -41,7 +41,7 @@ export function CustomLibrary(props: Props) {
       <label>Find a device<TextField.Root type="search" placeholder="Name, pin or keyword" value={query}
         onChange={event => setQuery(event.target.value)} /></label>
       <span>{filtered.length} of {props.devices.length} devices</span>
-      <Button variant="soft" disabled={!props.devices.length} onClick={props.onExport}>
+      <Button disabled={!props.devices.length} onClick={props.onExport}>
         <Icon name="export"/> Export {props.selectedIds.size ? props.selectedIds.size+" selected" : "all"}
       </Button>
     </div>
@@ -49,16 +49,16 @@ export function CustomLibrary(props: Props) {
       {filtered.map(record => <ContextMenu.Root key={record.id}>
         <ContextMenu.Trigger>
           <article className="custom-record" tabIndex={0} aria-label={record.title}>
-            <input type="checkbox" aria-label={"Select "+record.title+" for export"} checked={props.selectedIds.has(record.id)}
-              onChange={event => props.onSelect(record.id, event.target.checked)}/>
+            <Checkbox aria-label={"Select "+record.title+" for export"} checked={props.selectedIds.has(record.id)}
+              onCheckedChange={checked => props.onSelect(record.id, checked === true)}/>
             <svg viewBox={record.artwork.viewBox} aria-hidden="true">
               <g dangerouslySetInnerHTML={{__html:record.artwork.body}}/>
             </svg>
             <div><strong>{record.title}</strong><small>{record.category} · {record.pins.length} pins · {record.artwork.shapes ? "Editable" : "SVG"} artwork</small><code>{record.id}</code></div>
             <div className="custom-buttons">
-              <Button variant="soft" onClick={()=>props.onEdit(record)}>Edit</Button>
-              <Button variant="soft" onClick={()=>props.onDuplicate(record)}>Duplicate</Button>
-              <Button variant="soft" {...destructiveButtonProps} onClick={()=>props.onDelete(record.id)}>Delete</Button>
+              <Button onClick={()=>props.onEdit(record)}>Edit</Button>
+              <Button onClick={()=>props.onDuplicate(record)}>Duplicate</Button>
+              <Button color="red" onClick={()=>props.onDelete(record.id)}>Delete</Button>
             </div>
           </article>
         </ContextMenu.Trigger>
@@ -71,14 +71,14 @@ export function CustomLibrary(props: Props) {
       </ContextMenu.Root>)}
       {!props.devices.length ? <div className="custom-empty">
         <h3>No custom devices yet</h3><p>Create a device, import a library, or clone a symbol from Browse.</p>
-        <Button variant="soft" onClick={props.onBrowse}>Browse devices to clone</Button>
-      </div> : !filtered.length && <div className="custom-empty"><p>No devices match this search.</p><Button variant="soft" onClick={()=>setQuery("")}>Clear search</Button></div>}
+        <Button onClick={props.onBrowse}>Browse devices to clone</Button>
+      </div> : !filtered.length && <div className="custom-empty"><p>No devices match this search.</p><Button onClick={()=>setQuery("")}>Clear search</Button></div>}
     </div>
     <footer className="custom-save">
       <div role="status"><strong>{props.dirty ? "Library draft · not saved to disk" : props.persisted ? "Local library saved to disk" : "No local library saved yet"}</strong>
         <small>{props.dirty ? "Save all library changes to keep them after closing Drawic." : "Project copies update only when you refresh them."}</small></div>
       <div className="custom-buttons">
-        <Button variant="soft" onClick={props.onRefresh} title="Update the project's embedded devices from this library draft">Refresh project devices</Button>
+        <Button onClick={props.onRefresh} title="Update the project's embedded devices from this library draft">Refresh project devices</Button>
         <Button variant="solid" className="custom-primary" disabled={!props.dirty || props.saving} onClick={props.onSave}>
           <Icon name="save"/> {props.saving ? "Saving…" : "Save library to disk"}
         </Button>

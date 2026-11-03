@@ -99,6 +99,8 @@ communicates with the desktop layer only through the typed bridge declared in
 Do not add `fetch`, WebSocket, external stylesheets, remote fonts, or remote
 images. Device artwork must come from the bundled library.
 
+For renderer UI work, follow the [shared controls and theme guide](UI_CONTROLS.md).
+
 ### Preload
 
 `src/preload/index.ts` exposes a fixed API through `contextBridge`. Add one

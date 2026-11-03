@@ -1,3 +1,4 @@
+import { TestTheme } from "./themedRoot";
 import React from "react";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -6,16 +7,16 @@ import { AgentControls } from "../src/renderer/components/AgentControls";
 afterEach(cleanup);
 
 describe("Agent setup", () => {
-  it("shows the entry and honest desktop guidance without a bridge", () => {
+  it("shows the entry and honest desktop guidance without a bridge", async () => {
     Object.defineProperty(window, "drawic", { configurable: true, value: {} });
-    render(<AgentControls/>);
+    render(<AgentControls/>, { wrapper: TestTheme });
     fireEvent.click(screen.getByRole("button", { name: /Agent Off/ }));
     expect(screen.getByText(/Browser preview does not start/)).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Enable Agent" })).toBeNull();
     expect(screen.queryByLabelText("Agent setup")).toBeNull();
     fireEvent.keyDown(screen.getByRole("button", { name: "Close" }), { key: "Escape" });
     expect(screen.queryByRole("dialog")).toBeNull();
-    expect(document.activeElement).toBe(screen.getByRole("button", { name: /Agent Off/ }));
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("button", { name: /Agent Off/ })));
   });
 
   it("copies enabled configuration and reports clipboard failures", async () => {
@@ -23,7 +24,7 @@ describe("Agent setup", () => {
     const disable = vi.fn().mockResolvedValue(undefined);
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(window, "drawic", { configurable: true, value: { agent: { enable: vi.fn().mockResolvedValue(config), disable, copy: writeText } } });
-    render(<AgentControls/>);
+    render(<AgentControls/>, { wrapper: TestTheme });
     fireEvent.click(screen.getByRole("button", { name: /Agent Off/ }));
     expect(screen.queryByLabelText("Agent setup")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Enable Agent" }));

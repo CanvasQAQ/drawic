@@ -28,7 +28,7 @@ describe("approved device asset ledger", () => {
   });
 
   it("does not fill symbol containers over their authored transparent shapes", async () => {
-    const css = await readFile(resolve("src/renderer/styles.css"), "utf8");
+    const css = await readFile(resolve("src/renderer/workspace.css"), "utf8");
     expect(css).not.toMatch(/\.symbol-preview\s+g\s*\{[^}]*\bfill\s*:/s);
     expect(css).toMatch(/\.symbol-preview\s+text\s*\{[^}]*fill:\s*currentColor/s);
   });

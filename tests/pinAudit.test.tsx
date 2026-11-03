@@ -1,6 +1,6 @@
 import React from "react";
 import { flushSync } from "react-dom";
-import { createRoot } from "react-dom/client";
+import { createThemedRoot as createRoot } from "./themedRoot";
 import { describe, expect, it, vi } from "vitest";
 import { pinAuditKey, pinPositionWarnings } from "../src/core/pinAudit";
 import type { DeviceSymbol } from "../src/core/library";
@@ -84,11 +84,10 @@ describe("device pin direction audit", () => {
       ),
     );
 
-    const select = container.querySelector<HTMLSelectElement>(
-      'select[aria-label="Audit Device Input direction"]',
-    )!;
-    select.value = "north";
-    flushSync(() => select.dispatchEvent(new Event("change", { bubbles: true })));
+    const trigger = container.querySelector<HTMLButtonElement>('[aria-label="Audit Device Input direction"]')!;
+    flushSync(() => trigger.click());
+    const north = [...document.querySelectorAll<HTMLElement>('[role="option"]')].find(item => item.textContent?.startsWith("north"))!;
+    flushSync(() => north.click());
     const exportButton = Array.from(container.querySelectorAll("button")).find(
       (button) => button.textContent?.includes("Export corrections (1)"),
     )!;

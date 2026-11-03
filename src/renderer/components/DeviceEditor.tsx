@@ -1,3 +1,5 @@
+import { AlertDialog, Button, Checkbox, TextField, ownsShortcut } from "../ui";
+import { FilterSelect } from "./FilterSelect";
 import { SvgArtworkEditor, svgArtworkPreview } from "./SvgArtworkEditor";
 import type { DeviceActions } from "../deviceWorkspace";
 import React, {
@@ -309,7 +311,7 @@ function NumericField({
   return (
     <label className="device-editor-field">
       <span>{label}</span>
-      <input
+      <TextField.Root
         type="number"
         value={Number.isFinite(value) ? value : 0}
         step={step}
@@ -866,6 +868,7 @@ export function DeviceEditor({
 
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
+      if (ownsShortcut(event)) return;
       if (confirmBack) {
         if (event.key === "Escape") {
           setConfirmBack(false);
@@ -1152,9 +1155,9 @@ export function DeviceEditor({
       aria-labelledby="device-editor-title"
     >
       <header className="device-editor-header">
-        <button type="button" className="device-editor-back" onClick={requestBack}>
+        <Button type="button" className="device-editor-back" onClick={requestBack}>
           <span aria-hidden="true">←</span> Device library
-        </button>
+        </Button>
         <div className="device-editor-identity">
           <span className="eyebrow">
             {mode === "create"
@@ -1173,14 +1176,14 @@ export function DeviceEditor({
           <span className={`device-editor-save-state${isDirty ? " is-dirty" : ""}`} role="status">
             {saveState}
           </span>
-          <button
+          <Button variant="solid"
             type="button"
             className="device-draft-button"
             disabled={!title.trim()}
             onClick={save}
           >
             <Icon name="save" /> Save device to draft
-          </button>
+          </Button>
         </div>
       </header>
 
@@ -1190,7 +1193,7 @@ export function DeviceEditor({
             <div className="device-editor-tool-group" key={group.label}>
               <span className="device-editor-tool-group-label">{group.label}</span>
               {TOOLS.filter((item) => group.tools.includes(item.tool)).map((item) => (
-                <button
+                <Button variant={tool === item.tool ? "solid" : "soft"}
                   key={item.tool}
                   type="button"
                   className={`device-editor-tool${tool === item.tool ? " is-active" : ""}`}
@@ -1203,31 +1206,31 @@ export function DeviceEditor({
                 >
                   <Icon name={item.icon} />
                   <span>{item.label}</span>
-                </button>
+                </Button>
               ))}
             </div>
           ))}
         </div>
         <div className="device-editor-toolbar-actions">
           {pendingPolyline.length > 0 ? (
-            <button type="button" className="primary-button" onClick={finishPolyline}>
+            <Button variant="solid" type="button" className="primary-button" onClick={finishPolyline}>
               Finish polyline ({pendingPolyline.length})
-            </button>
+            </Button>
           ) : null}
-          <button type="button" className="device-editor-history" disabled={history.past.length === 0} onClick={undo} title="Undo">
+          <Button type="button" className="device-editor-history" disabled={history.past.length === 0} onClick={undo} title="Undo">
             <Icon name="undo" /> <span>Undo</span>
-          </button>
-          <button type="button" className="device-editor-history" disabled={history.future.length === 0} onClick={redo} title="Redo">
+          </Button>
+          <Button type="button" className="device-editor-history" disabled={history.future.length === 0} onClick={redo} title="Redo">
             <Icon name="redo" /> <span>Redo</span>
-          </button>
-          <button type="button" className="device-editor-history" disabled={!snapshot.shapes.length && !artworkLocked}
+          </Button>
+          <Button type="button" className="device-editor-history" disabled={!snapshot.shapes.length && !artworkLocked}
             onClick={() => {
               setTool("select");
               if (snapshot.shapes.length) {
                 setSelectedShapeIds(snapshot.shapes.map(shape => shape.id));
                 setSelection({ kind: "shape", id: snapshot.shapes[0]!.id });
               } else setSvgSelection(-2);
-            }}>Select all</button>
+            }}>Select all</Button>
           <span className="device-editor-snap">Artwork 1 · Pins 10</span>
         </div>
       </div>
@@ -1494,23 +1497,23 @@ export function DeviceEditor({
             onChange={svgBody => commit({ ...snapshot, svgBody })}/>}
           {snapshot.pins.length > 0 && <section className="editor-pin-index" aria-label="Pin connections">
             <h3>Pin connections</h3>
-            <div>{snapshot.pins.map(pin => <button key={pin.id} type="button"
+            <div>{snapshot.pins.map(pin => <Button variant={selectedPin?.id === pin.id ? "solid" : "soft"} key={pin.id} type="button"
               aria-pressed={selectedPin?.id === pin.id}
               onClick={() => { setTool("select"); setSelection({kind:"pin",id:pin.id}); }}>
               <strong>{pin.name || pin.key}</strong><span>{DIRECTION_LABELS[pin.direction]}</span>
-            </button>)}</div>
+            </Button>)}</div>
           </section>}
           {selectedShape ? (
             <section className="device-editor-object-section">
               <div className="device-editor-section-heading">
                 <h3>{shapeLabel(selectedShape)}</h3>
-                <button
+                <Button variant="ghost"
                   type="button"
-                  className="text-button is-danger"
+                  color="red" className="text-button is-danger"
                   onClick={deleteSelection}
                 >
                   Delete
-                </button>
+                </Button>
               </div>
               {!showHandles ? (
                 <p className="device-editor-note">
@@ -1721,7 +1724,7 @@ export function DeviceEditor({
                 <>
                   <label className="device-editor-field">
                     <span>Text</span>
-                    <input
+                    <TextField.Root
                       value={selectedShape.text}
                       onChange={(event) =>
                         updateShape({ ...selectedShape, text: event.target.value })
@@ -1757,19 +1760,9 @@ export function DeviceEditor({
                   </div>
                   <label className="device-editor-field">
                     <span>Anchor</span>
-                    <select
-                      value={selectedShape.anchor ?? "middle"}
-                      onChange={(event) =>
-                        updateShape({
-                          ...selectedShape,
-                          anchor: event.target.value as "start" | "middle" | "end",
-                        })
-                      }
-                    >
-                      <option value="start">Start</option>
-                      <option value="middle">Middle</option>
-                      <option value="end">End</option>
-                    </select>
+                    <FilterSelect label="Anchor" value={selectedShape.anchor ?? "middle"}
+                      options={["start", "middle", "end"].map(value => ({ value, label: value[0]!.toUpperCase() + value.slice(1) }))}
+                      onChange={value => updateShape({ ...selectedShape, anchor: value as "start" | "middle" | "end" })} />
                   </label>
                 </>
               ) : null}
@@ -1780,13 +1773,12 @@ export function DeviceEditor({
                     canvas; use the tool to draw a new one.
                   </p>
                   <label className="pin-audit-toggle">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={selectedShape.closed === true}
-                      onChange={(event) =>
+                      onCheckedChange={checked =>
                         updateShape({
                           ...selectedShape,
-                          closed: event.target.checked,
+                          closed: checked === true,
                         })
                       }
                     />
@@ -1813,17 +1805,17 @@ export function DeviceEditor({
             <section className="device-editor-object-section">
               <div className="device-editor-section-heading">
                 <h3>Pin</h3>
-                <button
+                <Button variant="ghost"
                   type="button"
-                  className="text-button is-danger"
+                  color="red" className="text-button is-danger"
                   onClick={deleteSelection}
                 >
                   Delete
-                </button>
+                </Button>
               </div>
               <label className="device-editor-field">
                 <span>Name</span>
-                <input
+                <TextField.Root
                   value={selectedPin.name}
                   onChange={(event) =>
                     updatePin({ ...selectedPin, name: event.target.value })
@@ -1832,7 +1824,7 @@ export function DeviceEditor({
               </label>
               <label className="device-editor-field">
                 <span>Role</span>
-                <input
+                <TextField.Root
                   value={selectedPin.role}
                   onChange={(event) =>
                     updatePin({ ...selectedPin, role: event.target.value })
@@ -1841,23 +1833,12 @@ export function DeviceEditor({
               </label>
               <label className="device-editor-field">
                 <span>Direction</span>
-                <select
-                  value={selectedPin.direction}
-                  onChange={(event) => {
-                    const direction = event.target.value as SymbolSide;
-                    updatePin({
-                      ...selectedPin,
-                      direction,
-                      side: direction,
-                    });
-                  }}
-                >
-                  {(Object.keys(DIRECTION_LABELS) as SymbolSide[]).map((side) => (
-                    <option key={side} value={side}>
-                      {DIRECTION_LABELS[side]}
-                    </option>
-                  ))}
-                </select>
+                <FilterSelect label="Direction" value={selectedPin.direction}
+                  options={Object.entries(DIRECTION_LABELS).map(([value, label]) => ({ value, label }))}
+                  onChange={value => {
+                    const side = value as SymbolSide;
+                    updatePin({ ...selectedPin, direction: side, side });
+                  }} />
               </label>
               <div className="device-editor-row">
                 <NumericField
@@ -1887,18 +1868,18 @@ export function DeviceEditor({
             <div className="device-editor-metadata-fields">
             <label className="device-editor-field">
               <span>Title</span>
-              <input value={title} onChange={(event) => setTitle(event.target.value)} />
+              <TextField.Root value={title} onChange={(event) => setTitle(event.target.value)} />
             </label>
             <label className="device-editor-field">
               <span>Category</span>
-              <input
+              <TextField.Root
                 value={category}
                 onChange={(event) => setCategory(event.target.value)}
               />
             </label>
             <label className="device-editor-field">
               <span>Keywords</span>
-              <input
+              <TextField.Root
                 value={keywordsText}
                 onChange={(event) => setKeywordsText(event.target.value)}
                 placeholder="analog, divider"
@@ -1920,18 +1901,16 @@ export function DeviceEditor({
             </div>
             <div className="device-editor-row">
               <label className="pin-audit-toggle">
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={electrical}
-                  onChange={(event) => setElectrical(event.target.checked)}
+                  onCheckedChange={checked => setElectrical(checked === true)}
                 />
                 Electrical
               </label>
               <label className="pin-audit-toggle">
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={palette}
-                  onChange={(event) => setPalette(event.target.checked)}
+                  onCheckedChange={checked => setPalette(checked === true)}
                 />
                 Show in palette
               </label>
@@ -1939,24 +1918,23 @@ export function DeviceEditor({
             <div className="device-editor-row">
               <label className="device-editor-field">
                 <span>SPICE prefix</span>
-                <input
+                <TextField.Root
                   value={spicePrefix}
                   onChange={(event) => setSpicePrefix(event.target.value)}
                 />
               </label>
               <label className="device-editor-field">
                 <span>Default value</span>
-                <input
+                <TextField.Root
                   value={spiceDefault}
                   onChange={(event) => setSpiceDefault(event.target.value)}
                 />
               </label>
             </div>
             <label className="pin-audit-toggle">
-              <input
-                type="checkbox"
+              <Checkbox
                 checked={spiceSupported}
-                onChange={(event) => setSpiceSupported(event.target.checked)}
+                onCheckedChange={checked => setSpiceSupported(checked === true)}
               />
               SPICE supported
             </label>
@@ -1976,15 +1954,15 @@ export function DeviceEditor({
         </aside>
       </div>
       {confirmBack ? (
-        <div className="modal-backdrop" role="presentation">
-          <div className="modal-card device-editor-leave-dialog" role="alertdialog" aria-modal="true" aria-labelledby="device-editor-leave-title">
+        <AlertDialog.Root open onOpenChange={open => { if (!open) setConfirmBack(false); }}>
+          <AlertDialog.Content className="modal-card device-editor-leave-dialog">
             <span className="modal-kicker">Unsaved device changes</span>
-            <h2 id="device-editor-leave-title">Return to the device library?</h2>
-            <p>Save this device to the library draft or discard the edits made since the last save.</p>
+            <AlertDialog.Title>Return to the device library?</AlertDialog.Title>
+            <AlertDialog.Description>Save this device to the library draft or discard the edits made since the last save.</AlertDialog.Description>
             <div className="modal-actions">
-              <button type="button" onClick={() => setConfirmBack(false)}>Keep editing</button>
-              <button type="button" onClick={onCancel}>Discard changes</button>
-              <button
+              <AlertDialog.Cancel><Button type="button">Keep editing</Button></AlertDialog.Cancel>
+              <Button type="button" onClick={onCancel}>Discard changes</Button>
+              <Button variant="solid"
                 type="button"
                 className="primary-button"
                 onClick={() => {
@@ -1993,10 +1971,10 @@ export function DeviceEditor({
                 }}
               >
                 <Icon name="save" /> Save and return to library draft
-              </button>
+              </Button>
             </div>
-          </div>
-        </div>
+          </AlertDialog.Content>
+        </AlertDialog.Root>
       ) : null}
     </section>
   );

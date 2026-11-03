@@ -1,3 +1,4 @@
+import { Button } from "../ui";
 import React, {
   useCallback,
   useEffect,
@@ -516,7 +517,7 @@ function FormatToolbar({
       aria-label={toolbarLabel}
     >
       {TOOLBAR_BUTTONS.map((button) => (
-        <button
+        <Button variant={formats[button.format] ? "solid" : "soft"}
           key={button.format}
           type="button"
           title={button.label}
@@ -530,7 +531,7 @@ function FormatToolbar({
           onClick={() => onFormat(button.format)}
         >
           {button.glyph}
-        </button>
+        </Button>
       ))}
     </div>
   );

@@ -1,3 +1,4 @@
+import { Button, ownsShortcut } from "../ui";
 import React, {
   useEffect,
   useMemo,
@@ -1118,6 +1119,7 @@ export function SchematicCanvas({
   useEffect(() => {
     if (!shortcutsEnabled) return;
     const handleKeyDown = (event: KeyboardEvent): void => {
+      if (ownsShortcut(event)) return;
       const target = event.target as HTMLElement | null;
       const isTyping =
         target?.tagName === "INPUT" ||
@@ -3769,30 +3771,30 @@ export function SchematicCanvas({
         ) : null}
       </svg>
       <div className="canvas-controls" aria-label="Canvas view controls">
-        <button type="button" onClick={() => zoomAtCanvasCenter(1.2)}>
+        <Button type="button" onClick={() => zoomAtCanvasCenter(1.2)}>
           Zoom in
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
           aria-label="Reset zoom to 100%"
           onClick={() => setView({ x: 0, y: 0, width: BASE_WIDTH, height: BASE_HEIGHT })}
         >
           {zoomPercent}%
-        </button>
-        <button type="button" onClick={() => zoomAtCanvasCenter(1 / 1.2)}>
+        </Button>
+        <Button type="button" onClick={() => zoomAtCanvasCenter(1 / 1.2)}>
           Zoom out
-        </button>
-        <button type="button" onClick={fitPageToContent}>
+        </Button>
+        <Button type="button" onClick={fitPageToContent}>
           Fit
-        </button>
-        <button
+        </Button>
+        <Button variant={gridVisible ? "solid" : "soft"}
           type="button"
           aria-pressed={gridVisible}
           title="Toggle grid (G)"
           onClick={() => setGridVisible((visible) => !visible)}
         >
           Grid
-        </button>
+        </Button>
       </div>
       <div className="canvas-axis-label">
         {gridVisible ? `Grid ${GRID_SIZE}` : "Grid off"} · Wheel zoom · F fit · G grid · Space drag

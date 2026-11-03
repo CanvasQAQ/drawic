@@ -1,3 +1,4 @@
+import { Button, IconButton } from "../ui";
 import React, { useCallback, useRef, useState } from "react";
 import { ContextMenu, type ContextMenuEntry } from "./ContextMenu";
 
@@ -185,7 +186,7 @@ export function PageBar({
         aria-label="Drawing pages"
       >
         {pages.map((page, index) => (
-          <button
+          <Button variant={page.id === activePageId ? "solid" : "soft"}
             key={page.id}
             ref={(element) => {
               if (element) {
@@ -251,9 +252,9 @@ export function PageBar({
           >
             <span className="page-index">{index + 1}</span>
             <span>{page.name}</span>
-          </button>
+          </Button>
         ))}
-        <button
+        <IconButton variant="soft"
           type="button"
           className="page-add"
           onClick={onAdd}
@@ -261,7 +262,7 @@ export function PageBar({
           aria-label="Add page"
         >
           +
-        </button>
+        </IconButton>
       </div>
       {menu ? (
         <ContextMenu
