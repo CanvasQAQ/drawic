@@ -229,10 +229,6 @@ button:not(:disabled) {
   box-shadow: 0 0 0 1px var(--ui-accent);
 }
 
-.compact-tools .tool-button {
-  min-width: 42px;
-}
-
 .recovery-banner {
   z-index: 11;
   min-height: 37px;
@@ -2555,13 +2551,6 @@ button:not(:disabled) {
   .workspace.no-properties {
     grid-template-columns: 218px minmax(0, 1fr) 28px;
   }
-  .tool-button {
-    min-width: 44px;
-  }
-  .file-tools .tool-button span,
-  .compact-tools .tool-button span {
-    display: none;
-  }
 }
 
 @media (max-width: 1080px) {
@@ -2582,12 +2571,6 @@ button:not(:disabled) {
 
 @media (max-width: 920px) {
   .window-titlebar-title {
-    display: none;
-  }
-  .tool-button {
-    min-width: 40px;
-  }
-  .tool-button span {
     display: none;
   }
   .page-bar-heading {

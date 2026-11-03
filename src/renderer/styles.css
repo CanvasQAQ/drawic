@@ -37,7 +37,42 @@
 }
 .window-control-close:hover { background: var(--red-4); color: var(--red-12); }
 
-.tool-button { flex-direction: column; height: auto; gap: 2px; padding: 4px 6px; }
+/* Size the command slots as a group so labels and button state cannot resize them. */
+.toolbar-groups {
+  --tool-width: calc(64px * var(--scaling));
+  --tool-height: calc(44px * var(--scaling));
+}
+.tool-button {
+  flex: none;
+  flex-direction: column;
+  width: var(--tool-width);
+  min-width: 0;
+  height: var(--tool-height);
+  gap: 2px;
+  padding: 0 var(--space-1);
+}
+.tool-button svg { flex: none; }
+.tool-button span { line-height: 1.2; white-space: nowrap; }
+
+@media (max-width: 1080px) {
+  .toolbar-groups { --tool-width: var(--tool-height); }
+  .tool-button span { display: none; }
+}
+
+.library-panel > .search-field,
+.library-panel > .category-field { margin-block-end: var(--space-3); }
+.library-panel > .category-field { grid-template-columns: 6.5em minmax(0, 1fr); }
+.library-panel > .library-count { padding-top: 0; }
+
+.page-bar { --page-control-height: var(--space-6); }
+.page-tabs { align-items: center; gap: var(--space-1); }
+.page-bar-heading { align-items: center; }
+.page-tab, .page-add {
+  height: var(--page-control-height);
+  min-height: 0;
+  margin: 0;
+}
+.page-add { flex: none; width: var(--page-control-height); }
 .symbol-tile { display: grid; grid-template-rows: 48px auto auto; height: auto; min-width: 0; gap: 2px; padding: 6px; }
 .symbol-tile, .export-grid button { white-space: normal; }
 .export-grid button { height: auto; flex-direction: column; align-items: flex-start; text-align: left; padding: var(--space-3); }

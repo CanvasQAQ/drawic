@@ -123,6 +123,14 @@ async function run() {
   assert.equal(nativeTheme.themeSource,"system");
   assert.equal(await js("document.documentElement.dataset.theme"),"light");
   await emulate("dark");await until(()=>js("document.documentElement.dataset.theme==='dark'"),"system change");
+  // Verify the wide review viewport independently of the test machine's display.
+  await win.webContents.debugger.sendCommand("Emulation.setDeviceMetricsOverride", {
+    width: 1899, height: 984, deviceScaleFactor: 1, mobile: false,
+  });
+  await choose("light");
+  await checkWorkspaceRows();
+  await inspect("wide-light-toolbar", ".app-toolbar", true);
+  await win.webContents.debugger.sendCommand("Emulation.clearDeviceMetricsOverride");
   win.webContents.debugger.detach();
   const darkPaint = new Map();
   async function checkLibraryControl(theme, selector) {
@@ -135,12 +143,46 @@ async function run() {
     if (theme === "dark") darkPaint.set(selector, paint[1]);
     else assert.notEqual(paint[1], darkPaint.get(selector), selector + " changes paint");
   }
+  async function checkWorkspaceRows() {
+    const geometry = await js(`(() => {
+      const rect = el => { const {x,y,width,height,bottom} = el.getBoundingClientRect();
+        return {x,y,width,height,bottom,center: y + height/2}; };
+      const all = selector => Array.from(document.querySelectorAll(selector), rect);
+      return {
+        tools: all(".tool-button"),
+        fields: all(".library-panel .rt-TextFieldRoot, .library-panel .filter-select"),
+        filterLabelsFit: Array.from(document.querySelectorAll(".library-panel .category-field > span"), label => {
+          const range = document.createRange();
+          range.selectNodeContents(label);
+          return range.getClientRects().length === 1 && range.getBoundingClientRect().width <= label.clientWidth + 1;
+        }).every(Boolean),
+        pageControls: all(".page-tab, .page-add"),
+        heading: rect(document.querySelector(".page-bar-heading")),
+      };
+    })()`);
+    const {tools, fields, pageControls, heading} = geometry;
+    for (const tool of tools) {
+      assert(tool.width === tools[0].width && tool.height === tools[0].height &&
+        Math.abs(tool.y - tools[0].y) < 1, "toolbar commands share one aligned footprint");
+    }
+    assert.equal(fields.length, 3);
+    assert(geometry.filterLabelsFit, "filter labels fit on a single line");
+    assert(fields[1].y - fields[0].bottom >= 6 && fields[2].y - fields[1].bottom >= 6,
+      "search and both library filters have breathing room");
+    assert.equal(fields[1].x, fields[2].x, "filter triggers line up");
+    for (const control of pageControls) {
+      assert(control.height === pageControls[0].height && Math.abs(control.center - pageControls[0].center) < 1,
+        "page tabs and add button share a centerline and height");
+    }
+    if (heading.height) assert(Math.abs(heading.center - pageControls[0].center) < 1, "page heading centered");
+  }
   let wirePaint;
   for(const theme of ["dark","light"]){
     await choose(theme);
     assert.equal(nativeTheme.themeSource,theme);
     win.setSize(1440,865);await wait(80);
     await inspect(theme+"-shell",".app-shell",true);
+    await checkWorkspaceRows();
     const titleButtons = await js(`Array.from(document.querySelectorAll(".window-theme-button, .window-control"),
       el => { const {width,height,top} = el.getBoundingClientRect(); return [width,height,top]; })`);
     assert(titleButtons[0][0] >= 32 && titleButtons[0][1] >= 32, "theme button hit target");
@@ -194,6 +236,7 @@ async function run() {
     await inspect(theme+"-inline-rich-text",".canvas-rich-inline-editor");await key("Escape");
     await click(".page-tab");
     win.setSize(920,660);await wait(140);
+    await checkWorkspaceRows();
     await inspect("compact-"+theme,".app-shell",true);
     assert(await js("document.querySelector('.canvas-controls').getBoundingClientRect().right <= document.querySelector('.properties-panel').getBoundingClientRect().left"),"inspector obscures zoom controls");
   }
