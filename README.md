@@ -22,10 +22,12 @@ Local implementation agents must begin with [AGENTS.md](AGENTS.md) and
 
 ## Preview status
 
-Version 0.3.1 is an **Unsigned Preview**. The editor uses independent drawing
+Version 0.3.2 is an **Unsigned Preview**. The editor uses independent drawing
 pages and a single-file device library, and can produce project, SPICE, SVG, PNG,
 and PDF files. Local MCP can read the active page, place and transform oriented
-devices, and connect pins. Spectre/SCS remains unimplemented.
+devices, and connect pins. Buttons, fields, menus, and dialogs share the light
+and dark themes. Moving a wired device preserves Net Label clearance and the
+fixed junction on a T branch. Spectre/SCS remains unimplemented.
 The capabilities below describe the current source tree; tagged packages may
 lag behind it.
 
@@ -34,7 +36,7 @@ packages. Windows SmartScreen and macOS Gatekeeper warnings are expected because
 no signing identities are configured. Verify downloads against
 `SHA256SUMS.txt`.
 
-Use tags such as `v0.3.1-preview` for Preview releases. A plain semantic version
+Use tags such as `v0.3.2-preview` for Preview releases. A plain semantic version
 tag such as `v1.0.0` is treated as a formal release.
 
 ## Implemented capabilities
